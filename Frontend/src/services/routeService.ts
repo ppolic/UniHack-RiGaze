@@ -416,7 +416,35 @@ export const routeService = {
           (o) => o.mode === 'Walk' || o.mode === 'PublicTransport'
         );
       } else if (request.profile.ageCategory === 'From14To15') {
-        options = options.filter((o) => o.mode !== 'Car');
+        options = options
+          .filter((o) => o.mode !== 'Car')
+          .map((o) => {
+            if (o.mode === 'Bike' || o.mode === 'Scooter') {
+              const hasHelmetWarning = (o.warnings || []).some(
+                (w) => w.type === 'Helmet'
+              );
+              return {
+                ...o,
+                warnings: hasHelmetWarning
+                  ? o.warnings
+                  : [
+                      ...(o.warnings || []),
+                      {
+                        type: 'Helmet',
+                        message:
+                          'Kaciga je zakonski obavezna za vozače od 14 do 16 godina.',
+                      },
+                    ],
+              };
+            }
+            return o;
+          });
+      } else {
+        // Adult: remove age-specific Helmet warnings
+        options = options.map((o) => ({
+          ...o,
+          warnings: (o.warnings || []).filter((w) => w.type !== 'Helmet'),
+        }));
       }
 
       const adaptedOptions = adaptOptionsGeometry(

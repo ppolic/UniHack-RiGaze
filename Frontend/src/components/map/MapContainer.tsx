@@ -36,6 +36,12 @@ export const TIMISOARA_CENTER = {
   longitudeDelta: 0.035,
 };
 
+type PoiFilterType = 'all' | 'transit' | 'bike' | 'parking';
+
+type SelectedPoi =
+  | { kind: 'station'; data: StationLocation }
+  | { kind: 'parking'; data: ParkingDetail };
+
 interface MapContainerProps {
   origin?: GeoPoint | null;
   destination?: GeoPoint | null;
@@ -45,6 +51,7 @@ interface MapContainerProps {
   parkings?: ParkingDetail[];
   selectedOption?: RouteOptionDto | null;
   selectedMode?: string;
+  onSelectPoiAsDestination?: (point: GeoPoint, name: string) => void;
 }
 
 export const MapContainer: React.FC<MapContainerProps> = ({
@@ -56,11 +63,23 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   parkings = [],
   selectedOption,
   selectedMode = 'Bike',
+  onSelectPoiAsDestination,
 }) => {
   const mapRef = useRef<any>(null);
   const [userLocation, setUserLocation] = useState<GeoPoint | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  const [poiFilter, setPoiFilter] = useState<PoiFilterType>('all');
+  const [selectedPoi, setSelectedPoi] = useState<SelectedPoi | null>(null);
+
+  const filteredStations = stations.filter((st) => {
+    if (poiFilter === 'all') return true;
+    if (poiFilter === 'transit') return st.type === 'tram' || st.type === 'bus';
+    if (poiFilter === 'bike') return st.type === 'bike_station';
+    return false;
+  });
+
+  const filteredParkings = poiFilter === 'all' || poiFilter === 'parking' ? parkings : [];
 
   // Request location permissions on mount
   useEffect(() => {
@@ -222,8 +241,166 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     );
   };
 
+  const renderPoiFilterBar = () => {
+    const filters: { id: PoiFilterType; label: string }[] = [
+      { id: 'all', label: 'Sve' },
+      { id: 'transit', label: '🚊 STPT' },
+      { id: 'bike', label: '🚲 VeloTM' },
+      { id: 'parking', label: '🅿️ Parking' },
+    ];
+
+    return (
+      <View style={styles.poiFilterRow}>
+        {filters.map((f) => {
+          const isActive = poiFilter === f.id;
+          return (
+            <TouchableOpacity
+              key={f.id}
+              onPress={() => {
+                setPoiFilter(f.id);
+                setSelectedPoi(null);
+              }}
+              style={[styles.poiFilterChip, isActive && styles.poiFilterChipActive]}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.poiFilterChipText,
+                  isActive && styles.poiFilterChipTextActive,
+                ]}
+              >
+                {f.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    );
+  };
+
+  const renderSelectedPoiCard = () => {
+    if (!selectedPoi) return null;
+
+    if (selectedPoi.kind === 'station') {
+      const st = selectedPoi.data;
+      const isBike = st.type === 'bike_station';
+      return (
+        <View style={styles.poiPopupCard}>
+          <View style={styles.poiPopupHeader}>
+            <View style={styles.poiTitleRow}>
+              <Text style={styles.poiTypeEmoji}>
+                {isBike ? '🚲' : st.type === 'tram' ? '🚊' : '🚌'}
+              </Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.poiPopupTitle} numberOfLines={1}>
+                  {st.name}
+                </Text>
+                <Text style={styles.poiPopupSubtitle}>
+                  {isBike
+                    ? `Slobodno bicikala: ${st.availableBikes ?? 0} / ${st.totalDocks ?? 15} mjesta`
+                    : `Linije: ${st.lines?.join(', ') || '-'}${
+                        st.nextArrivalMinutes ? ` • Dolazak za ${st.nextArrivalMinutes} min` : ''
+                      }`}
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              onPress={() => setSelectedPoi(null)}
+              style={styles.poiCloseBtn}
+            >
+              <Text style={styles.poiCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.poiPopupFooter}>
+            {st.isWheelchairAccessible ? (
+              <View style={styles.poiAccessBadge}>
+                <Text style={styles.poiAccessText}>♿ Niskopodni pristup</Text>
+              </View>
+            ) : (
+              <View style={styles.poiEcoBadge}>
+                <Text style={styles.poiEcoText}>🌱 0g CO₂ VeloTM</Text>
+              </View>
+            )}
+
+            {onSelectPoiAsDestination && (
+              <TouchableOpacity
+                style={styles.poiRouteBtn}
+                onPress={() => {
+                  onSelectPoiAsDestination({ lat: st.lat, lng: st.lng }, st.name);
+                  setSelectedPoi(null);
+                }}
+              >
+                <Text style={styles.poiRouteBtnText}>Odredište (B) ➔</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      );
+    }
+
+    const prk = selectedPoi.data;
+    return (
+      <View style={styles.poiPopupCard}>
+        <View style={styles.poiPopupHeader}>
+          <View style={styles.poiTitleRow}>
+            <Text style={styles.poiTypeEmoji}>🅿️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.poiPopupTitle} numberOfLines={1}>
+                {prk.name}
+              </Text>
+              <Text style={styles.poiPopupSubtitle}>
+                Slobodno: {prk.spotsAvailable}/{prk.totalSpots} mjesta • {prk.hourlyRateRon} RON/h
+                {prk.zone ? ` • ${prk.zone}` : ''}
+              </Text>
+            </View>
+          </View>
+          <TouchableOpacity
+            onPress={() => setSelectedPoi(null)}
+            style={styles.poiCloseBtn}
+          >
+            <Text style={styles.poiCloseText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.poiPopupFooter}>
+          {prk.isAccessible && (
+            <View style={styles.poiAccessBadge}>
+              <Text style={styles.poiAccessText}>
+                ♿ {prk.accessibleSpots ?? 2} invalidska mjesta (Besplatno)
+              </Text>
+            </View>
+          )}
+
+          {onSelectPoiAsDestination && (
+            <TouchableOpacity
+              style={styles.poiRouteBtn}
+              onPress={() => {
+                onSelectPoiAsDestination({ lat: prk.lat, lng: prk.lng }, prk.name);
+                setSelectedPoi(null);
+              }}
+            >
+              <Text style={styles.poiRouteBtnText}>Odredište (B) ➔</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </View>
+    );
+  };
+
   // Web Fallback Renderer
   const renderWebFallback = () => {
+    const webStationPositions = [
+      { top: '26%', left: '16%' },
+      { top: '62%', left: '20%' },
+      { top: '28%', right: '22%' },
+      { top: '68%', right: '16%' },
+    ];
+    const webParkingPositions = [
+      { top: '44%', left: '14%' },
+      { top: '42%', right: '18%' },
+    ];
+
     return (
       <View style={styles.webFallbackContainer}>
         {/* River Bega indicator */}
@@ -231,19 +408,37 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           <Text style={styles.riverText}>~ Rijeka Bega (Timișoara) ~</Text>
         </View>
 
-        {/* POI Stations */}
-        {stations.slice(0, 3).map((st) => (
-          <View
+        {/* Interactive POI Stations on Web */}
+        {filteredStations.slice(0, 4).map((st, idx) => (
+          <TouchableOpacity
             key={st.id}
+            onPress={() => setSelectedPoi({ kind: 'station', data: st })}
             style={[
+              styles.webPoiFloating,
+              webStationPositions[idx % webStationPositions.length] as any,
               styles.markerStation,
               st.type === 'bike_station' ? styles.markerBike : styles.markerTram,
             ]}
           >
             <Text style={styles.markerMiniIcon}>
-              {st.type === 'bike_station' ? '🚲' : '🚊'}
+              {st.type === 'bike_station' ? '🚲' : st.type === 'tram' ? '🚊' : '🚌'}
             </Text>
-          </View>
+          </TouchableOpacity>
+        ))}
+
+        {/* Interactive POI Parkings on Web */}
+        {filteredParkings.slice(0, 2).map((prk, idx) => (
+          <TouchableOpacity
+            key={prk.id}
+            onPress={() => setSelectedPoi({ kind: 'parking', data: prk })}
+            style={[
+              styles.webPoiFloating,
+              webParkingPositions[idx % webParkingPositions.length] as any,
+              styles.markerParking,
+            ]}
+          >
+            <Text style={styles.markerParkingText}>P</Text>
+          </TouchableOpacity>
         ))}
 
         {/* Origin Pin */}
@@ -281,10 +476,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             </View>
           </View>
         )}
-
-        <View style={styles.cityBadge}>
-          <Text style={styles.cityBadgeText}>📍 Timișoara (Centru & UPT)</Text>
-        </View>
       </View>
     );
   };
@@ -337,35 +528,43 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           )}
 
           {/* Infrastructure POI Markers: STPT tram/bus and VeloTM */}
-          {stations.map((st) => (
+          {filteredStations.map((st) => (
             <Marker
               key={st.id}
               coordinate={{ latitude: st.lat, longitude: st.lng }}
-              title={st.name}
-              description={st.lines ? `Linije: ${st.lines.join(', ')}` : 'VeloTM bicikli'}
+              onPress={() => setSelectedPoi({ kind: 'station', data: st })}
             >
               <View
                 style={[
                   styles.markerStation,
                   st.type === 'bike_station' ? styles.markerBike : styles.markerTram,
+                  selectedPoi?.kind === 'station' &&
+                    selectedPoi.data.id === st.id &&
+                    styles.markerSelectedHighlight,
                 ]}
               >
                 <Text style={styles.markerMiniIcon}>
-                  {st.type === 'bike_station' ? '🚲' : '🚊'}
+                  {st.type === 'bike_station' ? '🚲' : st.type === 'tram' ? '🚊' : '🚌'}
                 </Text>
               </View>
             </Marker>
           ))}
 
           {/* Infrastructure POI Markers: Parkings */}
-          {parkings.map((prk) => (
+          {filteredParkings.map((prk) => (
             <Marker
               key={prk.id}
               coordinate={{ latitude: prk.lat, longitude: prk.lng }}
-              title={prk.name}
-              description={`Slobodno: ${prk.spotsAvailable} / ${prk.totalSpots} (${prk.hourlyRateRon} RON/h)`}
+              onPress={() => setSelectedPoi({ kind: 'parking', data: prk })}
             >
-              <View style={styles.markerParking}>
+              <View
+                style={[
+                  styles.markerParking,
+                  selectedPoi?.kind === 'parking' &&
+                    selectedPoi.data.id === prk.id &&
+                    styles.markerSelectedHighlight,
+                ]}
+              >
                 <Text style={styles.markerParkingText}>P</Text>
               </View>
             </Marker>
@@ -423,8 +622,11 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         renderWebFallback()
       )}
 
-      {/* Active Route Segments Legend Overlay */}
-      {renderSegmentsOverlay()}
+      {/* Top POI Filter Chips */}
+      {renderPoiFilterBar()}
+
+      {/* Selected POI Info Card or Active Route Segments Legend Overlay */}
+      {selectedPoi ? renderSelectedPoiCard() : renderSegmentsOverlay()}
 
       {/* Floating Map Action Controls */}
       <View style={styles.mapControls}>
@@ -473,6 +675,136 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  poiFilterRow: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.md,
+    right: 68,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    zIndex: 22,
+  },
+  poiFilterChip: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.sm,
+  },
+  poiFilterChipActive: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
+  },
+  poiFilterChipText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  poiFilterChipTextActive: {
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
+  poiPopupCard: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.md,
+    right: 68,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    zIndex: 25,
+    ...shadows.md,
+  },
+  poiPopupHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  poiTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    flex: 1,
+  },
+  poiTypeEmoji: {
+    fontSize: 18,
+  },
+  poiPopupTitle: {
+    ...typography.bodyMedium,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  poiPopupSubtitle: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  poiCloseBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  poiCloseText: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  poiPopupFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: spacing.xs + 2,
+    gap: spacing.xs,
+  },
+  poiAccessBadge: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.xs + 4,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  poiAccessText: {
+    ...typography.captionMedium,
+    fontSize: 10,
+    color: colors.primaryDark,
+  },
+  poiEcoBadge: {
+    backgroundColor: colors.rewardBackground,
+    paddingHorizontal: spacing.xs + 4,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  poiEcoText: {
+    ...typography.captionMedium,
+    fontSize: 10,
+    color: colors.rewardText,
+    fontWeight: '700',
+  },
+  poiRouteBtn: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  poiRouteBtnText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textInverse,
+    fontWeight: '700',
+  },
+  webPoiFloating: {
+    position: 'absolute',
+    zIndex: 14,
+  },
+  markerSelectedHighlight: {
+    transform: [{ scale: 1.25 }],
+    borderColor: colors.accent,
+    borderWidth: 2.5,
   },
   segmentsBanner: {
     position: 'absolute',

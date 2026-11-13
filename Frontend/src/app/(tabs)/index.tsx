@@ -6,16 +6,17 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { DemoUserRole } from '../../store/userStore';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { MapContainer } from '../../components/map/MapContainer';
 import { RoutePresets, DEMO_PRESETS, RoutePresetItem } from '../../components/map/RoutePresets';
 import { RouteOptionCard } from '../../components/map/RouteOptionCard';
+import { TripCompletedModal } from '../../components/map/TripCompletedModal';
 import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
 import { routeService } from '../../services/routeService';
@@ -30,7 +31,7 @@ import {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { user, addEcoPoints, hasDisability } = useAuth();
+  const { user, addEcoPoints, hasDisability, loginAsDemoUser } = useAuth();
 
   // Route Planning State
   const [activePreset, setActivePreset] = useState<RoutePresetItem>(DEMO_PRESETS[0]);
@@ -41,6 +42,8 @@ export default function MapScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [stations, setStations] = useState<StationLocation[]>([]);
   const [parkings, setParkings] = useState<ParkingDetail[]>([]);
+  const [tripModalVisible, setTripModalVisible] = useState(false);
+  const [lastCo2Saved, setLastCo2Saved] = useState(0);
 
   // Load Transit POIs on mount
   useEffect(() => {
@@ -48,10 +51,10 @@ export default function MapScreen() {
     transitService.getParkings().then(setParkings);
   }, []);
 
-  // Fetch routes when preset or disability status changes
+  // Fetch routes when preset, disability status, or user age changes
   useEffect(() => {
     fetchRoutes(activePreset);
-  }, [activePreset, hasDisability]);
+  }, [activePreset, hasDisability, user?.age, user?.id]);
 
   const fetchRoutes = async (preset: RoutePresetItem) => {
     setIsLoading(true);
@@ -93,6 +96,16 @@ export default function MapScreen() {
     setActivePreset(preset);
   };
 
+  const handleSelectPoiAsDestination = (point: { lat: number; lng: number }, name: string) => {
+    setActivePreset((prev) => ({
+      ...prev,
+      id: 'custom_poi',
+      label: `${prev.originName} ➔ ${name}`,
+      destinationName: name,
+      destination: point,
+    }));
+  };
+
   const selectedOption = options.find((o) => o.id === selectedOptionId);
 
   const handleCompleteTrip = async () => {
@@ -100,16 +113,21 @@ export default function MapScreen() {
 
     // Calculate CO2 savings vs 390g car baseline
     const co2Saved = Math.max(0, 390 - selectedOption.co2Grams);
-    addEcoPoints(selectedOption.ecoPoints, co2Saved);
+    setLastCo2Saved(co2Saved);
 
-    Alert.alert(
-      'Zeleno putovanje završeno! 🌱',
-      `Osvojili ste +${selectedOption.ecoPoints} eko-bodova!\nUštedjeli ste ${co2Saved}g CO₂ u Timișoari.`,
-      [
-        { text: 'Pregledaj nagrade', onPress: () => router.push('/(tabs)/rewards') },
-        { text: 'U redu', style: 'cancel' },
-      ]
-    );
+    try {
+      await routeService.recordTrip({
+        mode: selectedOption.mode,
+        distanceMeters: Math.round(selectedOption.distanceKm * 1000),
+        co2SavedGrams: co2Saved,
+        ecoPoints: selectedOption.ecoPoints,
+      });
+    } catch (err) {
+      console.warn('Greška pri spremanju vožnje, nastavljamo lokalno:', err);
+    }
+
+    addEcoPoints(selectedOption.ecoPoints, co2Saved);
+    setTripModalVisible(true);
   };
 
   const getWeatherConditionIcon = (condition?: string) => {
@@ -162,6 +180,52 @@ export default function MapScreen() {
         onSelectPreset={handleSelectPreset}
       />
 
+      {/* Quick Demo Profile Switcher (FE-08) */}
+      <View style={styles.profileSwitcherRow}>
+        <Text style={styles.profileSwitcherLabel}>Profil:</Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.profileChipsScroll}
+        >
+          {(
+            [
+              { role: 'student', label: '🎓 Student (18+)' },
+              { role: 'accessibility', label: '♿ Kolica' },
+              { role: 'teen_15', label: '🪖 Mlađi (14–15g)' },
+              { role: 'child_12', label: '🧒 Dijete (<14g)' },
+            ] as { role: DemoUserRole; label: string }[]
+          ).map((item) => {
+            const isActive =
+              (item.role === 'accessibility' && hasDisability) ||
+              (item.role === 'teen_15' && !hasDisability && user?.age === 15) ||
+              (item.role === 'child_12' && !hasDisability && (user?.age ?? 22) < 14) ||
+              (item.role === 'student' && !hasDisability && (user?.age ?? 22) >= 16);
+
+            return (
+              <TouchableOpacity
+                key={item.role}
+                onPress={() => loginAsDemoUser(item.role)}
+                style={[
+                  styles.profileChip,
+                  isActive && styles.profileChipActive,
+                ]}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.profileChipText,
+                    isActive && styles.profileChipTextActive,
+                  ]}
+                >
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+
       {/* Weather & Demo Status Bar */}
       <View style={styles.statusBarRow}>
         {weather && (
@@ -187,6 +251,7 @@ export default function MapScreen() {
           parkings={parkings}
           selectedOption={selectedOption}
           selectedMode={selectedOption?.mode || 'Bike'}
+          onSelectPoiAsDestination={handleSelectPoiAsDestination}
         />
 
         {/* Accessibility Status Pill if active */}
@@ -234,6 +299,21 @@ export default function MapScreen() {
           </View>
         )}
       </View>
+
+      {/* EcoMutare Trip Completed Modal */}
+      <TripCompletedModal
+        visible={tripModalVisible}
+        option={selectedOption}
+        co2SavedGrams={lastCo2Saved}
+        totalPoints={user?.totalEcoPoints ?? 0}
+        originName={activePreset.originName}
+        destinationName={activePreset.destinationName}
+        onClose={() => setTripModalVisible(false)}
+        onViewRewards={() => {
+          setTripModalVisible(false);
+          router.push('/(tabs)/rewards');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -292,6 +372,44 @@ const styles = StyleSheet.create({
   dashboardLinkText: {
     ...typography.captionMedium,
     color: colors.textPrimary,
+  },
+  profileSwitcherRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingLeft: spacing.md,
+    paddingVertical: 3,
+    backgroundColor: colors.background,
+  },
+  profileSwitcherLabel: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginRight: spacing.xs,
+  },
+  profileChipsScroll: {
+    paddingRight: spacing.md,
+    gap: 6,
+  },
+  profileChip: {
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  profileChipActive: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.primaryDark,
+  },
+  profileChipText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  profileChipTextActive: {
+    color: colors.textInverse,
+    fontWeight: '700',
   },
   statusBarRow: {
     flexDirection: 'row',

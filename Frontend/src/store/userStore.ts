@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { UserProfile, UserPreferences } from '../types/user';
 
+export type DemoUserRole = 'student' | 'accessibility' | 'teen_15' | 'child_12';
+
 interface UserStoreState {
   token: string | null;
   user: UserProfile | null;
@@ -13,7 +15,7 @@ interface UserStoreState {
   updatePreferences: (preferences: Partial<UserPreferences>) => void;
   addEcoPoints: (points: number, co2SavedGrams: number) => void;
   logout: () => void;
-  loginAsDemoUser: (role?: 'student' | 'accessibility') => void;
+  loginAsDemoUser: (role?: DemoUserRole) => void;
 }
 
 const DEFAULT_DEMO_USER: UserProfile = {
@@ -52,6 +54,42 @@ const ACCESSIBLE_DEMO_USER: UserProfile = {
   completedTripsCount: 19,
 };
 
+const TEEN_15_DEMO_USER: UserProfile = {
+  id: 'usr_demo_teen15',
+  email: 'andrei.teen@ecomutare.tm',
+  fullName: 'Andrei Munteanu (15g)',
+  birthDate: '2011-03-10',
+  age: 15,
+  preferences: {
+    hasDisability: false,
+    hasOwnBicycle: true,
+    hasOwnScooter: true,
+    hasOwnCar: false,
+    preferredModes: ['Bicycle', 'Scooter'],
+  },
+  totalEcoPoints: 210,
+  totalCo2SavedKg: 11.2,
+  completedTripsCount: 9,
+};
+
+const CHILD_12_DEMO_USER: UserProfile = {
+  id: 'usr_demo_child12',
+  email: 'elena.elev@ecomutare.tm',
+  fullName: 'Elena Dumitru (12g)',
+  birthDate: '2014-07-04',
+  age: 12,
+  preferences: {
+    hasDisability: false,
+    hasOwnBicycle: false,
+    hasOwnScooter: false,
+    hasOwnCar: false,
+    preferredModes: ['PublicTransit', 'Walking'],
+  },
+  totalEcoPoints: 180,
+  totalCo2SavedKg: 8.5,
+  completedTripsCount: 7,
+};
+
 export const useUserStore = create<UserStoreState>((set) => ({
   token: 'mock-jwt-token-eco-mutare',
   user: DEFAULT_DEMO_USER,
@@ -87,10 +125,17 @@ export const useUserStore = create<UserStoreState>((set) => ({
 
   logout: () => set({ token: null, user: null, isAuthenticated: false }),
 
-  loginAsDemoUser: (role = 'student') =>
+  loginAsDemoUser: (role = 'student') => {
+    const profileMap: Record<DemoUserRole, UserProfile> = {
+      student: DEFAULT_DEMO_USER,
+      accessibility: ACCESSIBLE_DEMO_USER,
+      teen_15: TEEN_15_DEMO_USER,
+      child_12: CHILD_12_DEMO_USER,
+    };
     set({
       token: 'demo-token-' + role,
-      user: role === 'accessibility' ? ACCESSIBLE_DEMO_USER : DEFAULT_DEMO_USER,
+      user: profileMap[role] || DEFAULT_DEMO_USER,
       isAuthenticated: true,
-    }),
+    });
+  },
 }));

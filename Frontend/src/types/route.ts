@@ -104,7 +104,10 @@ export interface StationLocation {
   lat: number;
   lng: number;
   availableBikes?: number;
+  totalDocks?: number;
   lines?: string[];
+  isWheelchairAccessible?: boolean;
+  nextArrivalMinutes?: number;
 }
 
 export interface ParkingDetail {
@@ -116,4 +119,6 @@ export interface ParkingDetail {
   totalSpots: number;
   hourlyRateRon: number;
   isAccessible: boolean;
+  accessibleSpots?: number;
+  zone?: string;
 }
