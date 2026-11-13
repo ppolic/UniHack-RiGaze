@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { RouteOption } from '../../types/route';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
@@ -17,6 +17,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
   isSelected,
   onSelect,
 }) => {
+  const desktop = useWindowDimensions().width >= 768;
   const getModeColor = (mode: string) => {
     switch (mode) {
       case 'Bicycle':
@@ -54,18 +55,19 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       onPress={onSelect}
       style={[
         styles.card,
+        desktop && styles.desktopCard,
         shadows.sm,
         isSelected && { borderColor: modeColor, borderWidth: 2, backgroundColor: colors.surfaceMuted },
       ]}
     >
       {/* Top Header: Mode, Recommended badge, Eco Points */}
-      <View style={styles.headerRow}>
-        <View style={styles.modeIndicatorRow}>
+      <View style={[styles.headerRow, desktop && styles.desktopHeader]}>
+        <View style={[styles.modeIndicatorRow, desktop && styles.desktopMode]}>
           <View style={[styles.modeDot, { backgroundColor: modeColor }]} />
-          <Text style={styles.modeTitle}>{getModeLabel(option.mode)}</Text>
+          <Text style={[styles.modeTitle, desktop && styles.desktopHeading]}>{getModeLabel(option.mode)}</Text>
         </View>
 
-        <View style={styles.badgesRow}>
+        <View style={[styles.badgesRow, desktop && styles.desktopBadges]}>
           {option.isRecommended && (
             <Badge label="Najzelenije" variant="success" />
           )}
@@ -78,47 +80,48 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       </View>
 
       {/* Metric highlights: Time, Distance, CO2, Price */}
-      <View style={styles.metricsRow}>
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>{option.durationMinutes} min</Text>
-          <Text style={styles.metricLabel}>Trajanje</Text>
+      <View style={[styles.metricsRow, desktop && styles.desktopMetrics]}>
+        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
+          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>{option.durationMinutes} min</Text>
+          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Trajanje</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, desktop && styles.hidden]} />
 
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>
+        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
+          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>
             {(option.distanceMeters / 1000).toFixed(1)} km
           </Text>
-          <Text style={styles.metricLabel}>Udaljenost</Text>
+          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Udaljenost</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, desktop && styles.hidden]} />
 
-        <View style={styles.metricItem}>
+        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
           <Text
             style={[
               styles.metricValue,
+              desktop && styles.desktopHeading,
               option.co2Grams === 0 ? { color: colors.primary } : { color: colors.textPrimary },
             ]}
           >
             {option.co2Grams}g CO₂
           </Text>
-          <Text style={styles.metricLabel}>Emisije</Text>
+          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Emisije</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, desktop && styles.hidden]} />
 
-        <View style={styles.metricItem}>
-          <Text style={styles.metricValue}>
+        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
+          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>
             {option.priceRon === 0 ? 'Besplatno' : `${option.priceRon} RON`}
           </Text>
-          <Text style={styles.metricLabel}>Cijena</Text>
+          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Cijena</Text>
         </View>
       </View>
 
       {/* Steps summary */}
-      <Text style={styles.stepsText} numberOfLines={2}>
+      <Text style={[styles.stepsText, desktop && styles.desktopBody]} numberOfLines={desktop ? undefined : 2}>
         {option.stepsSummary}
       </Text>
 
@@ -130,6 +133,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               key={index}
               style={[
                 styles.warningBox,
+                desktop && styles.desktopWarning,
                 w.severity === 'alert' && styles.alertBox,
                 w.severity === 'warning' && styles.warningAmberBox,
               ]}
@@ -137,6 +141,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               <Text
                 style={[
                   styles.warningText,
+                  desktop && styles.desktopBody,
                   w.severity === 'alert' && { color: colors.danger },
                   w.severity === 'warning' && { color: colors.warning },
                 ]}
@@ -151,10 +156,10 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       {/* Parking details if Car option */}
       {option.parkingDetails && (
         <View style={styles.parkingBox}>
-          <Text style={styles.parkingTitle}>
+          <Text style={[styles.parkingTitle, desktop && styles.desktopBodyMedium]}>
             🅿️ {option.parkingDetails.name}
           </Text>
-          <Text style={styles.parkingSubtitle}>
+          <Text style={[styles.parkingSubtitle, desktop && styles.desktopBody]}>
             Slobodno: {option.parkingDetails.spotsAvailable} / {option.parkingDetails.totalSpots} mjesta ({option.parkingDetails.hourlyRateRon} RON/h)
           </Text>
         </View>
@@ -164,6 +169,17 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  desktopCard: { width: '100%', maxWidth: 960, alignSelf: 'center', padding: spacing.lg },
+  desktopHeader: { flexWrap: 'wrap', gap: spacing.md },
+  desktopMode: { flexBasis: 200, flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  desktopBadges: { flexWrap: 'wrap', flexShrink: 1, maxWidth: '100%' },
+  desktopMetrics: { flexWrap: 'wrap', gap: spacing.md },
+  desktopMetric: { flexBasis: 160, flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  desktopHeading: { ...typography.h3, flexShrink: 1, maxWidth: '100%' },
+  desktopBody: { ...typography.body, flexShrink: 1, maxWidth: '100%' },
+  desktopBodyMedium: { ...typography.bodyMedium, flexShrink: 1, maxWidth: '100%' },
+  desktopWarning: { padding: spacing.md },
+  hidden: { display: 'none' },
   card: {
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,

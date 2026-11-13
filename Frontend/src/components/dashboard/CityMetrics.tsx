@@ -2,59 +2,75 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CityInsightsSummary } from '../../types/insights';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
-import { Badge } from '../common/Badge';
 
 interface CityMetricsProps {
-  summary: CityInsightsSummary;
+  summary?: CityInsightsSummary;
+  gapCount?: number;
 }
 
-export const CityMetrics: React.FC<CityMetricsProps> = ({ summary }) => {
+export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) => {
+  if (!summary && gapCount === undefined) return null;
+
   return (
     <View style={styles.container}>
-      {/* 3 Key Numbers */}
+      {/* Independent sources: never convert unavailable gap data into zero. */}
       <View style={styles.metricsGrid}>
-        <AppCard style={styles.metricCard}>
-          <Text style={styles.metricNumber}>
-            {summary.totalCo2SavedCityKg.toLocaleString()} kg
-          </Text>
-          <Text style={styles.metricLabel}>Ušteđeni CO₂ u gradu</Text>
-        </AppCard>
+        {summary && (
+          <>
+            <AppCard style={styles.metricCard}>
+              <Text style={styles.metricNumber}>
+                {summary.totalCo2SavedCityKg.toLocaleString()} kg
+              </Text>
+              <Text style={styles.metricLabel}>Simulirana ušteda CO₂</Text>
+            </AppCard>
 
-        <AppCard style={styles.metricCard}>
-          <Text style={styles.metricNumber}>
-            {summary.totalSimulatedTrips.toLocaleString()}
-          </Text>
-          <Text style={styles.metricLabel}>Analiziranih putovanja</Text>
-        </AppCard>
+            <AppCard style={styles.metricCard}>
+              <Text style={styles.metricNumber}>
+                {summary.totalSimulatedTrips.toLocaleString()}
+              </Text>
+              <Text style={styles.metricLabel}>Simulirana održiva putovanja</Text>
+            </AppCard>
+          </>
+        )}
+        {gapCount !== undefined && (
+          <AppCard style={styles.metricCard}>
+            <Text style={styles.metricNumber}>{gapCount.toLocaleString()}</Text>
+            <Text style={styles.metricLabel}>Identificirane DEMO infrastrukturne ćelije</Text>
+          </AppCard>
+        )}
       </View>
 
       {/* Top 3 Investment Zones */}
-      <Text style={styles.sectionTitle}>Top 3 Prioritetne Zone za Ulaganje</Text>
-      <View style={styles.zonesList}>
-        {summary.topGapZones.map((zone) => (
-          <AppCard key={zone.rank} style={styles.zoneCard}>
-            <View style={styles.zoneHeader}>
-              <View style={styles.rankBadge}>
-                <Text style={styles.rankText}>#{zone.rank}</Text>
-              </View>
-              <Text style={styles.zoneName}>{zone.zoneName}</Text>
-            </View>
+      {summary && (
+        <>
+          <Text style={styles.sectionTitle}>Prioritetne zone za ulaganje — simulacija</Text>
+          <View style={styles.zonesList}>
+            {summary.topGapZones.map((zone) => (
+              <AppCard key={zone.rank} style={styles.zoneCard}>
+                <View style={styles.zoneHeader}>
+                  <View style={styles.rankBadge}>
+                    <Text style={styles.rankText}>#{zone.rank}</Text>
+                  </View>
+                  <Text style={styles.zoneName}>{zone.zoneName}</Text>
+                </View>
 
-            <View style={styles.zoneDetails}>
-              <Badge
-                label={zone.recommendation}
-                variant={zone.recommendation === 'New Bike Corridor' ? 'success' : 'info'}
-              />
-              <Text style={styles.co2Potential}>
-                Potencijal: -{(zone.estimatedCo2ReductionYearKg / 1000).toFixed(1)}t CO₂/god
-              </Text>
-            </View>
-          </AppCard>
-        ))}
-      </View>
+                <View style={styles.zoneDetails}>
+                  <Text style={[
+                    styles.recommendation,
+                    zone.recommendation === 'New Bike Corridor' && styles.bikeRecommendation,
+                  ]}>{zone.recommendation}</Text>
+                  <Text style={styles.co2Potential}>
+                    Simulirani potencijal: -{(zone.estimatedCo2ReductionYearKg / 1000).toFixed(1)}t CO₂/god
+                  </Text>
+                </View>
+              </AppCard>
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 };
@@ -62,14 +78,19 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary }) => {
 const styles = StyleSheet.create({
   container: {
     padding: spacing.md,
+    minWidth: 0,
   },
   metricsGrid: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.md,
     marginBottom: spacing.lg,
   },
   metricCard: {
-    flex: 1,
+    flexBasis: 240,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
@@ -77,8 +98,12 @@ const styles = StyleSheet.create({
     ...typography.h2,
     color: colors.primaryDark,
     fontWeight: '800',
+    textAlign: 'center',
+    maxWidth: '100%',
   },
   metricLabel: {
+    maxWidth: '100%',
+    flexShrink: 1,
     ...typography.caption,
     color: colors.textSecondary,
     textAlign: 'center',
@@ -90,13 +115,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   zonesList: {
-    gap: spacing.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   zoneCard: {
     padding: spacing.md,
+    flexBasis: 300,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   zoneHeader: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.xs,
@@ -104,6 +136,7 @@ const styles = StyleSheet.create({
   rankBadge: {
     width: 28,
     height: 28,
+    flexShrink: 0,
     borderRadius: 14,
     backgroundColor: colors.primary,
     justifyContent: 'center',
@@ -117,17 +150,36 @@ const styles = StyleSheet.create({
   zoneName: {
     ...typography.bodyMedium,
     fontWeight: '700',
-    flex: 1,
+    flexBasis: 160,
+    flexGrow: 1,
+    flexShrink: 1,
+    minWidth: 0,
     color: colors.textPrimary,
   },
   zoneDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: spacing.sm,
     marginTop: spacing.xs,
   },
   co2Potential: {
     ...typography.captionMedium,
     color: colors.textSecondary,
+  },
+  recommendation: {
+    ...typography.badge,
+    color: colors.info,
+    backgroundColor: colors.infoLight,
+    borderColor: colors.info,
+    borderWidth: 1,
+    borderRadius: borderRadius.sm,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    alignSelf: 'flex-start',
+    maxWidth: '100%',
+    flexShrink: 1,
+  },
+  bikeRecommendation: {
+    color: colors.primaryDark,
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
   },
 });
