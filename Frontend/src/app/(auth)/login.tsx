@@ -26,7 +26,11 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+    >
       <View style={styles.header}>
         <View style={styles.logoBadge}>
           <Text style={styles.logoText}>🌱</Text>
@@ -38,25 +42,41 @@ export default function LoginScreen() {
       </View>
 
       <AppCard style={styles.formCard}>
-        <Text style={styles.formTitle}>Prijava</Text>
+        <Text style={styles.formTitle}>DEMO MODE — Demo pristup</Text>
+        <Text style={styles.demoNotice}>
+          Email i lozinka služe samo za prikaz obrasca i ne provjeravaju se na serveru.
+          Ne unosite stvarne lozinke. Nastavak otvara studentski demo profil, bez
+          autentifikacije stvarnog računa.
+        </Text>
         <AppInput
           label="Email adresa"
+          accessibilityLabel="Email adresa — demo, ne provjerava se"
           value={email}
           onChangeText={setEmail}
           placeholder="unesite email"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="off"
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
         />
         <AppInput
           label="Lozinka"
+          accessibilityLabel="Lozinka — samo demo, ne unosite stvarnu lozinku"
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
           secureTextEntry
+          autoComplete="off"
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="done"
+          onSubmitEditing={handleLogin}
         />
 
         <AppButton
-          title="Prijavi se"
+          title="Otvori studentski demo"
           onPress={handleLogin}
           style={styles.submitBtn}
         />
@@ -66,7 +86,7 @@ export default function LoginScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            Nemate račun? <Text style={styles.linkText}>Registrirajte se</Text>
+            Želite vlastiti demo profil? <Text style={styles.linkText}>Izradite demo profil</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>
@@ -139,6 +159,11 @@ const styles = StyleSheet.create({
   },
   submitBtn: {
     marginTop: spacing.sm,
+  },
+  demoNotice: {
+    ...typography.body,
+    color: colors.textSecondary,
+    marginBottom: spacing.lg,
   },
   switchAuth: {
     marginTop: spacing.md,

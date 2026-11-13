@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
@@ -8,6 +8,32 @@ import { typography } from '../../theme/typography';
 import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
+
+type FormErrors = { fullName?: string; email?: string; birthDate?: string };
+
+function calculateAge(birthDate: string, today: Date): number {
+  const [year, month, day] = birthDate.split('-').map(Number);
+  const birthdayPending = today.getMonth() + 1 < month ||
+    (today.getMonth() + 1 === month && today.getDate() < day);
+  // A February 29 birthday advances on March 1 in non-leap years.
+  return today.getFullYear() - year - (birthdayPending ? 1 : 0);
+}
+
+function getBirthDateError(value: string, now = new Date()): string | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Unesite datum u obliku YYYY-MM-DD.';
+  const [year, month, day] = value.split('-').map(Number);
+  // Round-trip the calendar fields to reject normalization such as February 30.
+  // setFullYear also avoids the Date constructor's special handling of years 0–99.
+  const date = new Date(0);
+  date.setHours(0, 0, 0, 0);
+  date.setFullYear(year, month - 1, day);
+  if (year < 1 || date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
+    return 'Unesite stvarni kalendarski datum.';
+  }
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (date > today) return 'Datum rođenja ne može biti u budućnosti.';
+  return undefined;
+}
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -19,14 +45,29 @@ export default function RegisterScreen() {
   const [hasDisability, setHasDisability] = useState(false);
   const [hasOwnBicycle, setHasOwnBicycle] = useState(true);
   const [hasOwnCar, setHasOwnCar] = useState(false);
+  const [errors, setErrors] = useState<FormErrors>({});
 
   const handleRegister = () => {
+    const today = new Date();
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim();
+    const trimmedBirthDate = birthDate.trim();
+    const nextErrors: FormErrors = {
+      fullName: trimmedName ? undefined : 'Unesite ime i prezime.',
+      email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
+        ? undefined : 'Unesite valjanu email adresu.',
+      birthDate: getBirthDateError(trimmedBirthDate, today),
+    };
+    setErrors(nextErrors);
+    if (Object.values(nextErrors).some(Boolean)) return;
+
+    Keyboard.dismiss();
     setUser({
       id: `usr_${Date.now()}`,
-      email: email || 'novi.korisnik@ecomutare.tm',
-      fullName: fullName || 'Novi Građanin',
-      birthDate,
-      age: 22,
+      email: trimmedEmail,
+      fullName: trimmedName,
+      birthDate: trimmedBirthDate,
+      age: calculateAge(trimmedBirthDate, today),
       preferences: {
         hasDisability,
         hasOwnBicycle,
@@ -43,34 +84,74 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+    >
       <View style={styles.header}>
-        <Text style={styles.title}>Novi Eco Profil</Text>
+        <Text style={styles.title}>DEMO MODE — Lokalni profil</Text>
         <Text style={styles.subtitle}>
-          Postavite profil kako bismo prilagodili zelene rute vašim potrebama.
+          Izradite lokalni demo profil za isprobavanje aplikacije. Ne stvara se stvarni
+          račun na serveru. Profil je privremen i ne sprema se nakon ponovnog pokretanja aplikacije.
         </Text>
       </View>
 
       <AppCard style={styles.formCard}>
+        {Object.values(errors).some(Boolean) && (
+          <Text style={styles.errorSummary} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+            {Object.values(errors).filter(Boolean).join(' ')}
+          </Text>
+        )}
         <AppInput
           label="Ime i prezime"
+          accessibilityLabel="Ime i prezime"
+          accessibilityHint={errors.fullName}
+          error={errors.fullName}
           value={fullName}
-          onChangeText={setFullName}
+          onChangeText={(value) => {
+            setFullName(value);
+            setErrors((previous) => ({ ...previous, fullName: undefined }));
+          }}
           placeholder="npr. Ana Horvat"
+          autoCapitalize="words"
+          autoComplete="name"
+          returnKeyType="done"
+          onSubmitEditing={handleRegister}
         />
         <AppInput
           label="Email"
+          accessibilityLabel="Email"
+          accessibilityHint={errors.email}
+          error={errors.email}
           value={email}
-          onChangeText={setEmail}
+          onChangeText={(value) => {
+            setEmail(value);
+            setErrors((previous) => ({ ...previous, email: undefined }));
+          }}
           placeholder="korisnik@ecomutare.tm"
           keyboardType="email-address"
           autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          returnKeyType="done"
+          onSubmitEditing={handleRegister}
         />
         <AppInput
           label="Datum rođenja (YYYY-MM-DD)"
+          accessibilityLabel="Datum rođenja, u obliku godina-mjesec-dan"
+          accessibilityHint={errors.birthDate}
+          error={errors.birthDate}
           value={birthDate}
-          onChangeText={setBirthDate}
+          onChangeText={(value) => {
+            setBirthDate(value);
+            setErrors((previous) => ({ ...previous, birthDate: undefined }));
+          }}
           placeholder="2004-06-15"
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="done"
+          onSubmitEditing={handleRegister}
         />
 
         <Text style={styles.sectionHeader}>Pristupačnost i Vlastita Vozila</Text>
@@ -78,6 +159,7 @@ export default function RegisterScreen() {
         <View style={styles.toggleRow}>
           <Text style={styles.toggleText}>Osoba s invaliditetom (kolica)</Text>
           <Switch
+            accessibilityLabel="Osoba s invaliditetom, kolica"
             value={hasDisability}
             onValueChange={setHasDisability}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -87,6 +169,7 @@ export default function RegisterScreen() {
         <View style={styles.toggleRow}>
           <Text style={styles.toggleText}>Posjedujem vlastiti bicikl</Text>
           <Switch
+            accessibilityLabel="Posjedujem vlastiti bicikl"
             value={hasOwnBicycle}
             onValueChange={setHasOwnBicycle}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -96,6 +179,7 @@ export default function RegisterScreen() {
         <View style={styles.toggleRow}>
           <Text style={styles.toggleText}>Posjedujem automobil</Text>
           <Switch
+            accessibilityLabel="Posjedujem automobil"
             value={hasOwnCar}
             onValueChange={setHasOwnCar}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -103,7 +187,7 @@ export default function RegisterScreen() {
         </View>
 
         <AppButton
-          title="Dovrši registraciju (+50 eko-bodova)"
+          title="Izradi demo profil (+50 eko-bodova)"
           onPress={handleRegister}
           style={styles.submitBtn}
         />
@@ -113,7 +197,7 @@ export default function RegisterScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            Već imate profil? <Text style={styles.linkText}>Prijavite se</Text>
+            <Text style={styles.linkText}>Natrag na demo pristup</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>
@@ -141,6 +225,11 @@ const styles = StyleSheet.create({
   },
   formCard: {
     padding: spacing.xl,
+  },
+  errorSummary: {
+    ...typography.body,
+    color: colors.danger,
+    marginBottom: spacing.md,
   },
   sectionHeader: {
     ...typography.bodyMedium,
