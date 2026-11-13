@@ -1,0 +1,311 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "EcoMutare",
+    "version": "1.0"
+  },
+  "paths": {
+    "/routes/plan": {
+      "post": {
+        "tags": [
+          "Routes"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutePlanRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutePlanRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/RoutePlanRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePlanResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePlanResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoutePlanResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AgeCategory": {
+        "enum": [
+          "Under14",
+          "From14To15",
+          "Adult"
+        ],
+        "type": "string"
+      },
+      "GeoPoint": {
+        "type": "object",
+        "properties": {
+          "lat": {
+            "maximum": 90,
+            "minimum": -90,
+            "type": "number",
+            "format": "double"
+          },
+          "lng": {
+            "maximum": 180,
+            "minimum": -180,
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RouteOptionDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "nullable": true
+          },
+          "mode": {
+            "$ref": "#/components/schemas/TransportMode"
+          },
+          "title": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "distanceKm": {
+            "type": "number",
+            "format": "double"
+          },
+          "costRon": {
+            "type": "number",
+            "format": "double"
+          },
+          "co2Grams": {
+            "type": "number",
+            "format": "double"
+          },
+          "ecoPoints": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "ecoRank": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "isRecommended": {
+            "type": "boolean"
+          },
+          "segments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteSegmentDto"
+            },
+            "nullable": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteWarningDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoutePlanRequest": {
+        "required": [
+          "destination",
+          "origin",
+          "profile"
+        ],
+        "type": "object",
+        "properties": {
+          "origin": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "destination": {
+            "$ref": "#/components/schemas/GeoPoint"
+          },
+          "departureTime": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "profile": {
+            "$ref": "#/components/schemas/UserProfileDto"
+          },
+          "preferredModes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TransportMode"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RoutePlanResponse": {
+        "type": "object",
+        "properties": {
+          "weather": {
+            "$ref": "#/components/schemas/WeatherInfoDto"
+          },
+          "options": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/RouteOptionDto"
+            },
+            "nullable": true
+          },
+          "isMock": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "RouteSegmentDto": {
+        "type": "object",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/TransportMode"
+          },
+          "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMinutes": {
+            "type": "number",
+            "format": "double"
+          },
+          "distanceKm": {
+            "type": "number",
+            "format": "double"
+          },
+          "geometry": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeoPoint"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "RouteWarningDto": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/WarningType"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "TransportMode": {
+        "enum": [
+          "Walk",
+          "Bike",
+          "Scooter",
+          "PublicTransport",
+          "Car",
+          "Carpool",
+          "Combined"
+        ],
+        "type": "string"
+      },
+      "UserProfileDto": {
+        "type": "object",
+        "properties": {
+          "ageCategory": {
+            "$ref": "#/components/schemas/AgeCategory"
+          },
+          "hasDisability": {
+            "type": "boolean"
+          },
+          "ownsBike": {
+            "type": "boolean"
+          },
+          "ownsScooter": {
+            "type": "boolean"
+          },
+          "ownsCar": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "WarningType": {
+        "enum": [
+          "Rain",
+          "Snow",
+          "Cold",
+          "Windy",
+          "Slope",
+          "Helmet",
+          "NoBikeLane",
+          "NotAccessible",
+          "Estimate"
+        ],
+        "type": "string"
+      },
+      "WeatherCondition": {
+        "enum": [
+          "Clear",
+          "Rain",
+          "Snow",
+          "Cold",
+          "Windy"
+        ],
+        "type": "string"
+      },
+      "WeatherInfoDto": {
+        "type": "object",
+        "properties": {
+          "condition": {
+            "$ref": "#/components/schemas/WeatherCondition"
+          },
+          "temperatureC": {
+            "type": "number",
+            "format": "double"
+          },
+          "precipitationMm": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}
