@@ -161,6 +161,67 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   };
 
+  const getModeStrokeWidth = (mode: string) => {
+    switch (mode) {
+      case 'PublicTransport':
+        return 6;
+      case 'Bike':
+      case 'Scooter':
+        return 5;
+      case 'Walk':
+      case 'Car':
+      default:
+        return 4;
+    }
+  };
+
+  const getModeIcon = (mode: string) => {
+    switch (mode) {
+      case 'Bike':
+        return '🚲';
+      case 'Walk':
+        return '🚶';
+      case 'PublicTransport':
+        return '🚊';
+      case 'Scooter':
+        return '🛴';
+      case 'Car':
+      default:
+        return '🚗';
+    }
+  };
+
+  const renderSegmentsOverlay = () => {
+    const segments = selectedOption?.segments;
+    if (!segments || segments.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.segmentsBanner}>
+        {segments.map((seg, idx) => (
+          <React.Fragment key={`legend_${idx}`}>
+            <View style={styles.segmentPill}>
+              <View
+                style={[
+                  styles.segmentColorDot,
+                  { backgroundColor: getModeStrokeColor(seg.mode) },
+                  seg.mode === 'Walk' && styles.segmentDotDashed,
+                ]}
+              />
+              <Text style={styles.segmentPillText}>
+                {getModeIcon(seg.mode)} {seg.durationMinutes} min
+              </Text>
+            </View>
+            {idx < segments.length - 1 && (
+              <Text style={styles.segmentArrow}>➔</Text>
+            )}
+          </React.Fragment>
+        ))}
+      </View>
+    );
+  };
+
   // Web Fallback Renderer
   const renderWebFallback = () => {
     return (
@@ -318,19 +379,52 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 latitude: pt.lat,
                 longitude: pt.lng,
               }));
+              const isWalk = seg.mode === 'Walk';
               return (
                 <Polyline
-                  key={`seg_${idx}`}
+                  key={`seg_${selectedOption.id}_${idx}`}
                   coordinates={coords}
                   strokeColor={getModeStrokeColor(seg.mode)}
-                  strokeWidth={5}
+                  strokeWidth={getModeStrokeWidth(seg.mode)}
+                  lineDashPattern={isWalk ? [6, 8] : undefined}
+                  lineCap="round"
+                  lineJoin="round"
                 />
+              );
+            })}
+
+          {/* Multimodal Transfer Junction Markers (where one segment ends and the next begins) */}
+          {selectedOption?.segments &&
+            selectedOption.segments.slice(0, -1).map((seg, idx) => {
+              const allSegments = selectedOption.segments;
+              if (!seg.geometry || seg.geometry.length === 0 || !allSegments) return null;
+              const junctionPt = seg.geometry[seg.geometry.length - 1];
+              const nextSeg = allSegments[idx + 1];
+              if (!nextSeg) return null;
+              return (
+                <Marker
+                  key={`junction_${selectedOption.id}_${idx}`}
+                  coordinate={{ latitude: junctionPt.lat, longitude: junctionPt.lng }}
+                  title={`Presjedanje: ${getModeIcon(nextSeg.mode)}`}
+                  description={nextSeg.description}
+                  anchor={{ x: 0.5, y: 0.5 }}
+                >
+                  <View
+                    style={[
+                      styles.transferDot,
+                      { borderColor: getModeStrokeColor(nextSeg.mode) },
+                    ]}
+                  />
+                </Marker>
               );
             })}
         </MapView>
       ) : (
         renderWebFallback()
       )}
+
+      {/* Active Route Segments Legend Overlay */}
+      {renderSegmentsOverlay()}
 
       {/* Floating Map Action Controls */}
       <View style={styles.mapControls}>
@@ -361,7 +455,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8ECF1',
+    backgroundColor: colors.background,
     position: 'relative',
   },
   map: {
@@ -376,9 +470,59 @@ const styles = StyleSheet.create({
   webFallbackContainer: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#EDF2F7',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  segmentsBanner: {
+    position: 'absolute',
+    bottom: spacing.sm,
+    left: spacing.md,
+    right: 68,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 4,
+    zIndex: 18,
+    ...shadows.sm,
+  },
+  segmentPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  segmentColorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  segmentDotDashed: {
+    borderWidth: 1.5,
+    borderColor: colors.surface,
+  },
+  segmentPillText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  segmentArrow: {
+    fontSize: 10,
+    color: colors.textSecondary,
+    marginHorizontal: 2,
+  },
+  transferDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.surface,
+    borderWidth: 3,
+    ...shadows.sm,
   },
   mapControls: {
     position: 'absolute',
