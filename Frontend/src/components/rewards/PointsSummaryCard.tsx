@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -48,7 +49,7 @@ export const PointsSummaryCard: React.FC = () => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#064E3B', // Deep forest emerald
+    backgroundColor: colors.surfaceDark,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
     marginBottom: spacing.lg,
@@ -61,14 +62,14 @@ const styles = StyleSheet.create({
   },
   titleLabel: {
     ...typography.captionMedium,
-    color: '#A7F3D0',
+    color: colors.textOnDark,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   pointsNumber: {
     ...typography.h1,
     fontSize: 36,
-    color: '#FFFFFF',
+    color: colors.accent,
     fontWeight: '800',
     marginTop: 2,
   },
@@ -76,7 +77,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: colors.onDarkHighlight,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -85,7 +86,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: colors.onDarkDivider,
     marginVertical: spacing.md,
   },
   statsRow: {
@@ -99,17 +100,17 @@ const styles = StyleSheet.create({
   statVal: {
     ...typography.bodyMedium,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: colors.accent,
   },
   statLbl: {
     ...typography.caption,
     fontSize: 11,
-    color: '#A7F3D0',
+    color: colors.textOnDark,
     marginTop: 2,
   },
   verticalDivider: {
     width: 1,
     height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: colors.onDarkDivider,
   },
 });

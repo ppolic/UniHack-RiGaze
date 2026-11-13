@@ -97,13 +97,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8ECF1',
+    backgroundColor: colors.surfaceMuted,
     overflow: 'hidden',
   },
   mapCanvas: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#EDF2F7',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 38,
-    backgroundColor: '#BAE6FD',
+    backgroundColor: colors.mapWater,
     justifyContent: 'center',
     alignItems: 'center',
     transform: [{ rotate: '-6deg' }],
@@ -121,7 +121,7 @@ const styles = StyleSheet.create({
   riverText: {
     ...typography.caption,
     fontSize: 11,
-    color: '#0284C7',
+    color: colors.primaryDark,
     fontWeight: '600',
   },
   pinContainer: {
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.primary,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.textInverse,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -153,17 +153,17 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: colors.danger,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: colors.textInverse,
     justifyContent: 'center',
     alignItems: 'center',
   },
   pinText: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: '800',
     fontSize: 14,
   },
   pinLabelBox: {
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    backgroundColor: colors.mapLabelBackground,
     paddingHorizontal: spacing.sm,
     paddingVertical: 2,
     borderRadius: borderRadius.sm,
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   pinLabel: {
     ...typography.caption,
     fontSize: 11,
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: '600',
   },
   simulatedRouteLine: {
@@ -199,7 +199,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: '#FFFFFF',
+    borderColor: colors.textInverse,
   },
   markerTram: {
     top: '42%',
@@ -218,7 +218,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing.md,
     left: spacing.md,
-    backgroundColor: 'rgba(255, 255, 255, 0.92)',
+    backgroundColor: colors.mapBadgeBackground,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,

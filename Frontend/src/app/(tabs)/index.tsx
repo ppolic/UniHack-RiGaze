@@ -217,16 +217,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   pointsBadgeBtn: {
-    backgroundColor: colors.warningLight,
+    backgroundColor: colors.rewardBackground,
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.accent,
+    borderColor: colors.rewardBorder,
   },
   pointsBadgeText: {
     ...typography.captionMedium,
-    color: '#92400E',
+    color: colors.rewardText,
     fontWeight: '700',
   },
   dashboardLinkBtn: {
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     bottom: spacing.sm,
     left: spacing.md,
     right: spacing.md,
-    backgroundColor: 'rgba(2, 132, 199, 0.95)',
+    backgroundColor: colors.secondary,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
   },
   accessibilityFloatText: {
     ...typography.captionMedium,
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontSize: 12,
   },
   sheetContainer: {

@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   demoBox: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: borderRadius.md,
     padding: spacing.md,
     borderWidth: 1,
@@ -170,6 +170,6 @@ const styles = StyleSheet.create({
   },
   demoBtn: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
 });

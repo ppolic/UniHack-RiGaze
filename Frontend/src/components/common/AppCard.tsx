@@ -54,6 +54,6 @@ const styles = StyleSheet.create({
   selectedCard: {
     borderColor: colors.primary,
     borderWidth: 2,
-    backgroundColor: '#FAFDFB',
+    backgroundColor: colors.surfaceMuted,
   },
 });

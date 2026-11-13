@@ -87,17 +87,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing['3xl'],
   },
   banner: {
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.surfaceDark,
     padding: spacing.lg,
   },
   bannerTitle: {
     ...typography.h2,
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: '800',
   },
   bannerSubtitle: {
     ...typography.caption,
-    color: '#94A3B8',
+    color: colors.textOnDark,
     marginTop: spacing.xs,
   },
   simulationBadgeRow: {

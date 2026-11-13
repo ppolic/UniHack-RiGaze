@@ -6,7 +6,7 @@ import { typography } from '../../theme/typography';
 
 interface BadgeProps {
   label: string;
-  variant?: 'success' | 'warning' | 'alert' | 'info' | 'neutral';
+  variant?: 'success' | 'warning' | 'alert' | 'info' | 'neutral' | 'reward';
   icon?: React.ReactNode;
   style?: ViewStyle;
 }
@@ -19,6 +19,8 @@ export const Badge: React.FC<BadgeProps> = ({
 }) => {
   const getContainerStyle = (): ViewStyle => {
     switch (variant) {
+      case 'reward':
+        return { backgroundColor: colors.rewardBackground, borderColor: colors.rewardBorder };
       case 'success':
         return { backgroundColor: colors.successLight, borderColor: colors.success };
       case 'warning':
@@ -35,10 +37,12 @@ export const Badge: React.FC<BadgeProps> = ({
 
   const getTextStyle = (): TextStyle => {
     switch (variant) {
+      case 'reward':
+        return { color: colors.rewardText };
       case 'success':
         return { color: colors.primaryDark };
       case 'warning':
-        return { color: '#B45309' };
+        return { color: colors.warning };
       case 'alert':
         return { color: colors.danger };
       case 'info':

@@ -1,50 +1,65 @@
-/**
- * EcoMutare Theme Colors
- * Purposeful palette prioritizing green eco identity, modern dark/light neutrals, and transport modes.
- */
+/** Official EcoMutare palette. Keep component colors behind semantic tokens. */
+const brand = {
+  green: '#237A50',
+  forest: '#164D3B',
+  lime: '#D3EF6A',
+  petrol: '#287C86',
+  natural: '#F7F9F3',
+  mint: '#E8F3EB',
+  white: '#FFFFFF',
+  warning: '#925410',
+  error: '#AE353D',
+};
 
 export const colors = {
-  // Eco Brand Colors
-  primary: '#10B981',       // Emerald Green (action, eco, vitality)
-  primaryLight: '#D1FAE5',  // Soft emerald surface
-  primaryDark: '#047857',   // Deep green
-  secondary: '#0EA5E9',     // Cyan / Sky (transit, water)
-  accent: '#F59E0B',        // Amber (points, warnings)
+  primary: brand.green,
+  primaryLight: brand.mint,
+  primaryDark: brand.forest,
+  secondary: brand.petrol,
+  accent: brand.lime,
 
-  // Transport Modes Colors (High contrast, standard mapping)
+  // Mode labels/icons must accompany colors; several modes share brand hues.
   modes: {
-    walking: '#10B981',       // Green
-    bicycle: '#059669',       // Deep Green
-    scooter: '#14B8A6',       // Teal
-    publicTransit: '#3B82F6', // Transit Blue
-    carpooling: '#8B5CF6',    // Purple
-    carWithParking: '#64748B',// Slate Grey (baseline)
+    walking: brand.green,
+    bicycle: brand.forest,
+    scooter: brand.petrol,
+    publicTransit: brand.petrol,
+    carpooling: brand.green,
+    carWithParking: '#52665B',
   },
 
-  // Surfaces & Backgrounds
-  background: '#F8FAFC',    // Light cool slate background
-  surface: '#FFFFFF',       // Card / modal white
-  surfaceMuted: '#F1F5F9',  // Subtle grey container
-  border: '#E2E8F0',        // Border outline
-  borderHover: '#CBD5E1',
+  background: brand.natural,
+  surface: brand.white,
+  surfaceMuted: brand.mint,
+  surfaceDark: brand.forest,
+  surfaceDarkRaised: brand.green,
+  border: '#B5C8BB', // Decorative separators, not control boundaries.
+  borderHover: brand.green,
+  controlBorder: '#6B8174',
 
-  // Typography
-  textPrimary: '#0F172A',   // Slate 900 (high contrast readable text)
-  textSecondary: '#64748B', // Slate 500 (labels, subtitles)
-  textMuted: '#94A3B8',     // Slate 400 (hints, placeholder)
-  textInverse: '#FFFFFF',
+  textPrimary: brand.forest,
+  textSecondary: '#52665B',
+  textMuted: '#52665B', // Placeholders still require normal-text contrast.
+  textInverse: brand.white,
+  textOnDark: brand.mint,
 
-  // Feedback & Status
-  success: '#10B981',
-  successLight: '#DCFCE7',
-  warning: '#F59E0B',
-  warningLight: '#FEF3C7',
-  danger: '#EF4444',
-  dangerLight: '#FEE2E2',
-  info: '#3B82F6',
-  infoLight: '#DBEAFE',
+  success: brand.green,
+  successLight: brand.mint,
+  warning: brand.warning,
+  warningLight: '#FFF2DF',
+  danger: brand.error,
+  dangerLight: '#FCECEF',
+  info: brand.petrol,
+  infoLight: brand.natural,
+  rewardBackground: brand.lime,
+  rewardText: brand.forest,
+  rewardBorder: brand.green,
 
-  // Overlays
-  overlay: 'rgba(15, 23, 42, 0.45)',
-  mapPolylineInactive: '#94A3B8',
+  overlay: 'rgba(22, 77, 59, 0.45)',
+  mapLabelBackground: brand.forest,
+  mapBadgeBackground: brand.white,
+  mapWater: brand.mint,
+  mapPolylineInactive: '#6B8174',
+  onDarkHighlight: 'rgba(255, 255, 255, 0.15)',
+  onDarkDivider: 'rgba(255, 255, 255, 0.30)',
 };

@@ -5,22 +5,25 @@
 
 import '@/global.css';
 
+import { colors } from '../theme/colors';
+
 import { Platform } from 'react-native';
 
+// Compatibility bridge for Expo starter consumers; use the shared brand tokens.
 export const Colors = {
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: colors.textPrimary,
+    background: colors.background,
+    backgroundElement: colors.surface,
+    backgroundSelected: colors.surfaceMuted,
+    textSecondary: colors.textSecondary,
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: colors.textInverse,
+    background: colors.surfaceDark,
+    backgroundElement: colors.surfaceDarkRaised,
+    backgroundSelected: colors.primaryDark,
+    textSecondary: colors.textOnDark,
   },
 } as const;
 

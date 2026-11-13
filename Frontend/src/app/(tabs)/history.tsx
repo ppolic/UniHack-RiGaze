@@ -31,7 +31,7 @@ export default function HistoryScreen() {
               <Text style={styles.tripDate}>{trip.date}</Text>
               <Badge
                 label={`+${trip.pointsEarned} bodova`}
-                variant="warning"
+                variant="reward"
               />
             </View>
 

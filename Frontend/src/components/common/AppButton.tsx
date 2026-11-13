@@ -42,7 +42,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
         return {
           backgroundColor: 'transparent',
           borderWidth: 1.5,
-          borderColor: colors.border,
+          borderColor: colors.controlBorder,
         };
       case 'subtle':
         return { backgroundColor: colors.surfaceMuted };
@@ -78,7 +78,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
 
   return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.98}
       onPress={onPress}
       disabled={disabled || loading}
       style={[

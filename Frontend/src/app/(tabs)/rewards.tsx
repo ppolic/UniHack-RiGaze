@@ -51,7 +51,7 @@ export default function RewardsScreen() {
               </View>
               <Badge
                 label={`${coupon.pointsCost} bodova`}
-                variant="warning"
+                variant="reward"
               />
             </View>
 

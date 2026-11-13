@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   rankText: {
-    color: '#FFFFFF',
+    color: colors.textInverse,
     fontWeight: '700',
     fontSize: 12,
   },

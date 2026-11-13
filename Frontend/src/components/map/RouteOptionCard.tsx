@@ -55,7 +55,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       style={[
         styles.card,
         shadows.sm,
-        isSelected && { borderColor: modeColor, borderWidth: 2, backgroundColor: '#FAFDFA' },
+        isSelected && { borderColor: modeColor, borderWidth: 2, backgroundColor: colors.surfaceMuted },
       ]}
     >
       {/* Top Header: Mode, Recommended badge, Eco Points */}
@@ -70,7 +70,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
             <Badge label="Najzelenije" variant="success" />
           )}
           {option.ecoPoints > 0 ? (
-            <Badge label={`+${option.ecoPoints} bodova`} variant="warning" />
+            <Badge label={`+${option.ecoPoints} bodova`} variant="reward" />
           ) : (
             <Badge label="0 bodova" variant="neutral" />
           )}
@@ -138,7 +138,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
                 style={[
                   styles.warningText,
                   w.severity === 'alert' && { color: colors.danger },
-                  w.severity === 'warning' && { color: '#B45309' },
+                  w.severity === 'warning' && { color: colors.warning },
                 ]}
               >
                 {w.message}
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   parkingBox: {
     marginTop: spacing.sm,
     padding: spacing.xs + 2,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: colors.surfaceMuted,
     borderRadius: borderRadius.sm,
   },
   parkingTitle: {
