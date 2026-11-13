@@ -1,162 +1,338 @@
 import { apiFetch, API_CONFIG } from './api';
-import { RoutePlanRequest, RoutePlanResponse, RouteOption } from '../types/route';
+import {
+  RoutePlanRequest,
+  RoutePlanResponse,
+  RouteOptionDto,
+  WeatherInfoDto,
+} from '../types/route';
+
+const MOCK_WEATHER: WeatherInfoDto = {
+  condition: 'Rain',
+  temperatureC: 9,
+  precipitationMm: 1.2,
+};
 
 /**
- * Realistic Timișoara Mock Data for Demo
- * Piața Victoriei (45.7538, 21.2257) -> UPT Electro (45.7489, 21.2272)
+ * Realistic Timișoara Mock Options (Piața Victoriei -> UPT Politehnica)
+ * Strictly following docs/api-contract.md
  */
-const MOCK_OPTIONS_STANDARD: RouteOption[] = [
+const MOCK_OPTIONS_STANDARD: RouteOptionDto[] = [
   {
-    id: 'opt_bike_1',
-    mode: 'Bicycle',
-    durationMinutes: 6,
-    distanceMeters: 1450,
+    id: 'bike',
+    mode: 'Bike',
+    title: 'Najam bicikla (VeloTM)',
+    durationMinutes: 8,
+    distanceKm: 1.5,
+    costRon: 3.5,
     co2Grams: 0,
-    ecoPoints: 50,
-    priceRon: 0,
-    isRecommended: true,
+    ecoPoints: 90,
     ecoRank: 1,
+    isRecommended: true,
+    segments: [
+      {
+        mode: 'Walk',
+        description: 'Pješke do stanice Piața Libertății',
+        durationMinutes: 2,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7505, lng: 21.225 },
+        ],
+      },
+      {
+        mode: 'Bike',
+        description: 'Vožnja biciklom uz Bulevarul Vasile Pârvan',
+        durationMinutes: 6,
+        distanceKm: 1.4,
+        geometry: [
+          { lat: 45.7505, lng: 21.225 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
+      },
+    ],
     warnings: [
       {
         type: 'Rain',
-        message: 'Lokalna kiša: vozite oprezno po mokrim tračnicama i pločniku.',
-        severity: 'warning',
+        message: 'Kiša: vožnja bicikla je manje ugodna i sigurna.',
+      },
+      {
+        type: 'Helmet',
+        message: 'Kaciga je obavezna za osobe mlađe od 16 godina.',
       },
     ],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Biciklistička staza Bulevarul Vasile Pârvan (1.4 km)',
   },
   {
-    id: 'opt_transit_1',
-    mode: 'PublicTransit',
-    durationMinutes: 9,
-    distanceMeters: 1800,
-    co2Grams: 35,
-    ecoPoints: 35,
-    priceRon: 4,
-    isRecommended: false,
+    id: 'walk',
+    mode: 'Walk',
+    title: 'Pješke',
+    durationMinutes: 17,
+    distanceKm: 1.3,
+    costRon: 0,
+    co2Grams: 0,
+    ecoPoints: 100,
     ecoRank: 2,
+    isRecommended: false,
+    segments: [
+      {
+        mode: 'Walk',
+        description: 'Pješke kroz park Central i preko mosta Michelangelo',
+        durationMinutes: 17,
+        distanceKm: 1.3,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
+      },
+    ],
+    warnings: [],
+  },
+  {
+    id: 'scooter',
+    mode: 'Scooter',
+    title: 'Najam romobila',
+    durationMinutes: 7,
+    distanceKm: 1.5,
+    costRon: 6.0,
+    co2Grams: 20,
+    ecoPoints: 70,
+    ecoRank: 3,
+    isRecommended: false,
+    segments: [
+      {
+        mode: 'Scooter',
+        description: 'Vožnja romobilom uz Bulevarul Michelangelo',
+        durationMinutes: 7,
+        distanceKm: 1.5,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
+      },
+    ],
     warnings: [
       {
-        type: 'AccessibilityNotice',
-        message: 'Niskopodni tramvaj STPT (linija 2) – prilagođeno kolicima.',
-        severity: 'info',
+        type: 'Rain',
+        message: 'Mokri kolnik: smanjite brzinu ispod 20 km/h.',
       },
     ],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Tramvaj 2 (Piața Victoriei ➔ Politehnica, 3 stanice) + 120m hoda',
   },
   {
-    id: 'opt_walk_1',
-    mode: 'Walking',
-    durationMinutes: 16,
-    distanceMeters: 1300,
-    co2Grams: 0,
-    ecoPoints: 40,
-    priceRon: 0,
+    id: 'transit',
+    mode: 'PublicTransport',
+    title: 'Tramvaj 2 (STPT)',
+    durationMinutes: 12,
+    distanceKm: 1.8,
+    costRon: 4.0,
+    co2Grams: 112,
+    ecoPoints: 60,
+    ecoRank: 4,
     isRecommended: false,
-    ecoRank: 3,
+    segments: [
+      {
+        mode: 'Walk',
+        description: 'Pješke do stanice Piața Victoriei',
+        durationMinutes: 2,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.753, lng: 21.225 },
+        ],
+      },
+      {
+        mode: 'PublicTransport',
+        description: 'Tramvaj 2 (3 stanice do Politehnica)',
+        durationMinutes: 8,
+        distanceKm: 1.6,
+        geometry: [
+          { lat: 45.753, lng: 21.225 },
+          { lat: 45.7495, lng: 21.227 },
+        ],
+      },
+      {
+        mode: 'Walk',
+        description: 'Do zgrade UPT Elektrotehnika',
+        durationMinutes: 2,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7495, lng: 21.227 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
+      },
+    ],
     warnings: [],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Pješke kroz park Central i preko mosta Michelangelo',
   },
   {
-    id: 'opt_car_1',
-    mode: 'CarWithParking',
+    id: 'car',
+    mode: 'Car',
+    title: 'Automobil + Parking',
     durationMinutes: 14,
-    distanceMeters: 2200,
+    distanceKm: 2.2,
+    costRon: 7.0,
     co2Grams: 390,
     ecoPoints: 0,
-    priceRon: 7, // Parking sat
+    ecoRank: 5,
     isRecommended: false,
-    ecoRank: 4,
-    warnings: [
+    segments: [
       {
-        type: 'HighEmissionsWarning',
-        message: 'Auto emitira 390g CO₂. Odabirom bicikla štedite 100% emisija.',
-        severity: 'alert',
+        mode: 'Car',
+        description: 'Vožnja automobilom do parkinga UPT (Zona 1)',
+        durationMinutes: 11,
+        distanceKm: 2.1,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7492, lng: 21.228 },
+        ],
+      },
+      {
+        mode: 'Walk',
+        description: 'Pješke od parkinga do ulaza',
+        durationMinutes: 3,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7492, lng: 21.228 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
       },
     ],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Bulevarul Mihai Viteazu + parkiranje u Zoni 1 (UPT parking)',
-    parkingDetails: {
-      id: 'prk_upt_1',
-      name: 'Parking UPT Elektrotehnika',
-      latitude: 45.7492,
-      longitude: 21.2280,
-      spotsAvailable: 8,
-      totalSpots: 45,
-      hourlyRateRon: 7,
-      isAccessible: true,
-    },
+    warnings: [
+      {
+        type: 'Estimate',
+        message: 'Auto emitira 390g CO₂. Odabirom tramvaja ili bicikla štedite emisije.',
+      },
+    ],
   },
 ];
 
-const MOCK_OPTIONS_ACCESSIBLE: RouteOption[] = [
+const MOCK_OPTIONS_ACCESSIBLE: RouteOptionDto[] = [
   {
-    id: 'opt_transit_acc',
-    mode: 'PublicTransit',
-    durationMinutes: 9,
-    distanceMeters: 1800,
-    co2Grams: 35,
-    ecoPoints: 45,
-    priceRon: 0, // Često subvencionirano/besplatno za osobe s invaliditetom
-    isRecommended: true,
+    id: 'transit_acc',
+    mode: 'PublicTransport',
+    title: 'Tramvaj 2 (Pristupačan niski pod)',
+    durationMinutes: 12,
+    distanceKm: 1.8,
+    costRon: 0,
+    co2Grams: 112,
+    ecoPoints: 80,
     ecoRank: 1,
-    warnings: [
+    isRecommended: true,
+    segments: [
       {
-        type: 'AccessibilityNotice',
-        message: 'Potvrđena rampa i niski pod: STPT Tramvaj Linija 2.',
-        severity: 'info',
+        mode: 'Walk',
+        description: 'Pristupačna rampa do stanice Piața Victoriei',
+        durationMinutes: 3,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.753, lng: 21.225 },
+        ],
+      },
+      {
+        mode: 'PublicTransport',
+        description: 'STPT Niskopodni tramvaj (Linija 2)',
+        durationMinutes: 7,
+        distanceKm: 1.6,
+        geometry: [
+          { lat: 45.753, lng: 21.225 },
+          { lat: 45.7495, lng: 21.227 },
+        ],
+      },
+      {
+        mode: 'Walk',
+        description: 'Ravna staza do lifta zgrade UPT',
+        durationMinutes: 2,
+        distanceKm: 0.1,
+        geometry: [
+          { lat: 45.7495, lng: 21.227 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
       },
     ],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Pristupačan tramvaj 2 (Piața Victoriei ➔ Politehnica)',
+    warnings: [
+      {
+        type: 'NotAccessible',
+        message: 'Potvrđena rampa i niski pod za invalidska kolica.',
+      },
+    ],
   },
   {
-    id: 'opt_car_acc',
-    mode: 'CarWithParking',
-    durationMinutes: 11,
-    distanceMeters: 2200,
-    co2Grams: 390,
-    ecoPoints: 10,
-    priceRon: 0, // Besplatan invalidski parking
-    isRecommended: false,
+    id: 'walk_acc',
+    mode: 'Walk',
+    title: 'Pješke / Kolica (Bez arhitektonskih barijera)',
+    durationMinutes: 18,
+    distanceKm: 1.3,
+    costRon: 0,
+    co2Grams: 0,
+    ecoPoints: 95,
     ecoRank: 2,
-    warnings: [
+    isRecommended: false,
+    segments: [
       {
-        type: 'AccessibilityNotice',
-        message: 'Rezervirana 3 slobodna invalidska mjesta odmah do ulaza UPT.',
-        severity: 'info',
+        mode: 'Walk',
+        description: 'Prilagođeni pločnici kroz Park Central',
+        durationMinutes: 18,
+        distanceKm: 1.3,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
       },
     ],
-    encodedPolyline: '_p~iF~ps|U_ulLnnqC_mqNvxq`@',
-    stepsSummary: 'Direktna vožnja do rezerviranog invalidskog mjesta',
-    parkingDetails: {
-      id: 'prk_upt_acc',
-      name: 'Rezervirani parking za osobe s invaliditetom UPT',
-      latitude: 45.7491,
-      longitude: 21.2275,
-      spotsAvailable: 3,
-      totalSpots: 4,
-      hourlyRateRon: 0,
-      isAccessible: true,
-    },
+    warnings: [],
+  },
+  {
+    id: 'car_acc',
+    mode: 'Car',
+    title: 'Automobil (Rezervirani invalidski parking)',
+    durationMinutes: 11,
+    distanceKm: 2.2,
+    costRon: 0,
+    co2Grams: 390,
+    ecoPoints: 10,
+    ecoRank: 3,
+    isRecommended: false,
+    segments: [
+      {
+        mode: 'Car',
+        description: 'Direktno do označenog invalidskog parkirnog mjesta UPT',
+        durationMinutes: 11,
+        distanceKm: 2.2,
+        geometry: [
+          { lat: 45.7538, lng: 21.2257 },
+          { lat: 45.7489, lng: 21.2272 },
+        ],
+      },
+    ],
+    warnings: [
+      {
+        type: 'Estimate',
+        message: 'Besplatan parking za osobe s invaliditetom uz oznaku.',
+      },
+    ],
   },
 ];
 
 export const routeService = {
   async planRoute(request: RoutePlanRequest): Promise<RoutePlanResponse> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
-      await new Promise((resolve) => setTimeout(resolve, 400)); // Realistična latencija
-      const options = request.hasDisability
+      await new Promise((resolve) => setTimeout(resolve, 350));
+
+      let options = request.profile.hasDisability
         ? MOCK_OPTIONS_ACCESSIBLE
         : MOCK_OPTIONS_STANDARD;
 
+      // Filter options based on ageCategory from docs/api-contract.md
+      if (request.profile.ageCategory === 'Under14') {
+        options = options.filter(
+          (o) => o.mode === 'Walk' || o.mode === 'PublicTransport'
+        );
+      } else if (request.profile.ageCategory === 'From14To15') {
+        options = options.filter((o) => o.mode !== 'Car');
+      }
+
       return {
+        weather: MOCK_WEATHER,
         options,
-        baselineCarCo2Grams: 390,
-        calculatedAt: new Date().toISOString(),
+        isMock: true,
       };
     }
 
@@ -166,11 +342,15 @@ export const routeService = {
         body: JSON.stringify(request),
       });
     } catch (err) {
-      console.warn('API /routes/plan unreachable, falling back to mock dataset:', err);
+      console.warn('API /routes/plan unreachable, using mock fallback:', err);
+      const options = request.profile.hasDisability
+        ? MOCK_OPTIONS_ACCESSIBLE
+        : MOCK_OPTIONS_STANDARD;
+
       return {
-        options: request.hasDisability ? MOCK_OPTIONS_ACCESSIBLE : MOCK_OPTIONS_STANDARD,
-        baselineCarCo2Grams: 390,
-        calculatedAt: new Date().toISOString(),
+        weather: MOCK_WEATHER,
+        options,
+        isMock: true,
       };
     }
   },

@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { RouteOption } from '../../types/route';
+import { RouteOptionDto } from '../../types/route';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { Badge } from '../common/Badge';
 
 interface RouteOptionCardProps {
-  option: RouteOption;
+  option: RouteOptionDto;
   isSelected: boolean;
   onSelect: () => void;
 }
@@ -19,13 +19,15 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 }) => {
   const getModeColor = (mode: string) => {
     switch (mode) {
-      case 'Bicycle':
+      case 'Bike':
         return colors.modes.bicycle;
-      case 'PublicTransit':
+      case 'PublicTransport':
         return colors.modes.publicTransit;
-      case 'Walking':
+      case 'Walk':
         return colors.modes.walking;
-      case 'CarWithParking':
+      case 'Scooter':
+        return colors.modes.scooter;
+      case 'Car':
       default:
         return colors.modes.carWithParking;
     }
@@ -33,20 +35,23 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
   const getModeLabel = (mode: string) => {
     switch (mode) {
-      case 'Bicycle':
-        return 'Bicikl / Romobil';
-      case 'PublicTransit':
+      case 'Bike':
+        return 'Bicikl';
+      case 'PublicTransport':
         return 'Javni Prijevoz (STPT)';
-      case 'Walking':
+      case 'Walk':
         return 'Pješke';
-      case 'CarWithParking':
-        return 'Auto + Parking';
+      case 'Scooter':
+        return 'Romobil';
+      case 'Car':
+        return 'Automobil';
       default:
         return mode;
     }
   };
 
   const modeColor = getModeColor(option.mode);
+  const cardTitle = option.title || getModeLabel(option.mode);
 
   return (
     <TouchableOpacity
@@ -55,14 +60,18 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       style={[
         styles.card,
         shadows.sm,
-        isSelected && { borderColor: modeColor, borderWidth: 2, backgroundColor: colors.surfaceMuted },
+        isSelected && {
+          borderColor: modeColor,
+          borderWidth: 2,
+          backgroundColor: colors.surfaceMuted,
+        },
       ]}
     >
-      {/* Top Header: Mode, Recommended badge, Eco Points */}
+      {/* Top Header: Mode indicator & Badges */}
       <View style={styles.headerRow}>
         <View style={styles.modeIndicatorRow}>
           <View style={[styles.modeDot, { backgroundColor: modeColor }]} />
-          <Text style={styles.modeTitle}>{getModeLabel(option.mode)}</Text>
+          <Text style={styles.modeTitle}>{cardTitle}</Text>
         </View>
 
         <View style={styles.badgesRow}>
@@ -77,7 +86,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
         </View>
       </View>
 
-      {/* Metric highlights: Time, Distance, CO2, Price */}
+      {/* Metrics Row: Duration, Distance, CO2, Price */}
       <View style={styles.metricsRow}>
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>{option.durationMinutes} min</Text>
@@ -88,7 +97,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>
-            {(option.distanceMeters / 1000).toFixed(1)} km
+            {option.distanceKm.toFixed(1)} km
           </Text>
           <Text style={styles.metricLabel}>Udaljenost</Text>
         </View>
@@ -99,7 +108,9 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
           <Text
             style={[
               styles.metricValue,
-              option.co2Grams === 0 ? { color: colors.primary } : { color: colors.textPrimary },
+              option.co2Grams === 0
+                ? { color: colors.primary }
+                : { color: colors.textPrimary },
             ]}
           >
             {option.co2Grams}g CO₂
@@ -111,52 +122,29 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
         <View style={styles.metricItem}>
           <Text style={styles.metricValue}>
-            {option.priceRon === 0 ? 'Besplatno' : `${option.priceRon} RON`}
+            {option.costRon === 0 ? 'Besplatno' : `${option.costRon} RON`}
           </Text>
           <Text style={styles.metricLabel}>Cijena</Text>
         </View>
       </View>
 
-      {/* Steps summary */}
-      <Text style={styles.stepsText} numberOfLines={2}>
-        {option.stepsSummary}
-      </Text>
+      {/* Segments summary */}
+      {option.segments && option.segments.length > 0 && (
+        <Text style={styles.stepsText} numberOfLines={2}>
+          {option.segments.map((s) => s.description).filter(Boolean).join(' ➔ ')}
+        </Text>
+      )}
 
-      {/* Warnings & Accessibility notes */}
+      {/* Warnings list */}
       {option.warnings && option.warnings.length > 0 && (
         <View style={styles.warningsList}>
           {option.warnings.map((w, index) => (
-            <View
-              key={index}
-              style={[
-                styles.warningBox,
-                w.severity === 'alert' && styles.alertBox,
-                w.severity === 'warning' && styles.warningAmberBox,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.warningText,
-                  w.severity === 'alert' && { color: colors.danger },
-                  w.severity === 'warning' && { color: colors.warning },
-                ]}
-              >
-                {w.message}
+            <View key={index} style={styles.warningBox}>
+              <Text style={styles.warningText}>
+                ⚠️ {w.message}
               </Text>
             </View>
           ))}
-        </View>
-      )}
-
-      {/* Parking details if Car option */}
-      {option.parkingDetails && (
-        <View style={styles.parkingBox}>
-          <Text style={styles.parkingTitle}>
-            🅿️ {option.parkingDetails.name}
-          </Text>
-          <Text style={styles.parkingSubtitle}>
-            Slobodno: {option.parkingDetails.spotsAvailable} / {option.parkingDetails.totalSpots} mjesta ({option.parkingDetails.hourlyRateRon} RON/h)
-          </Text>
         </View>
       )}
     </TouchableOpacity>
@@ -169,7 +157,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.controlBorder,
     marginBottom: spacing.md,
   },
   headerRow: {
@@ -182,6 +170,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
+    flex: 1,
   },
   modeDot: {
     width: 10,
@@ -237,34 +226,14 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   warningBox: {
-    backgroundColor: colors.infoLight,
+    backgroundColor: colors.warningLight,
     borderRadius: borderRadius.sm,
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
   },
-  warningAmberBox: {
-    backgroundColor: colors.warningLight,
-  },
-  alertBox: {
-    backgroundColor: colors.dangerLight,
-  },
   warningText: {
     ...typography.caption,
-    color: colors.secondary,
-    fontWeight: '500',
-  },
-  parkingBox: {
-    marginTop: spacing.sm,
-    padding: spacing.xs + 2,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: borderRadius.sm,
-  },
-  parkingTitle: {
-    ...typography.captionMedium,
-    color: colors.textPrimary,
-  },
-  parkingSubtitle: {
-    ...typography.caption,
-    color: colors.textSecondary,
+    color: colors.warning,
+    fontWeight: '600',
   },
 });

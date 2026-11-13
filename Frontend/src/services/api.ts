@@ -4,9 +4,9 @@
  */
 
 export const API_CONFIG = {
-  // Replace with local machine LAN IP when testing with Expo Go on a physical phone, e.g. 'http://192.168.1.15:5080'
-  BASE_URL: 'http://localhost:5080',
-  USE_MOCK_FALLBACK: true, // Guarantees hackathon demo reliability
+  // Zamijeni s lokalnim IP-jem računala ako testiraš s mobitela preko Expo Go (npr. 'http://192.168.1.15:5279')
+  BASE_URL: 'http://localhost:5279',
+  USE_MOCK_FALLBACK: true,
   TIMEOUT_MS: 4000,
 };
 

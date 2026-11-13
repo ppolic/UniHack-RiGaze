@@ -17,9 +17,16 @@ import { MapContainer } from '../../components/map/MapContainer';
 import { RoutePresets, DEMO_PRESETS, RoutePresetItem } from '../../components/map/RoutePresets';
 import { RouteOptionCard } from '../../components/map/RouteOptionCard';
 import { AppButton } from '../../components/common/AppButton';
+import { Badge } from '../../components/common/Badge';
 import { routeService } from '../../services/routeService';
 import { transitService } from '../../services/transitService';
-import { RouteOption, StationLocation, ParkingDetail } from '../../types/route';
+import {
+  RouteOptionDto,
+  StationLocation,
+  ParkingDetail,
+  WeatherInfoDto,
+  AgeCategory,
+} from '../../types/route';
 
 export default function MapScreen() {
   const router = useRouter();
@@ -27,8 +34,10 @@ export default function MapScreen() {
 
   // Route Planning State
   const [activePreset, setActivePreset] = useState<RoutePresetItem>(DEMO_PRESETS[0]);
-  const [options, setOptions] = useState<RouteOption[]>([]);
+  const [options, setOptions] = useState<RouteOptionDto[]>([]);
   const [selectedOptionId, setSelectedOptionId] = useState<string | null>(null);
+  const [weather, setWeather] = useState<WeatherInfoDto | null>(null);
+  const [isMock, setIsMock] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [stations, setStations] = useState<StationLocation[]>([]);
   const [parkings, setParkings] = useState<ParkingDetail[]>([]);
@@ -47,18 +56,29 @@ export default function MapScreen() {
   const fetchRoutes = async (preset: RoutePresetItem) => {
     setIsLoading(true);
     try {
+      const userAge = user?.age ?? 22;
+      const ageCategory: AgeCategory =
+        userAge < 14 ? 'Under14' : userAge < 16 ? 'From14To15' : 'Adult';
+
       const response = await routeService.planRoute({
         origin: preset.origin,
         destination: preset.destination,
-        hasDisability: user?.preferences?.hasDisability,
-        age: user?.age,
-        hasOwnBicycle: user?.preferences?.hasOwnBicycle,
-        hasOwnCar: user?.preferences?.hasOwnCar,
+        profile: {
+          ageCategory,
+          hasDisability: !!user?.preferences?.hasDisability,
+          ownsBike: !!user?.preferences?.hasOwnBicycle,
+          ownsScooter: !!user?.preferences?.hasOwnScooter,
+          ownsCar: !!user?.preferences?.hasOwnCar,
+        },
       });
 
       setOptions(response.options);
+      setWeather(response.weather);
+      setIsMock(response.isMock);
+
       // Default to recommended option
-      const recommended = response.options.find((o) => o.isRecommended) || response.options[0];
+      const recommended =
+        response.options.find((o) => o.isRecommended) || response.options[0];
       if (recommended) {
         setSelectedOptionId(recommended.id);
       }
@@ -78,17 +98,34 @@ export default function MapScreen() {
   const handleCompleteTrip = async () => {
     if (!selectedOption) return;
 
-    // Award Eco-Points & save to store
-    addEcoPoints(selectedOption.ecoPoints, selectedOption.co2Grams === 0 ? 390 : 355);
+    // Calculate CO2 savings vs 390g car baseline
+    const co2Saved = Math.max(0, 390 - selectedOption.co2Grams);
+    addEcoPoints(selectedOption.ecoPoints, co2Saved);
 
     Alert.alert(
       'Zeleno putovanje završeno! 🌱',
-      `Osvojili ste +${selectedOption.ecoPoints} eko-bodova!\nVaš doprinos smanjenju CO₂ je zabilježen u gradskoj bazi.`,
+      `Osvojili ste +${selectedOption.ecoPoints} eko-bodova!\nUštedjeli ste ${co2Saved}g CO₂ u Timișoari.`,
       [
         { text: 'Pregledaj nagrade', onPress: () => router.push('/(tabs)/rewards') },
         { text: 'U redu', style: 'cancel' },
       ]
     );
+  };
+
+  const getWeatherConditionIcon = (condition?: string) => {
+    switch (condition) {
+      case 'Rain':
+        return '🌧️ Kiša';
+      case 'Snow':
+        return '❄️ Snijeg';
+      case 'Cold':
+        return '🥶 Hladno';
+      case 'Windy':
+        return '💨 Vjetrovito';
+      case 'Clear':
+      default:
+        return '☀️ Vedro';
+    }
   };
 
   return (
@@ -125,6 +162,20 @@ export default function MapScreen() {
         onSelectPreset={handleSelectPreset}
       />
 
+      {/* Weather & Demo Status Bar */}
+      <View style={styles.statusBarRow}>
+        {weather && (
+          <View style={styles.weatherPill}>
+            <Text style={styles.weatherText}>
+              {getWeatherConditionIcon(weather.condition)} • {weather.temperatureC}°C • {weather.precipitationMm} mm
+            </Text>
+          </View>
+        )}
+        {isMock && (
+          <Badge label="DEMO" variant="neutral" style={styles.demoBadge} />
+        )}
+      </View>
+
       {/* Map View */}
       <View style={styles.mapWrapper}>
         <MapContainer
@@ -134,7 +185,7 @@ export default function MapScreen() {
           destinationName={activePreset.destinationName}
           stations={stations}
           parkings={parkings}
-          selectedMode={selectedOption?.mode || 'Bicycle'}
+          selectedMode={selectedOption?.mode || 'Bike'}
         />
 
         {/* Accessibility Status Pill if active */}
@@ -241,8 +292,30 @@ const styles = StyleSheet.create({
     ...typography.captionMedium,
     color: colors.textPrimary,
   },
+  statusBarRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 4,
+    backgroundColor: colors.background,
+  },
+  weatherPill: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
+    borderRadius: borderRadius.full,
+  },
+  weatherText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.textPrimary,
+  },
+  demoBadge: {
+    alignSelf: 'center',
+  },
   mapWrapper: {
-    height: 240,
+    height: 230,
     position: 'relative',
   },
   accessibilityFloatPill: {
@@ -250,7 +323,7 @@ const styles = StyleSheet.create({
     bottom: spacing.sm,
     left: spacing.md,
     right: spacing.md,
-    backgroundColor: colors.secondary,
+    backgroundColor: 'rgba(22, 77, 59, 0.95)',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
