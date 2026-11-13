@@ -18,6 +18,7 @@ import { typography } from '../../theme/typography';
 import { MapContainer } from '../../components/map/MapContainer';
 import { RoutePresets, DEMO_PRESETS, RoutePresetItem } from '../../components/map/RoutePresets';
 import { RouteOptionCard } from '../../components/map/RouteOptionCard';
+import { TravelOptionsPanel } from '../../components/map/TravelOptionsPanel';
 import { TripCompletedModal } from '../../components/map/TripCompletedModal';
 import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
@@ -340,31 +341,8 @@ export default function MapScreen() {
       </View>
 
       {/* Route Options Comparison Sheet */}
-      <View style={styles.sheetContainer}>
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Opcije putovanja A ➔ B</Text>
-          <Text style={styles.sheetSubtitle}>
-            Rangirano po ekološkoj održivosti (CO₂ & bodovi)
-          </Text>
-        </View>
-
-        <ScrollView
-          style={styles.optionsList}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing.lg }}
-        >
-          {options.map((option) => (
-            <RouteOptionCard
-              key={option.id}
-              option={option}
-              isSelected={selectedOptionId === option.id}
-              onSelect={() => setSelectedOptionId(option.id)}
-            />
-          ))}
-        </ScrollView>
-
-        {/* Start / Finish Trip Action Button */}
-        {selectedOption && (
+      <TravelOptionsPanel
+        footer={selectedOption && (
           <View style={styles.actionBottomBar}>
             <AppButton
               title={`Odaberi i završi (${selectedOption.durationMinutes} min • +${selectedOption.ecoPoints} bodova)`}
@@ -373,7 +351,16 @@ export default function MapScreen() {
             />
           </View>
         )}
-      </View>
+      >
+        {options.map((option) => (
+          <RouteOptionCard
+            key={option.id}
+            option={option}
+            isSelected={selectedOptionId === option.id}
+            onSelect={() => setSelectedOptionId(option.id)}
+          />
+        ))}
+      </TravelOptionsPanel>
 
       {/* EcoMutare Trip Completed Modal */}
       <TripCompletedModal

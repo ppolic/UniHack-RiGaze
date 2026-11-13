@@ -1,19 +1,46 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, ActivityIndicator } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../../components/common/AppCard';
+import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
 import { rewardsService } from '../../services/rewardsService';
 import { TripHistoryItem } from '../../types/rewards';
 
+type HistoryState =
+  | { status: 'loading' }
+  | { status: 'error' }
+  | { status: 'success'; trips: TripHistoryItem[] };
+
 export default function HistoryScreen() {
-  const [history, setHistory] = useState<TripHistoryItem[]>([]);
+  const [state, setState] = useState<HistoryState>({ status: 'loading' });
+  const [requestVersion, setRequestVersion] = useState(0);
 
   useEffect(() => {
-    rewardsService.getTripHistory().then(setHistory);
-  }, []);
+    let active = true;
+
+    const loadHistory = async () => {
+      try {
+        const trips = await rewardsService.getTripHistory();
+        if (active) setState({ status: 'success', trips });
+      } catch {
+        if (active) setState({ status: 'error' });
+      }
+    };
+
+    void loadHistory();
+    return () => {
+      // Ignore results after unmount or when a newer request replaces this one.
+      active = false;
+    };
+  }, [requestVersion]);
+
+  const handleRetry = () => {
+    setState({ status: 'loading' });
+    setRequestVersion((version) => version + 1);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -25,7 +52,42 @@ export default function HistoryScreen() {
           </Text>
         </View>
 
-        {history.map((trip) => (
+        {state.status === 'loading' && (
+          <View
+            style={styles.statusCard}
+            accessible
+            accessibilityRole="progressbar"
+            accessibilityLabel="Učitavanje povijesti putovanja"
+            accessibilityState={{ busy: true }}
+          >
+            <ActivityIndicator size="large" color={colors.primary} accessible={false} />
+            <Text style={styles.statusMessage}>Učitavanje povijesti putovanja…</Text>
+          </View>
+        )}
+
+        {state.status === 'error' && (
+          <AppCard style={styles.statusCard}>
+            <Text
+              style={styles.errorMessage}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="assertive"
+            >
+              Nije moguće učitati povijest putovanja. Provjerite vezu i pokušajte ponovno.
+            </Text>
+            <AppButton title="Pokušaj ponovno" onPress={handleRetry} />
+          </AppCard>
+        )}
+
+        {state.status === 'success' && state.trips.length === 0 && (
+          <AppCard style={styles.statusCard}>
+            <Text style={styles.routeText}>Još nema zabilježenih putovanja</Text>
+            <Text style={styles.statusMessage} accessibilityLiveRegion="polite">
+              Ovdje ćete pronaći pregled svojih zabilježenih putovanja i osvojenih eko-bodova.
+            </Text>
+          </AppCard>
+        )}
+
+        {state.status === 'success' && state.trips.map((trip) => (
           <AppCard key={trip.id} style={styles.tripCard}>
             <View style={styles.topRow}>
               <Text style={styles.tripDate}>{trip.date}</Text>
@@ -79,6 +141,19 @@ const styles = StyleSheet.create({
   },
   tripCard: {
     marginBottom: spacing.md,
+  },
+  statusCard: {
+    padding: spacing.lg,
+    gap: spacing.md,
+    marginBottom: spacing.md,
+  },
+  statusMessage: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  errorMessage: {
+    ...typography.body,
+    color: colors.danger,
   },
   topRow: {
     flexDirection: 'row',

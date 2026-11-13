@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScrollView, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { ScrollView, TouchableOpacity, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -50,10 +50,14 @@ export const RoutePresets: React.FC<RoutePresetsProps> = ({
   onSelectPreset,
   activePresetId,
 }) => {
+  const { width } = useWindowDimensions();
+  const narrow = width < 768;
+
   return (
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.scroll}
       contentContainerStyle={styles.container}
     >
       {DEMO_PRESETS.map((preset) => {
@@ -62,10 +66,21 @@ export const RoutePresets: React.FC<RoutePresetsProps> = ({
           <TouchableOpacity
             key={preset.id}
             onPress={() => onSelectPreset(preset)}
-            style={[styles.chip, isActive && styles.activeChip]}
+            style={[
+              styles.chip,
+              narrow && { width: Math.min(260, Math.max(44, width - spacing.md * 2)) },
+              isActive && styles.activeChip,
+            ]}
             activeOpacity={0.75}
+            accessibilityRole="button"
+            accessibilityLabel={preset.label}
+            accessibilityState={{ selected: isActive }}
           >
-            <Text style={[styles.chipText, isActive && styles.activeChipText]}>
+            <Text
+              style={[styles.chipText, narrow && styles.mobileChipText, isActive && styles.activeChipText]}
+              numberOfLines={narrow ? 2 : undefined}
+              ellipsizeMode="tail"
+            >
               {preset.label}
             </Text>
           </TouchableOpacity>
@@ -80,12 +95,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,
     gap: spacing.sm,
+    alignItems: 'center',
+  },
+  scroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  mobileChipText: {
+    flexShrink: 1,
+    maxWidth: '100%',
   },
   chip: {
+    minHeight: 44,
+    flexShrink: 0,
+    justifyContent: 'center',
     backgroundColor: colors.surface,
-    paddingVertical: spacing.xs + 2,
+    paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
   },
