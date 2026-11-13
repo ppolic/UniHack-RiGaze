@@ -185,6 +185,7 @@ export default function MapScreen() {
           destinationName={activePreset.destinationName}
           stations={stations}
           parkings={parkings}
+          selectedOption={selectedOption}
           selectedMode={selectedOption?.mode || 'Bike'}
         />
 
