@@ -30,12 +30,11 @@ public class MockRoutePlanner : IRoutePlanner
 
         var options = new List<RouteOptionDto>();
 
-        if (IsPreferred(request.PreferredModes, TransportMode.Walk))
+        if (!profile.HasDisability && IsPreferred(request.PreferredModes, TransportMode.Walk))
         {
             var walkKm = Math.Round(baseKm, 2);
-            var walkMinutes = Math.Max(1, Math.Round(walkKm * (profile.HasDisability ? 13 : 12)));
-            var walkTitle = profile.HasDisability ? "Pješke (pristupačna ruta)" : "Pješke";
-            options.Add(Option("walk", TransportMode.Walk, walkTitle, walkMinutes, walkKm, 0, 0, 100,
+            var walkMinutes = Math.Max(1, Math.Round(walkKm * 12));
+            options.Add(Option("walk", TransportMode.Walk, "Pješke", walkMinutes, walkKm, 0, 0, 100,
                 Walk(walkMinutes, walkKm, origin, destination)));
         }
 
@@ -119,7 +118,10 @@ public class MockRoutePlanner : IRoutePlanner
     }
 
     private static bool IsPreferred(List<TransportMode>? preferredModes, TransportMode mode) =>
-        preferredModes is null || preferredModes.Count == 0 || preferredModes.Contains(mode);
+        preferredModes is null ||
+        preferredModes.Count == 0 ||
+        (preferredModes.Count == 1 && preferredModes[0] == TransportMode.Walk) ||
+        preferredModes.Contains(mode);
 
     private static void AddTwoWheelWarnings(RouteOptionDto option, WeatherCondition weather, AgeCategory ageCategory)
     {
