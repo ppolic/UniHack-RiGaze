@@ -1,0 +1,42 @@
+namespace EcoMutare.Domain;
+
+public enum TransportMode
+{
+    Walk,
+    Bike,
+    Scooter,
+    PublicTransport,
+    Car,
+    Carpool,
+    Combined
+}
+
+public enum WeatherCondition
+{
+    Clear,
+    Rain,
+    Snow,
+    Cold,
+    Windy
+}
+
+public enum WarningType
+{
+    Rain,
+    Snow,
+    Cold,
+    Windy,
+    Slope,
+    Helmet,
+    NoBikeLane,
+    NotAccessible,
+    Estimate
+}
+
+// Dobna kategorija (bez prave verifikacije dobi, izvodi se iz datuma rođenja pri registraciji)
+public enum AgeCategory
+{
+    Under14,
+    From14To15,
+    Adult
+}
