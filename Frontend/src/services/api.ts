@@ -4,11 +4,60 @@
  */
 
 export const API_CONFIG = {
-  // Replace with local machine LAN IP when testing with Expo Go on a physical phone, e.g. 'http://192.168.1.15:5080'
-  BASE_URL: 'http://localhost:5080',
-  USE_MOCK_FALLBACK: true, // Guarantees hackathon demo reliability
+  // Zamijeni s lokalnim IP-jem računala ako testiraš s mobitela preko Expo Go (npr. 'http://192.168.1.15:5279')
+  BASE_URL: 'http://localhost:5279',
+  USE_MOCK_FALLBACK: true,
   TIMEOUT_MS: 4000,
 };
+
+export function setUseMockFallback(enabled: boolean): void {
+  API_CONFIG.USE_MOCK_FALLBACK = enabled;
+}
+
+export function setApiBaseUrl(url: string): void {
+  const cleaned = url.trim().replace(/\/+$/, '');
+  if (cleaned) {
+    API_CONFIG.BASE_URL = cleaned;
+  }
+}
+
+export async function checkBackendHealth(): Promise<{
+  ok: boolean;
+  latencyMs?: number;
+  message: string;
+}> {
+  const startedAt = Date.now();
+  try {
+    await apiFetch('/routes/plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: { lat: 45.7538, lng: 21.2257 },
+        destination: { lat: 45.7489, lng: 21.2272 },
+        profile: {
+          ageCategory: 'Adult',
+          hasDisability: false,
+          ownsBike: true,
+          ownsScooter: false,
+          ownsCar: true,
+        },
+      }),
+    });
+    const latencyMs = Date.now() - startedAt;
+    return {
+      ok: true,
+      latencyMs,
+      message: `Backend aktivan (${latencyMs} ms)`,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      message:
+        err?.name === 'AbortError'
+          ? `Timeout (${API_CONFIG.TIMEOUT_MS} ms) — koristite Offline Demo`
+          : `Nedostupno (${API_CONFIG.BASE_URL}) — siguran Offline Demo je spreman`,
+    };
+  }
+}
 
 export async function apiFetch<T>(
   endpoint: string,

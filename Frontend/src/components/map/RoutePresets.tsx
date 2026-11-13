@@ -3,15 +3,15 @@ import { ScrollView, TouchableOpacity, Text, StyleSheet, useWindowDimensions } f
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { LatLng } from '../../types/route';
+import { GeoPoint } from '../../types/route';
 
 export interface RoutePresetItem {
   id: string;
   label: string;
   originName: string;
   destinationName: string;
-  origin: LatLng;
-  destination: LatLng;
+  origin: GeoPoint;
+  destination: GeoPoint;
 }
 
 export const DEMO_PRESETS: RoutePresetItem[] = [
@@ -20,24 +20,24 @@ export const DEMO_PRESETS: RoutePresetItem[] = [
     label: 'Centar ➔ UPT Politehnica',
     originName: 'Piața Victoriei',
     destinationName: 'UPT Electro',
-    origin: { latitude: 45.7538, longitude: 21.2257 },
-    destination: { latitude: 45.7489, longitude: 21.2272 },
+    origin: { lat: 45.7538, lng: 21.2257 },
+    destination: { lat: 45.7489, lng: 21.2272 },
   },
   {
     id: 'pr_2',
     label: 'Gara de Nord ➔ Iulius Mall',
     originName: 'Gara de Nord',
     destinationName: 'Iulius Town',
-    origin: { latitude: 45.7505, longitude: 21.2078 },
-    destination: { latitude: 45.7661, longitude: 21.2285 },
+    origin: { lat: 45.7505, lng: 21.2078 },
+    destination: { lat: 45.7661, lng: 21.2285 },
   },
   {
     id: 'pr_3',
     label: 'Piața Unirii ➔ Complex Studențesc',
     originName: 'Piața Unirii',
     destinationName: 'Complex Studențesc',
-    origin: { latitude: 45.7577, longitude: 21.2289 },
-    destination: { latitude: 45.7471, longitude: 21.2415 },
+    origin: { lat: 45.7577, lng: 21.2289 },
+    destination: { lat: 45.7471, lng: 21.2415 },
   },
 ];
 

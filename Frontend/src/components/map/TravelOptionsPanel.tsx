@@ -21,9 +21,10 @@ export function TravelOptionsPanel({ children, footer }: TravelOptionsPanelProps
   const [footerHeight, setFooterHeight] = useState(0);
   const desktop = width >= 768;
 
-  // The measured screen excludes the navigator's tab bar. Absolute siblings keep
-  // the sheet's entire touch area inside that screen, rather than outside a slot.
-  const bottom = Math.max(insets.top, Math.min(bounds.height, height) - insets.bottom);
+  // Absolute measurements include the parent SafeAreaView's top padding, so
+  // exclude that inset once below. The tab navigator already reserves the bottom
+  // safe area; subtracting it here again would lift the sheet above the tab bar.
+  const bottom = Math.max(insets.top, Math.min(bounds.height, height));
   const available = Math.max(0, bottom - insets.top);
   // On short/zoomed desktop viewports, reserve room for the fixed controls and
   // a small, scrollable part of a route card rather than clipping the footer.
