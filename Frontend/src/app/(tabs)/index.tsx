@@ -4,11 +4,11 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
   TouchableOpacity,
   Modal,
   TextInput,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { DemoUserRole } from '../../store/userStore';
@@ -192,7 +192,7 @@ export default function MapScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
       {/* Top Header */}
       <View style={styles.topHeader}>
         <View>
@@ -727,7 +727,7 @@ const styles = StyleSheet.create({
     bottom: spacing.sm,
     left: spacing.md,
     right: spacing.md,
-    backgroundColor: 'rgba(22, 77, 59, 0.95)',
+    backgroundColor: colors.surfaceDark,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: borderRadius.md,
