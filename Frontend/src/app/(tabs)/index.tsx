@@ -6,6 +6,8 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,6 +21,12 @@ import { RouteOptionCard } from '../../components/map/RouteOptionCard';
 import { TripCompletedModal } from '../../components/map/TripCompletedModal';
 import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
+import {
+  API_CONFIG,
+  setUseMockFallback,
+  setApiBaseUrl,
+  checkBackendHealth,
+} from '../../services/api';
 import { routeService } from '../../services/routeService';
 import { transitService } from '../../services/transitService';
 import {
@@ -45,16 +53,53 @@ export default function MapScreen() {
   const [tripModalVisible, setTripModalVisible] = useState(false);
   const [lastCo2Saved, setLastCo2Saved] = useState(0);
 
-  // Load Transit POIs on mount
-  useEffect(() => {
+  // Offline Demo Safety Switch State (FE-09)
+  const [useMockMode, setUseMockMode] = useState(API_CONFIG.USE_MOCK_FALLBACK);
+  const [connectionModalVisible, setConnectionModalVisible] = useState(false);
+  const [apiUrlInput, setApiUrlInput] = useState(API_CONFIG.BASE_URL);
+  const [healthStatus, setHealthStatus] = useState<'idle' | 'checking' | 'ok' | 'error'>('idle');
+  const [healthMessage, setHealthMessage] = useState<string | null>(null);
+
+  const loadTransitPois = () => {
     transitService.getNearbyStations(45.7538, 21.2257).then(setStations);
     transitService.getParkings().then(setParkings);
-  }, []);
+  };
 
-  // Fetch routes when preset, disability status, or user age changes
+  // Load Transit POIs on mount or when Demo/Live mode changes
+  useEffect(() => {
+    loadTransitPois();
+  }, [useMockMode]);
+
+  // Fetch routes when preset, disability status, user age, or Demo/Live mode changes
   useEffect(() => {
     fetchRoutes(activePreset);
-  }, [activePreset, hasDisability, user?.age, user?.id]);
+  }, [activePreset, hasDisability, user?.age, user?.id, useMockMode]);
+
+  const handleToggleMockMode = () => {
+    const nextMock = !useMockMode;
+    setUseMockFallback(nextMock);
+    setUseMockMode(nextMock);
+    setHealthStatus('idle');
+    setHealthMessage(null);
+  };
+
+  const handleTestConnection = async () => {
+    setApiBaseUrl(apiUrlInput);
+    setHealthStatus('checking');
+    setHealthMessage('Provjera veze s backendom...');
+    const res = await checkBackendHealth();
+    setHealthStatus(res.ok ? 'ok' : 'error');
+    setHealthMessage(res.message);
+  };
+
+  const handleApplyConnectionSettings = (enableLive: boolean) => {
+    setApiBaseUrl(apiUrlInput);
+    setUseMockFallback(!enableLive);
+    setUseMockMode(!enableLive);
+    setConnectionModalVisible(false);
+    fetchRoutes(activePreset);
+    loadTransitPois();
+  };
 
   const fetchRoutes = async (preset: RoutePresetItem) => {
     setIsLoading(true);
@@ -226,7 +271,7 @@ export default function MapScreen() {
         </ScrollView>
       </View>
 
-      {/* Weather & Demo Status Bar */}
+      {/* Weather & Offline Safety Status Bar */}
       <View style={styles.statusBarRow}>
         {weather && (
           <View style={styles.weatherPill}>
@@ -235,9 +280,39 @@ export default function MapScreen() {
             </Text>
           </View>
         )}
-        {isMock && (
-          <Badge label="DEMO" variant="neutral" style={styles.demoBadge} />
-        )}
+
+        <View style={styles.connectionControlsRow}>
+          <TouchableOpacity
+            onPress={handleToggleMockMode}
+            activeOpacity={0.8}
+            accessibilityLabel="Prebaci između Offline Demo i Live API načina"
+          >
+            <Badge
+              label={
+                useMockMode
+                  ? '🛡️ DEMO (Offline)'
+                  : isMock
+                  ? '⚠️ LIVE ➔ Fallback'
+                  : '🌐 LIVE API'
+              }
+              variant={
+                useMockMode ? 'neutral' : isMock ? 'warning' : 'success'
+              }
+              style={styles.demoBadge}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.settingsIconBtn}
+            onPress={() => {
+              setApiUrlInput(API_CONFIG.BASE_URL);
+              setConnectionModalVisible(true);
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.settingsIconText}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Map View */}
@@ -314,6 +389,100 @@ export default function MapScreen() {
           router.push('/(tabs)/rewards');
         }}
       />
+
+      {/* Offline Demo Safety & API Configuration Modal (FE-09) */}
+      <Modal
+        visible={connectionModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setConnectionModalVisible(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.connectionModalCard}>
+            <View style={styles.connectionModalHeader}>
+              <Text style={styles.connectionModalTitle}>
+                🛡️ Demo & API Način rada
+              </Text>
+              <TouchableOpacity
+                onPress={() => setConnectionModalVisible(false)}
+                style={styles.modalCloseBtn}
+              >
+                <Text style={styles.modalCloseText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.connectionModalDesc}>
+              Za sigurnu prezentaciju koristite Offline Demo. Ako imate pokrenut
+              backend na lokalnoj mreži, unesite IP adresu i prebacite na Live API
+              (automatski fallback ostaje aktivan u slučaju pada mreže).
+            </Text>
+
+            <Text style={styles.inputLabel}>Backend Base URL</Text>
+            <TextInput
+              style={styles.urlInput}
+              value={apiUrlInput}
+              onChangeText={setApiUrlInput}
+              placeholder="http://192.168.1.15:5279"
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            <TouchableOpacity
+              style={styles.testConnBtn}
+              onPress={handleTestConnection}
+              disabled={healthStatus === 'checking'}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.testConnBtnText}>
+                {healthStatus === 'checking'
+                  ? 'Provjeravam vezu...'
+                  : '🔌 Testiraj vezu s backendom'}
+              </Text>
+            </TouchableOpacity>
+
+            {healthMessage && (
+              <View
+                style={[
+                  styles.healthResultBox,
+                  healthStatus === 'ok'
+                    ? styles.healthResultOk
+                    : styles.healthResultWarn,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.healthResultText,
+                    healthStatus === 'ok'
+                      ? styles.healthTextOk
+                      : styles.healthTextWarn,
+                  ]}
+                >
+                  {healthStatus === 'ok' ? '✅ ' : '⚠️ '}
+                  {healthMessage}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.modalModeButtonsRow}>
+              <AppButton
+                title="🛡️ Offline Demo"
+                variant={useMockMode ? 'primary' : 'outline'}
+                size="sm"
+                onPress={() => handleApplyConnectionSettings(false)}
+                style={{ flex: 1 }}
+              />
+              <AppButton
+                title="🌐 Live API"
+                variant={!useMockMode ? 'secondary' : 'outline'}
+                size="sm"
+                onPress={() => handleApplyConnectionSettings(true)}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -432,6 +601,122 @@ const styles = StyleSheet.create({
   },
   demoBadge: {
     alignSelf: 'center',
+  },
+  connectionControlsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  settingsIconBtn: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  settingsIconText: {
+    fontSize: 12,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: colors.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.lg,
+  },
+  connectionModalCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.xl,
+    padding: spacing.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    ...shadows.lg,
+  },
+  connectionModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.xs,
+  },
+  connectionModalTitle: {
+    ...typography.h3,
+    color: colors.textPrimary,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalCloseText: {
+    fontSize: 16,
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  connectionModalDesc: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: spacing.md,
+  },
+  inputLabel: {
+    ...typography.captionMedium,
+    color: colors.textPrimary,
+    marginBottom: 4,
+  },
+  urlInput: {
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: spacing.xs + 4,
+    color: colors.textPrimary,
+    ...typography.body,
+    fontSize: 13,
+    marginBottom: spacing.sm,
+  },
+  testConnBtn: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.xs + 4,
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  testConnBtnText: {
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
+  },
+  healthResultBox: {
+    borderRadius: borderRadius.md,
+    padding: spacing.xs + 4,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+  },
+  healthResultOk: {
+    backgroundColor: colors.successLight,
+    borderColor: colors.success,
+  },
+  healthResultWarn: {
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning,
+  },
+  healthResultText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+  },
+  healthTextOk: {
+    color: colors.primaryDark,
+  },
+  healthTextWarn: {
+    color: colors.warning,
+  },
+  modalModeButtonsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
   },
   mapWrapper: {
     height: 230,

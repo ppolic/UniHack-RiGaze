@@ -10,6 +10,55 @@ export const API_CONFIG = {
   TIMEOUT_MS: 4000,
 };
 
+export function setUseMockFallback(enabled: boolean): void {
+  API_CONFIG.USE_MOCK_FALLBACK = enabled;
+}
+
+export function setApiBaseUrl(url: string): void {
+  const cleaned = url.trim().replace(/\/+$/, '');
+  if (cleaned) {
+    API_CONFIG.BASE_URL = cleaned;
+  }
+}
+
+export async function checkBackendHealth(): Promise<{
+  ok: boolean;
+  latencyMs?: number;
+  message: string;
+}> {
+  const startedAt = Date.now();
+  try {
+    await apiFetch('/routes/plan', {
+      method: 'POST',
+      body: JSON.stringify({
+        origin: { lat: 45.7538, lng: 21.2257 },
+        destination: { lat: 45.7489, lng: 21.2272 },
+        profile: {
+          ageCategory: 'Adult',
+          hasDisability: false,
+          ownsBike: true,
+          ownsScooter: false,
+          ownsCar: true,
+        },
+      }),
+    });
+    const latencyMs = Date.now() - startedAt;
+    return {
+      ok: true,
+      latencyMs,
+      message: `Backend aktivan (${latencyMs} ms)`,
+    };
+  } catch (err: any) {
+    return {
+      ok: false,
+      message:
+        err?.name === 'AbortError'
+          ? `Timeout (${API_CONFIG.TIMEOUT_MS} ms) — koristite Offline Demo`
+          : `Nedostupno (${API_CONFIG.BASE_URL}) — siguran Offline Demo je spreman`,
+    };
+  }
+}
+
 export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {},

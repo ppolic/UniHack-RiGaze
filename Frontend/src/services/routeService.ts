@@ -401,63 +401,66 @@ const MOCK_OPTIONS_ACCESSIBLE: RouteOptionDto[] = [
   },
 ];
 
+function buildMockPlanResponse(request: RoutePlanRequest): RoutePlanResponse {
+  let options = request.profile.hasDisability
+    ? MOCK_OPTIONS_ACCESSIBLE
+    : MOCK_OPTIONS_STANDARD;
+
+  // Filter options based on ageCategory from docs/api-contract.md
+  if (request.profile.ageCategory === 'Under14') {
+    options = options.filter(
+      (o) => o.mode === 'Walk' || o.mode === 'PublicTransport'
+    );
+  } else if (request.profile.ageCategory === 'From14To15') {
+    options = options
+      .filter((o) => o.mode !== 'Car')
+      .map((o) => {
+        if (o.mode === 'Bike' || o.mode === 'Scooter') {
+          const hasHelmetWarning = (o.warnings || []).some(
+            (w) => w.type === 'Helmet'
+          );
+          return {
+            ...o,
+            warnings: hasHelmetWarning
+              ? o.warnings
+              : [
+                  ...(o.warnings || []),
+                  {
+                    type: 'Helmet',
+                    message:
+                      'Kaciga je zakonski obavezna za vozače od 14 do 16 godina.',
+                  },
+                ],
+          };
+        }
+        return o;
+      });
+  } else {
+    // Adult: remove age-specific Helmet warnings
+    options = options.map((o) => ({
+      ...o,
+      warnings: (o.warnings || []).filter((w) => w.type !== 'Helmet'),
+    }));
+  }
+
+  const adaptedOptions = adaptOptionsGeometry(
+    options,
+    request.origin,
+    request.destination
+  );
+
+  return {
+    weather: MOCK_WEATHER,
+    options: adaptedOptions,
+    isMock: true,
+  };
+}
+
 export const routeService = {
   async planRoute(request: RoutePlanRequest): Promise<RoutePlanResponse> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
-      await new Promise((resolve) => setTimeout(resolve, 350));
-
-      let options = request.profile.hasDisability
-        ? MOCK_OPTIONS_ACCESSIBLE
-        : MOCK_OPTIONS_STANDARD;
-
-      // Filter options based on ageCategory from docs/api-contract.md
-      if (request.profile.ageCategory === 'Under14') {
-        options = options.filter(
-          (o) => o.mode === 'Walk' || o.mode === 'PublicTransport'
-        );
-      } else if (request.profile.ageCategory === 'From14To15') {
-        options = options
-          .filter((o) => o.mode !== 'Car')
-          .map((o) => {
-            if (o.mode === 'Bike' || o.mode === 'Scooter') {
-              const hasHelmetWarning = (o.warnings || []).some(
-                (w) => w.type === 'Helmet'
-              );
-              return {
-                ...o,
-                warnings: hasHelmetWarning
-                  ? o.warnings
-                  : [
-                      ...(o.warnings || []),
-                      {
-                        type: 'Helmet',
-                        message:
-                          'Kaciga je zakonski obavezna za vozače od 14 do 16 godina.',
-                      },
-                    ],
-              };
-            }
-            return o;
-          });
-      } else {
-        // Adult: remove age-specific Helmet warnings
-        options = options.map((o) => ({
-          ...o,
-          warnings: (o.warnings || []).filter((w) => w.type !== 'Helmet'),
-        }));
-      }
-
-      const adaptedOptions = adaptOptionsGeometry(
-        options,
-        request.origin,
-        request.destination
-      );
-
-      return {
-        weather: MOCK_WEATHER,
-        options: adaptedOptions,
-        isMock: true,
-      };
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      return buildMockPlanResponse(request);
     }
 
     try {
@@ -467,21 +470,7 @@ export const routeService = {
       });
     } catch (err) {
       console.warn('API /routes/plan unreachable, using mock fallback:', err);
-      const baseOptions = request.profile.hasDisability
-        ? MOCK_OPTIONS_ACCESSIBLE
-        : MOCK_OPTIONS_STANDARD;
-
-      const adaptedOptions = adaptOptionsGeometry(
-        baseOptions,
-        request.origin,
-        request.destination
-      );
-
-      return {
-        weather: MOCK_WEATHER,
-        options: adaptedOptions,
-        isMock: true,
-      };
+      return buildMockPlanResponse(request);
     }
   },
 
@@ -494,9 +483,14 @@ export const routeService = {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return { success: true, newPointsTotal: 390 };
     }
-    return apiFetch('/trips', {
-      method: 'POST',
-      body: JSON.stringify(tripData),
-    });
+    try {
+      return await apiFetch('/trips', {
+        method: 'POST',
+        body: JSON.stringify(tripData),
+      });
+    } catch (err) {
+      console.warn('API /trips unreachable, recording locally:', err);
+      return { success: true, newPointsTotal: 390 };
+    }
   },
 };

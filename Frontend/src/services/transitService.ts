@@ -108,13 +108,25 @@ export const transitService = {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return MOCK_STATIONS;
     }
-    return apiFetch<StationLocation[]>(`/transit/stops/nearby?lat=${lat}&lng=${lng}`);
+    try {
+      return await apiFetch<StationLocation[]>(
+        `/transit/stops/nearby?lat=${lat}&lng=${lng}`
+      );
+    } catch (err) {
+      console.warn('API /transit/stops/nearby unreachable, using mock stations:', err);
+      return MOCK_STATIONS;
+    }
   },
 
   async getParkings(): Promise<ParkingDetail[]> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return MOCK_PARKINGS;
     }
-    return apiFetch<ParkingDetail[]>('/parkings');
+    try {
+      return await apiFetch<ParkingDetail[]>('/parkings');
+    } catch (err) {
+      console.warn('API /parkings unreachable, using mock parkings:', err);
+      return MOCK_PARKINGS;
+    }
   },
 };
