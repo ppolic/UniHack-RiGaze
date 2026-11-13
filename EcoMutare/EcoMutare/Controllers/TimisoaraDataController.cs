@@ -85,6 +85,12 @@ public class TimisoaraDataController : ControllerBase
     public ActionResult<IEnumerable<BikeCorridorDto>> GetBikeLanes() =>
         Ok(TimisoaraPublicData.BikeCorridors);
 
+    /// <summary>Vraća javne mjerne postaje kvalitete zraka (RNMCA / calitateaer.ro) i prometne točke u Timișoari.</summary>
+    [HttpGet("air-quality/stations")]
+    [ProducesResponseType(typeof(IEnumerable<TimisoaraPublicData.AirQualityStationDto>), StatusCodes.Status200OK)]
+    public ActionResult<IEnumerable<TimisoaraPublicData.AirQualityStationDto>> GetAirQualityStations() =>
+        Ok(TimisoaraPublicData.AirQualityStations);
+
     /// <summary>Dijagnostički endpoint (sat 4–12): testira ORS profile, Open-Meteo vrijeme i elevaciju na stvarnoj ruti u Timișoari.</summary>
     [HttpGet("debug/ors-test")]
     public async Task<IActionResult> TestIntegrations(

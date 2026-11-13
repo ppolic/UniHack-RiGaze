@@ -9,5 +9,7 @@ public class OpenMeteoOptions
     [Required]
     public string BaseUrl { get; set; } = "https://api.open-meteo.com";
 
+    public string AirQualityBaseUrl { get; set; } = "https://air-quality-api.open-meteo.com";
+
     public int TimeoutSeconds { get; set; } = 8;
 }

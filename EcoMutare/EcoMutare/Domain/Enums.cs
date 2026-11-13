@@ -26,6 +26,7 @@ public enum WarningType
     Snow,
     Cold,
     Windy,
+    AirQuality,
     Slope,
     Helmet,
     NoBikeLane,

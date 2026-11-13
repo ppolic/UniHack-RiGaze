@@ -21,13 +21,13 @@ Planira opcije puta od A do B prema profilu korisnika, vremenu i pravilima.
 
 **TransportMode:** `Walk`, `Bike`, `Scooter`, `PublicTransport`, `Car`, `Carpool`, `Combined`
 **WeatherCondition:** `Clear`, `Rain`, `Snow`, `Cold`, `Windy`
-**WarningType:** `Rain`, `Snow`, `Cold`, `Windy`, `Slope`, `Helmet`, `NoBikeLane`, `NotAccessible`, `Estimate`
+**WarningType:** `Rain`, `Snow`, `Cold`, `Windy`, `AirQuality`, `Slope`, `Helmet`, `NoBikeLane`, `NotAccessible`, `Estimate`
 
 ### Odgovor `200`
 
 | Polje | Opis |
 |---|---|
-| `weather` | `condition`, `temperatureC`, `precipitationMm` |
+| `weather` | `condition`, `temperatureC`, `precipitationMm`, `europeanAqi`, `pm25`, `pm10`, `airQualityCategory` |
 | `options[]` | sortirano po `ecoRank` (1 = najzelenije) |
 | `isMock` | `true` dok planer vraća testne podatke (FE prikazuje oznaku "demo") |
 
@@ -98,7 +98,9 @@ Pogreške validacije (npr. `lat` izvan raspona, nedostaje `origin`) vraćaju `40
 | `ageCategory = Adult` | `Car` dopušten; sve ostalo ovisno o invaliditetu |
 | `Walk`, `PublicTransport` | uvijek dostupni |
 
-**Vrijeme:** kiša dodaje upozorenje `Rain` na `Bike` i `Scooter`. Snijeg/hladnoća/vjetar analogno dodaju `Snow`/`Cold`/`Windy`.
+**Vrijeme i kvaliteta zraka:**
+- Kiša dodaje upozorenje `Rain` na `Bike` i `Scooter`. Snijeg/hladnoća/vjetar analogno dodaju `Snow`/`Cold`/`Windy`.
+- **Kvaliteta zraka (`AirQuality`):** prati se putem javnog Open-Meteo Air Quality API-ja (`european_aqi`, `pm2_5`, `pm10`) te lokalnih RNMCA mjernih postaja u Timișoari (`TM-1 Calea Șagului`, `TM-5 Calea Aradului`, `Pasaj Michelangelo`, `Gara de Nord`, `Calea Buziașului` – dostupno i na `GET /air-quality/stations`). Ako ruta prolazi kroz dionicu s nižom kvalitetom zraka (`EAQI >= 40` ili `PM2.5 >= 15 µg/m³`), opcije `Walk`, `Bike` i `Scooter` dobivaju upozorenje `AirQuality` da kretanje na otvorenom na toj dionici možda neće biti najugodnije.
 
 **Rangiranje i preporuka**
 1. `ecoRank`: sortiranje po `co2Grams` rastuće, pa po `durationMinutes`; rang kreće od 1.
@@ -106,3 +108,22 @@ Pogreške validacije (npr. `lat` izvan raspona, nedostaje `origin`) vraćaju `40
 3. Dopuštene su samo opcije koje prođu pravila iznad, pa je `ecoRank` 1 uvijek najzelenija *dopuštena* opcija.
 
 **Ostalo:** `ecoPoints` je nagrada za odabir te opcije (Walk 100, Bike 90, Scooter 70, PublicTransport 60, Car 0). `costRon` je u RON (0 za vlastiti bicikl/romobil). Planer prilagođava udaljenost, trajanje i geometriju prema unesenim koordinatama `origin` i `destination` te filtrira po `preferredModes` ako su zadani.
+
+---
+
+## Green Intelligence – Gradski podaci (sat 24–30)
+
+### GET `/insights/gaps`
+Vraća biciklističke koridore (`bikeCorridors`) i prostornu rešetku grada (`cells`, ćelije ~500 m × 500 m) s izračunatim prazninama (`isInfrastructureGap`), brojem putovanja, udjelom automobila (`carShare`), udaljenošću do najbliže staze (`distanceToNearestBikeLaneMeters`) i stanice JPP-a (`distanceToNearestTransitStopMeters`) te rangom prioriteta (`priorityRank`, `gapScore`).
+- Opcionalni query parametar: `?onlyGaps=true` (vraća samo ćelije s infrastrukturnim deficitom).
+- Jasno označeno s `isSimulationData: true` i `simulationDisclaimer`.
+
+### GET `/insights/summary`
+Vraća tri ključna broja za gradski dashboard:
+- `totalSavedCo2Kg` – ukupno ušteđeni CO₂ u kg
+- `totalTripsCount` / `greenTripsCount` / `greenModalSplitPercent` – ukupan broj putovanja i udio zelenih opcija
+- `topInvestmentZones` – **Top 3 zone** za izgradnju nove biciklističke staze ili uvođenje linije javnog prijevoza (`rank`, `zoneName`, `gapScore`, `reason`, `proposedAction`).
+
+### GET `/insights/proximity?lat=...&lng=...`
+Helper za izračun ortogonalne udaljenosti bilo koje točke u gradu do najbliže biciklističke staze, STPT stanice, niskopodne (wheelchair-accessible) stanice i VeloTM stanice.
+

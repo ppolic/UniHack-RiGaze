@@ -38,7 +38,8 @@ public static class TimisoaraPublicData
         new("timpark-cluj", "TimPark Str. Cluj (Sala Olimpia / Complex)", "Zona II (Galbenă)", 45.7458, 21.2388, 1.52m, 38, 3, true),
         new("timpark-gara", "TimPark Gara Timișoara Nord", "Zona II (Galbenă)", 45.7505, 21.2085, 1.52m, 50, 6, true),
         new("timpark-circumvalatiunii", "TimPark Calea Circumvalațiunii", "Zona III (Albastră)", 45.7630, 21.2190, 1.02m, 60, 4, true),
-        new("parking-iulius", "Iulius Town Multilevel Parking", "Privat / Public", 45.7668, 21.2295, 3.00m, 180, 12, true)
+        new("parking-iulius", "Iulius Town Multilevel Parking", "Privat / Public", 45.7668, 21.2295, 3.00m, 180, 12, true),
+        new("timpark-traian-narrow", "TimPark Str. Ștefan cel Mare (bočni parking uz kolnik)", "Zona II (Galbenă)", 45.7574, 21.2502, 1.52m, 14, 0, false)
     };
 
     // Glavne STPT stanice javnog prijevoza s oznakom pristupačnosti za osobe s invaliditetom
@@ -52,7 +53,9 @@ public static class TimisoaraPublicData
         new("stpt-cluj", "Strada Cluj (Sala Olimpia)", 45.7448, 21.2385, true, new[] { "Tramvai 8", "Tramvai 9", "Troleibuz 15", "Autobuz E3" }),
         new("stpt-gara-nord", "Gara Timișoara Nord", 45.7507, 21.2079, true, new[] { "Tramvai 1", "Tramvai 2", "Tramvai 8", "Troleibuz 11", "Troleibuz 14", "Autobuz E3" }),
         new("stpt-consiliul-europei", "Piața Consiliul Europei (Iulius Town)", 45.7652, 21.2280, true, new[] { "Troleibuz 14", "Autobuz E2", "Autobuz 40" }),
-        new("stpt-spital", "Spitalul Județean", 45.7370, 21.2412, true, new[] { "Tramvai 8", "Tramvai 9", "Autobuz E3", "Troleibuz 15" })
+        new("stpt-spital", "Spitalul Județean", 45.7370, 21.2412, true, new[] { "Tramvai 8", "Tramvai 9", "Autobuz E3", "Troleibuz 15" }),
+        new("stpt-traian-old", "Piața Traian (stari peron bez rampe)", 45.7576, 21.2508, false, new[] { "Tramvai 1", "Tramvai 2", "Tramvai 4" }),
+        new("stpt-iosefin-old", "Piața Iosefin (visoki rubnjak / bez pristupa za kolica)", 45.7432, 21.2122, false, new[] { "Tramvai 1", "Tramvai 7" })
     };
 
     // Glavni biciklistički koridori Timișoare (Piste de biciclete: Malul Begăi, Bd. Vasile Pârvan,
@@ -98,7 +101,7 @@ public static class TimisoaraPublicData
         })
     };
 
-    /// <summary>Procjenjuje koji udio točaka rute (0..1) leži unutar ~250 m od poznatih biciklističkih koridora Timișoare.</summary>
+    /// <summary>Procjenjuje koji udio točaka rute (0..1) leži unutar ~220 m od poznatih biciklističkih koridora Timișoare (mjereno ortogonalno na segmente staze).</summary>
     public static double EstimateBikeLaneCoverage(IReadOnlyList<GeoPoint> geometry)
     {
         if (geometry.Count == 0) return 0;
@@ -106,13 +109,17 @@ public static class TimisoaraPublicData
         int covered = 0;
         foreach (var pt in geometry)
         {
-            double minMeters = BikeCorridors
-                .SelectMany(c => c.Points)
-                .Select(cp => HaversineMeters(pt, cp))
-                .DefaultIfEmpty(double.MaxValue)
-                .Min();
+            double minMeters = double.MaxValue;
+            foreach (var corridor in BikeCorridors)
+            {
+                for (int i = 1; i < corridor.Points.Count; i++)
+                {
+                    double d = Services.Insights.GreenIntelligenceService.PointToSegmentDistanceMeters(pt, corridor.Points[i - 1], corridor.Points[i]);
+                    if (d < minMeters) minMeters = d;
+                }
+            }
 
-            if (minMeters <= 280.0)
+            if (minMeters <= 220.0)
             {
                 covered++;
             }
@@ -189,6 +196,92 @@ public static class TimisoaraPublicData
         double eastUndulation = Math.Sin((p.Lng - 21.2250) * 180.0) * 1.8;
         return Math.Round(baseElev + northSlope + eastUndulation, 1);
     }
+
+    // Javne RNMCA (calitateaer.ro) mjerne postaje kvalitete zraka u Timișoari i poznate prometne točke
+    // s povišenim česticama PM2.5 / PM10 i NO2 (TM-1 Calea Șagului, TM-2 Bd. C.D. Loga, TM-4 Carani, TM-5 Calea Aradului, Pasaj Michelangelo, Gara de Nord).
+    public record AirQualityStationDto(
+        string StationCode,
+        string Name,
+        double Lat,
+        double Lng,
+        int TypicalEuropeanAqi,
+        double TypicalPm25,
+        double TypicalPm10,
+        string TrafficNote);
+
+    public static IReadOnlyList<AirQualityStationDto> AirQualityStations { get; } = new List<AirQualityStationDto>
+    {
+        new("TM-1", "RNMCA TM-1 Calea Șagului (prometni koridor)", 45.7335, 21.2130, 58, 23.5, 42.0, "gust tranzitni promet i povišene čestice PM10/PM2.5"),
+        new("TM-5", "RNMCA TM-5 Calea Aradului / Torontalului", 45.7710, 21.2210, 54, 21.0, 38.5, "ulazni prometni pravac s povišenom razinom ispušnih plinova"),
+        new("TM-MICHELANGELO", "Čvorište Pasaj Michelangelo / Bd. Vasile Pârvan", 45.7476, 21.2315, 48, 18.5, 34.0, "pojačan promet kroz podvožnjak i križanje uz kampus"),
+        new("TM-GARA", "Zona Gara Timișoara Nord / Bd. Republicii", 45.7512, 21.2120, 46, 17.5, 32.0, "pojačana koncentracija PM2.5 čestica uz željezničko i autobusno čvorište"),
+        new("TM-BUZIAS", "Calea Buziașului – Industrijska zona", 45.7380, 21.2580, 62, 25.0, 46.0, "industrijska i teretna zona s nižom kvalitetom zraka"),
+        new("TM-2", "RNMCA TM-2 Bd. C. D. Loga / Parcul Rozelor (zelena zona)", 45.7515, 21.2295, 22, 8.5, 16.0, "parkovni pojas uz Begu – dobra kvaliteta zraka")
+    };
+
+    /// <summary>
+    /// Provjerava prolazi li zadana geometrija rute kroz zonu s nižom kvalitetom zraka u Timișoari ili je li opći AQI u gradu povišen.
+    /// Vraća (HasPoorAir, WorstAqi, WorstPm25, StationOrZoneName, Reason).
+    /// </summary>
+    public static (bool HasNoticeableAirPollution, int EffectiveAqi, double EffectivePm25, string ZoneName, string Note)
+        EvaluateRouteAirQuality(IReadOnlyList<GeoPoint> geometry, WeatherInfoDto cityWeather)
+    {
+        int maxAqi = cityWeather.EuropeanAqi;
+        double maxPm25 = cityWeather.Pm25;
+        string zoneName = "Gradsko područje Timișoare";
+        string note = "povišena koncentracija lebdećih čestica u zraku";
+
+        if (geometry.Count > 0)
+        {
+            foreach (var station in AirQualityStations.Where(s => s.TypicalEuropeanAqi >= 42))
+            {
+                var stPt = new GeoPoint { Lat = station.Lat, Lng = station.Lng };
+                bool passesNear = geometry.Any(pt => HaversineMeters(pt, stPt) <= 550.0);
+                if (!passesNear && geometry.Count >= 2)
+                {
+                    for (int i = 1; i < geometry.Count; i++)
+                    {
+                        if (Services.Insights.GreenIntelligenceService.PointToSegmentDistanceMeters(stPt, geometry[i - 1], geometry[i]) <= 500.0)
+                        {
+                            passesNear = true;
+                            break;
+                        }
+                    }
+                }
+
+                if (passesNear)
+                {
+                    // Ako je u gradu trenutno kiša, oborine malo ispiru čestice (-6 AQI), inače uzimamo višu vrijednost između stanice i općeg AQI-ja
+                    int localAqi = cityWeather.Condition == Domain.WeatherCondition.Rain
+                        ? Math.Max(cityWeather.EuropeanAqi, station.TypicalEuropeanAqi - 6)
+                        : Math.Max(cityWeather.EuropeanAqi, station.TypicalEuropeanAqi);
+
+                    double localPm25 = Math.Max(cityWeather.Pm25, station.TypicalPm25);
+
+                    if (localAqi >= maxAqi)
+                    {
+                        maxAqi = localAqi;
+                        maxPm25 = localPm25;
+                        zoneName = station.Name;
+                        note = station.TrafficNote;
+                    }
+                }
+            }
+        }
+
+        // Prag za upozorenje pješacima i biciklistima/romobilistima: EAQI >= 40 ili PM2.5 >= 15 µg/m³
+        bool shouldWarn = maxAqi >= 40 || maxPm25 >= 15.0;
+        return (shouldWarn, maxAqi, Math.Round(maxPm25, 1), zoneName, note);
+    }
+
+    public static string ClassifyAqiCategory(int europeanAqi) => europeanAqi switch
+    {
+        <= 20 => "Odlična",
+        <= 40 => "Dobra",
+        <= 60 => "Umjereno zagađen zrak",
+        <= 80 => "Loša kvaliteta zraka",
+        _ => "Vrlo loša kvaliteta zraka"
+    };
 
     private static double DegreesToRadians(double deg) => deg * (Math.PI / 180.0);
 }

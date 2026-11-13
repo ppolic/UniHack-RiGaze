@@ -26,7 +26,16 @@ public class MockRoutePlanner : IRoutePlanner
         var profile = request.Profile;
         var canRideTwoWheel = !profile.HasDisability && profile.AgeCategory != AgeCategory.Under14;
         var canDrive = profile.AgeCategory == AgeCategory.Adult;
-        var weather = new WeatherInfoDto { Condition = WeatherCondition.Rain, TemperatureC = 9, PrecipitationMm = 1.2 };
+        var weather = new WeatherInfoDto
+        {
+            Condition = WeatherCondition.Rain,
+            TemperatureC = 9,
+            PrecipitationMm = 1.2,
+            EuropeanAqi = 48,
+            Pm25 = 18.5,
+            Pm10 = 34.0,
+            AirQualityCategory = "Umjereno zagađen zrak"
+        };
 
         var options = new List<RouteOptionDto>();
 
@@ -34,8 +43,14 @@ public class MockRoutePlanner : IRoutePlanner
         {
             var walkKm = Math.Round(baseKm, 2);
             var walkMinutes = Math.Max(1, Math.Round(walkKm * 12));
-            options.Add(Option("walk", TransportMode.Walk, "Pješke", walkMinutes, walkKm, 0, 0, 100,
-                Walk(walkMinutes, walkKm, origin, destination)));
+            var walkOpt = Option("walk", TransportMode.Walk, "Pješke", walkMinutes, walkKm, 0, 0, 100,
+                Walk(walkMinutes, walkKm, origin, destination));
+            walkOpt.Warnings.Add(new RouteWarningDto
+            {
+                Type = WarningType.AirQuality,
+                Message = $"Kvaliteta zraka (EAQI {weather.EuropeanAqi}, PM2.5 {weather.Pm25:F1} µg/m³): niža kvaliteta zraka uz prometnicu, pa hodanje na ovoj dionici možda neće biti najugodnije."
+            });
+            options.Add(walkOpt);
         }
 
         if (canRideTwoWheel && IsPreferred(request.PreferredModes, TransportMode.Bike))
@@ -161,6 +176,14 @@ public class MockRoutePlanner : IRoutePlanner
                 });
                 break;
         }
+
+        option.Warnings.Add(new RouteWarningDto
+        {
+            Type = WarningType.AirQuality,
+            Message = isBike
+                ? "Kvaliteta zraka (EAQI 48, PM2.5 18.5 µg/m³): niža kvaliteta zraka na dijelu rute, pa vožnja bicikla možda neće biti najugodnija."
+                : "Kvaliteta zraka (EAQI 48, PM2.5 18.5 µg/m³): niža kvaliteta zraka na dijelu rute, pa vožnja romobila možda neće biti najugodnija."
+        });
 
         if (ageCategory == AgeCategory.From14To15)
         {

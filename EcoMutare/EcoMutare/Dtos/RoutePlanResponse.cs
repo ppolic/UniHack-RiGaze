@@ -7,6 +7,12 @@ public class WeatherInfoDto
     public WeatherCondition Condition { get; set; }
     public double TemperatureC { get; set; }
     public double PrecipitationMm { get; set; }
+
+    /// <summary>Europski indeks kvalitete zraka (EAQI: 0-20 Dobar, 20-40 Umjeren, 40-60 Srednji, 60+ Loš).</summary>
+    public int EuropeanAqi { get; set; } = 22;
+    public double Pm25 { get; set; } = 9.5;
+    public double Pm10 { get; set; } = 18.0;
+    public string AirQualityCategory { get; set; } = "Dobra";
 }
 
 public class RouteWarningDto

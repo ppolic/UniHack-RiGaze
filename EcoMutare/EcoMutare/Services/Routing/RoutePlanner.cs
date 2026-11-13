@@ -433,6 +433,15 @@ public class RoutePlanner : IRoutePlanner
 
         if (candidateStops.Count < 2) return null;
 
+        // Provjeri je li najbliža opća stanica nepristupačna u odnosu na odabranu wheelchair-accessible stanicu
+        var nearestAnyStart = TimisoaraPublicData.TransitStops
+            .OrderBy(s => TimisoaraPublicData.HaversineMeters(origin, new GeoPoint { Lat = s.Lat, Lng = s.Lng }))
+            .First();
+        var nearestAnyEnd = TimisoaraPublicData.TransitStops
+            .Where(s => s.Id != nearestAnyStart.Id)
+            .OrderBy(s => TimisoaraPublicData.HaversineMeters(destination, new GeoPoint { Lat = s.Lat, Lng = s.Lng }))
+            .First();
+
         var startStop = candidateStops
             .OrderBy(s => TimisoaraPublicData.HaversineMeters(origin, new GeoPoint { Lat = s.Lat, Lng = s.Lng }))
             .First();
@@ -441,6 +450,17 @@ public class RoutePlanner : IRoutePlanner
             .Where(s => s.Id != startStop.Id)
             .OrderBy(s => TimisoaraPublicData.HaversineMeters(destination, new GeoPoint { Lat = s.Lat, Lng = s.Lng }))
             .First();
+
+        var warnings = new List<RouteWarningDto>(eval.Warnings);
+        if (profile.HasDisability && (nearestAnyStart.Id != startStop.Id || nearestAnyEnd.Id != endStop.Id))
+        {
+            var skippedName = nearestAnyStart.Id != startStop.Id ? nearestAnyStart.Name : nearestAnyEnd.Name;
+            warnings.Add(new RouteWarningDto
+            {
+                Type = WarningType.NotAccessible,
+                Message = $"Wheelchair filtriranje: Stanica '{skippedName}' nema pristup za kolica – ruta je preusmjerena na najbližu niskopodnu STPT stanicu ({startStop.Name} → {endStop.Name})."
+            });
+        }
 
         var startPt = new GeoPoint { Lat = startStop.Lat, Lng = startStop.Lng };
         var endPt = new GeoPoint { Lat = endStop.Lat, Lng = endStop.Lng };
@@ -517,7 +537,7 @@ public class RoutePlanner : IRoutePlanner
                     Geometry = walk2.Geometry
                 }
             },
-            Warnings = eval.Warnings
+            Warnings = warnings
         };
     }
 
@@ -648,6 +668,10 @@ public class RoutePlanner : IRoutePlanner
         if (!eval.Allowed) return null;
 
         // Odaberi najbliže TimPark parkiralište uz odredište (ako osoba ima invaliditet -> samo s invalidskim mjestima)
+        var nearestAnyParking = TimisoaraPublicData.Parkings
+            .OrderBy(p => TimisoaraPublicData.HaversineMeters(destination, new GeoPoint { Lat = p.Lat, Lng = p.Lng }))
+            .FirstOrDefault();
+
         var parking = TimisoaraPublicData.Parkings
             .Where(p => !profile.HasDisability || (p.HasDisabledAccess && p.AccessibleSpots > 0))
             .OrderBy(p => TimisoaraPublicData.HaversineMeters(destination, new GeoPoint { Lat = p.Lat, Lng = p.Lng }))
@@ -660,6 +684,24 @@ public class RoutePlanner : IRoutePlanner
         var walkFromParking = await _routing.GetRouteAsync(parkingPt, destination, walkProfile, ct);
 
         if (driveToParking is null || walkFromParking is null) return null;
+
+        var carWarnings = new List<RouteWarningDto>(eval.Warnings);
+        if (profile.HasDisability && nearestAnyParking is not null && nearestAnyParking.Id != parking.Id)
+        {
+            carWarnings.Add(new RouteWarningDto
+            {
+                Type = WarningType.NotAccessible,
+                Message = $"Wheelchair filtriranje: Najbliže parkiralište ({nearestAnyParking.Name}) nema označena invalidska mjesta – odabrano je prilagođeno parkiralište {parking.Name}."
+            });
+        }
+        if (profile.HasDisability && walkFromParking.AverageGradePercent > 4.0)
+        {
+            carWarnings.Add(new RouteWarningDto
+            {
+                Type = WarningType.Slope,
+                Message = $"Pristup u kolicima od parkirališta ima nagib {walkFromParking.AverageGradePercent:F1}%."
+            });
+        }
 
         double driveKm = Math.Round(driveToParking.DistanceMeters / 1000.0, 2);
         double driveMins = Math.Max(2.0, Math.Round(driveToParking.DurationSeconds / 60.0, 1));
@@ -705,13 +747,15 @@ public class RoutePlanner : IRoutePlanner
                 new()
                 {
                     Mode = TransportMode.Walk,
-                    Description = $"Pješke od parkirališta {parking.Name} do odredišta",
+                    Description = profile.HasDisability
+                        ? $"Pristupačan put bez barijera (wheelchair) od parkirališta {parking.Name} do odredišta"
+                        : $"Pješke od parkirališta {parking.Name} do odredišta",
                     DurationMinutes = walkMins,
                     DistanceKm = walkKm,
                     Geometry = walkFromParking.Geometry
                 }
             },
-            Warnings = eval.Warnings
+            Warnings = carWarnings
         };
     }
 
@@ -769,11 +813,11 @@ public class RoutePlanner : IRoutePlanner
 
         double fastest = options.Min(o => o.DurationMinutes);
 
-        // Preporuči najzeleniju opciju bez nepovoljnih vremenskih/infrastrukturnih upozorenja čije trajanje je razumno
+        // Preporuči najzeleniju opciju bez nepovoljnih vremenskih/infrastrukturnih/zračnih upozorenja čije trajanje je razumno
         var bestClean = options.FirstOrDefault(o =>
             o.Mode != TransportMode.Car &&
             o.DurationMinutes <= fastest * 2.2 &&
-            !o.Warnings.Any(w => w.Type is WarningType.Rain or WarningType.Snow or WarningType.NoBikeLane));
+            !o.Warnings.Any(w => w.Type is WarningType.Rain or WarningType.Snow or WarningType.NoBikeLane or WarningType.AirQuality));
 
         var recommended = bestClean
                           ?? options.FirstOrDefault(o => o.Mode != TransportMode.Car && o.DurationMinutes <= fastest * 2.5)

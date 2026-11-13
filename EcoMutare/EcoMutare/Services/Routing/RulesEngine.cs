@@ -144,6 +144,39 @@ public class RulesEngine : IRulesEngine
                     });
                 }
             }
+
+            // 7. Provjera kvalitete zraka duž rute za otvorene modove (hodanje, bicikl, romobil, kombinirano)
+            if (mode is TransportMode.Walk or TransportMode.Bike or TransportMode.Scooter or TransportMode.Combined)
+            {
+                var (hasPoorAir, aqi, pm25, zoneName, note) =
+                    TimisoaraPublicData.EvaluateRouteAirQuality(route.Geometry, weather);
+
+                if (hasPoorAir)
+                {
+                    var modeLabel = mode == TransportMode.Walk
+                        ? "hodanje"
+                        : mode == TransportMode.Bike
+                            ? "vožnja bicikla"
+                            : mode == TransportMode.Scooter
+                                ? "vožnja romobila"
+                                : "aktivni dio rute";
+
+                    warnings.Add(new RouteWarningDto
+                    {
+                        Type = WarningType.AirQuality,
+                        Message = $"Kvaliteta zraka (EAQI {aqi}, PM2.5 {pm25:F1} µg/m³ – {zoneName}): niža kvaliteta zraka zbog {note}, pa {modeLabel} na ovoj dionici možda neće biti najugodnije."
+                    });
+                }
+            }
+        }
+        else if (mode is TransportMode.Walk or TransportMode.Bike or TransportMode.Scooter &&
+                 (weather.EuropeanAqi >= 40 || weather.Pm25 >= 15.0))
+        {
+            warnings.Add(new RouteWarningDto
+            {
+                Type = WarningType.AirQuality,
+                Message = $"Kvaliteta zraka (EAQI {weather.EuropeanAqi}, PM2.5 {weather.Pm25:F1} µg/m³): povišena koncentracija čestica u zraku, kretanje na otvorenom možda neće biti najugodnije."
+            });
         }
 
         return new RuleEvaluationResult
