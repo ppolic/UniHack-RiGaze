@@ -1,3 +1,6 @@
+using EcoMutare.Data;
+using Microsoft.EntityFrameworkCore;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,6 +10,23 @@ builder.Services.AddControllers()
         // Enumi se šalju kao stringovi ("Bike"), ne kao brojevi; camelCase je zadani.
         o.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
     });
+
+// EF Core: MySQL baza (produkcija na serveru / lokalno).
+// ServerVersion.AutoDetect dohvaća verziju izravno sa servera, a fallback je MySQL 8.0.
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Server=localhost;Port=3306;Database=ecomutare;User=root;Password=root;";
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+{
+    try
+    {
+        options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+    }
+    catch
+    {
+        options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 0, 36)));
+    }
+});
 
 // Memory cache za ORS rute (1h), Open-Meteo vrijeme (30 min) i elevaciju (6h)
 builder.Services.AddMemoryCache();
@@ -63,6 +83,22 @@ builder.Services.Configure<EcoMutare.Integrations.Gemini.GeminiOptions>(
     builder.Configuration.GetSection(EcoMutare.Integrations.Gemini.GeminiOptions.SectionName));
 
 var app = builder.Build();
+
+// Automatska inicijalizacija baze na serveru pri pokretanju
+using (var scope = app.Services.CreateScope())
+{
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    try
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.Database.EnsureCreated();
+        logger.LogInformation("MySQL baza uspješno spojena i verificirana.");
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning("Upozorenje: Spajanje na MySQL bazu nije uspjelo ({Message}). Provjerite ConnectionStrings:DefaultConnection ili pokrenite MySQL server.", ex.Message);
+    }
+}
 
 if (string.IsNullOrWhiteSpace(app.Configuration["Gemini:ApiKey"]))
 {
