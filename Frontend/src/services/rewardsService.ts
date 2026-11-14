@@ -1,5 +1,93 @@
-import { apiFetch, API_CONFIG } from './api';
+import { apiFetch, API_CONFIG, ApiHttpError, isRealJwtToken } from './api';
 import { RewardCoupon, TripHistoryItem } from '../types/rewards';
+import { useUserStore } from '../store/userStore';
+
+interface BackendRewardDto {
+  id: number;
+  name: string;
+  description?: string | null;
+  pointsCost: number;
+  isActive: boolean;
+}
+
+interface BackendRedeemResponse {
+  rewardId: number;
+  rewardName: string;
+  pointsSpent: number;
+  newBalance: number;
+  transactionId: number;
+  discountCode: string;
+}
+
+interface BackendTripItemDto {
+  id: number;
+  mode: string;
+  originName?: string | null;
+  destinationName?: string | null;
+  distanceKm: number;
+  durationMinutes: number;
+  co2SavedGrams: number;
+  pointsEarned: number;
+  startedAt: string;
+}
+
+interface BackendTripHistorySummaryResponse {
+  userId: number;
+  totalTripsCount: number;
+  totalDistanceKm: number;
+  totalCo2SavedKg: number;
+  currentPointsBalance: number;
+  trips: BackendTripItemDto[];
+}
+
+function mapRewardDto(dto: BackendRewardDto): RewardCoupon {
+  const text = `${dto.name} ${dto.description || ''}`.toLowerCase();
+  let category: RewardCoupon['category'] = 'transit';
+  let partnerName = 'BeGreen Timișoara Partner';
+  let discountValue = `${dto.pointsCost} eco-bodova`;
+
+  if (text.includes('kav') || text.includes('coffee') || text.includes('tucano')) {
+    category = 'coffee';
+    partnerName = text.includes('tucano')
+      ? 'Tucano Coffee Iulius Town'
+      : 'Timișoara Specialty Coffee';
+    discountValue = text.includes('10%') ? '10% popust' : 'Besplatna kava';
+  } else if (text.includes('bicikl') || text.includes('velotm') || text.includes('romobil')) {
+    category = 'repair';
+    partnerName = text.includes('velotm') ? 'VeloTM Timișoara' : 'Mikromobilnost TM';
+    discountValue = text.includes('30 min')
+      ? '30 min besplatno'
+      : text.includes('3')
+      ? '3 otključavanja'
+      : 'Besplatna vožnja';
+  } else if (text.includes('karta') || text.includes('stpt') || text.includes('prijevoz')) {
+    category = 'transit';
+    partnerName = 'STPT Timișoara';
+    discountValue = text.includes('dnevna') ? 'Dnevna karta' : '1x vožnja besplatno';
+  }
+
+  return {
+    id: String(dto.id),
+    partnerName,
+    title: dto.name,
+    description: dto.description || 'Nagrada za održivu mobilnost u Timișoari.',
+    pointsCost: dto.pointsCost,
+    category,
+    discountValue,
+    expiryDate: '2026-12-31',
+  };
+}
+
+function formatTripDate(isoDate: string): string {
+  const dt = new Date(isoDate);
+  if (!Number.isFinite(dt.getTime())) return isoDate;
+  return dt.toLocaleString('hr-HR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
 const MOCK_REWARDS: RewardCoupon[] = [
   {
@@ -64,20 +152,91 @@ export const rewardsService = {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return MOCK_REWARDS;
     }
-    return apiFetch<RewardCoupon[]>('/rewards');
+    try {
+      const items = await apiFetch<BackendRewardDto[]>('/rewards');
+      if (Array.isArray(items) && items.length > 0) {
+        return items.filter((r) => r.isActive).map(mapRewardDto);
+      }
+      return MOCK_REWARDS;
+    } catch (err) {
+      console.warn('API /rewards unreachable, using local catalog fallback:', err);
+      return MOCK_REWARDS;
+    }
   },
 
-  async redeemCoupon(couponId: string): Promise<{ success: boolean; promoCode: string }> {
+  async redeemCoupon(
+    couponId: string
+  ): Promise<{ success: boolean; promoCode: string; newBalance?: number; pointsSpent?: number }> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return { success: true, promoCode: `ECO-TM-${Math.floor(1000 + Math.random() * 9000)}` };
     }
-    return apiFetch(`/rewards/${couponId}/redeem`, { method: 'POST' });
+
+    const numericId = /^\d+$/.test(couponId)
+      ? couponId
+      : couponId.replace(/\D+/g, '');
+
+    if (!numericId) {
+      return { success: true, promoCode: `ECO-TM-${Math.floor(1000 + Math.random() * 9000)}` };
+    }
+
+    const token = useUserStore.getState().token;
+    if (!isRealJwtToken(token)) {
+      throw new Error('Prijava s backendom nije aktivna. Osvježite prijavu i pokušajte ponovno.');
+    }
+
+    try {
+      const res = await apiFetch<BackendRedeemResponse>(`/rewards/${numericId}/redeem`, {
+        method: 'POST',
+      });
+      return {
+        success: true,
+        promoCode: res.discountCode,
+        newBalance: res.newBalance,
+        pointsSpent: res.pointsSpent,
+      };
+    } catch (err) {
+      if (err instanceof ApiHttpError) {
+        throw err;
+      }
+      throw new Error('Backend trenutno nije dostupan za otkup nagrade.');
+    }
   },
 
   async getTripHistory(): Promise<TripHistoryItem[]> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
       return MOCK_HISTORY;
     }
-    return apiFetch<TripHistoryItem[]>('/trips');
+
+    const store = useUserStore.getState();
+    if (!isRealJwtToken(store.token)) {
+      return MOCK_HISTORY;
+    }
+
+    try {
+      const summary = await apiFetch<BackendTripHistorySummaryResponse>('/trips');
+      if (store.user && Number(store.user.id) === summary.userId) {
+        store.setUser({
+          ...store.user,
+          totalEcoPoints: summary.currentPointsBalance,
+          totalCo2SavedKg: summary.totalCo2SavedKg,
+          completedTripsCount: summary.totalTripsCount,
+        });
+      }
+
+      return (summary.trips || []).map((t) => ({
+        id: String(t.id),
+        date: formatTripDate(t.startedAt),
+        originName: t.originName || 'Polazište',
+        destinationName: t.destinationName || 'Odredište',
+        mode: t.mode,
+        distanceKm: t.distanceKm,
+        durationMinutes: t.durationMinutes,
+        co2SavedGrams: Math.round(t.co2SavedGrams),
+        pointsEarned: t.pointsEarned,
+      }));
+    } catch (err) {
+      console.warn('API /trips unreachable, using mock history:', err);
+      return MOCK_HISTORY;
+    }
   },
 };

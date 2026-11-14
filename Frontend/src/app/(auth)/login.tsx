@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { authService } from '../../services/authService';
+import { ApiHttpError } from '../../services/api';
+import { DemoUserRole } from '../../store/userStore';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -11,18 +14,43 @@ import { AppCard } from '../../components/common/AppCard';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginAsDemoUser } = useAuth();
-  const [email, setEmail] = useState('student@ecomutare.tm');
-  const [password, setPassword] = useState('password123');
+  const { loginAsDemoUser, setUser, setToken } = useAuth();
+  const [email, setEmail] = useState('ana.student@upt.ro');
+  const [password, setPassword] = useState('Demo123!');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = () => {
-    loginAsDemoUser('student');
-    router.replace('/(tabs)');
+  const handleLogin = async () => {
+    if (loading) return;
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      const res = await authService.login({ email, password });
+      setToken(res.token);
+      setUser(res.user);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      if (err instanceof ApiHttpError) {
+        setErrorMsg(err.message || 'Pogrešan email ili lozinka.');
+      } else {
+        await loginAsDemoUser('student');
+        router.replace('/(tabs)');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleDemoAccessibilityLogin = () => {
-    loginAsDemoUser('accessibility');
-    router.replace('/(tabs)');
+  const handleQuickDemo = async (role: DemoUserRole) => {
+    if (loading) return;
+    setErrorMsg(null);
+    setLoading(true);
+    try {
+      await loginAsDemoUser(role);
+      router.replace('/(tabs)');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,33 +70,42 @@ export default function LoginScreen() {
       </View>
 
       <AppCard style={styles.formCard}>
-        <Text style={styles.formTitle}>DEMO MODE — Demo pristup</Text>
+        <Text style={styles.formTitle}>Prijava u BeGreen</Text>
         <Text style={styles.demoNotice}>
-          Email i lozinka služe samo za prikaz obrasca i ne provjeravaju se na serveru.
-          Ne unosite stvarne lozinke. Nastavak otvara studentski demo profil, bez
-          autentifikacije stvarnog računa.
+          Prijavite se putem EcoMutare računa (npr. ana.student@upt.ro / Demo123!) ili
+          odaberite jedan od brzih demo profila ispod.
         </Text>
+        {errorMsg && (
+          <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+            {errorMsg}
+          </Text>
+        )}
         <AppInput
           label="Email adresa"
-          accessibilityLabel="Email adresa — demo, ne provjerava se"
+          accessibilityLabel="Email adresa"
           value={email}
-          onChangeText={setEmail}
-          placeholder="unesite email"
+          onChangeText={(v) => {
+            setEmail(v);
+            setErrorMsg(null);
+          }}
+          placeholder="ana.student@upt.ro"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
-          autoComplete="off"
-          returnKeyType="done"
-          onSubmitEditing={handleLogin}
+          autoComplete="email"
+          returnKeyType="next"
         />
         <AppInput
           label="Lozinka"
-          accessibilityLabel="Lozinka — samo demo, ne unosite stvarnu lozinku"
+          accessibilityLabel="Lozinka"
           value={password}
-          onChangeText={setPassword}
+          onChangeText={(v) => {
+            setPassword(v);
+            setErrorMsg(null);
+          }}
           placeholder="••••••••"
           secureTextEntry
-          autoComplete="off"
+          autoComplete="password"
           autoCorrect={false}
           autoCapitalize="none"
           returnKeyType="done"
@@ -76,7 +113,8 @@ export default function LoginScreen() {
         />
 
         <AppButton
-          title="Otvori studentski demo"
+          title="Prijavi se"
+          loading={loading}
           onPress={handleLogin}
           style={styles.submitBtn}
         />
@@ -86,7 +124,7 @@ export default function LoginScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            Želite vlastiti demo profil? <Text style={styles.linkText}>Izradite demo profil</Text>
+            Nemate račun? <Text style={styles.linkText}>Registrirajte se</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>
@@ -99,14 +137,16 @@ export default function LoginScreen() {
             title="👤 Student (Bicikl/JPP)"
             variant="outline"
             size="sm"
-            onPress={handleLogin}
+            disabled={loading}
+            onPress={() => handleQuickDemo('student')}
             style={styles.demoBtn}
           />
           <AppButton
             title="♿ Pristupačnost (Kolica)"
             variant="outline"
             size="sm"
-            onPress={handleDemoAccessibilityLogin}
+            disabled={loading}
+            onPress={() => handleQuickDemo('accessibility')}
             style={styles.demoBtn}
           />
         </View>
@@ -164,6 +204,12 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.textSecondary,
     marginBottom: spacing.lg,
+  },
+  errorText: {
+    ...typography.caption,
+    color: colors.danger,
+    fontWeight: '600',
+    marginBottom: spacing.md,
   },
   switchAuth: {
     marginTop: spacing.md,

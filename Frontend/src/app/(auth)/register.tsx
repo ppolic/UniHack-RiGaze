@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Keyboard } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { authService } from '../../services/authService';
+import { ApiHttpError } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -9,7 +11,7 @@ import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
 
-type FormErrors = { fullName?: string; email?: string; birthDate?: string };
+type FormErrors = { fullName?: string; email?: string; password?: string; birthDate?: string; server?: string };
 
 function calculateAge(birthDate: string, today: Date): number {
   const [year, month, day] = birthDate.split('-').map(Number);
@@ -41,46 +43,75 @@ export default function RegisterScreen() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('Demo123!');
   const [birthDate, setBirthDate] = useState('2004-06-15');
   const [hasDisability, setHasDisability] = useState(false);
   const [hasOwnBicycle, setHasOwnBicycle] = useState(true);
   const [hasOwnCar, setHasOwnCar] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  const [loading, setLoading] = useState(false);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
+    if (loading) return;
     const today = new Date();
     const trimmedName = fullName.trim();
     const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
     const trimmedBirthDate = birthDate.trim();
     const nextErrors: FormErrors = {
       fullName: trimmedName ? undefined : 'Unesite ime i prezime.',
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
         ? undefined : 'Unesite valjanu email adresu.',
+      password: trimmedPassword.length >= 8
+        ? undefined : 'Lozinka mora imati najmanje 8 znakova.',
       birthDate: getBirthDateError(trimmedBirthDate, today),
     };
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
     Keyboard.dismiss();
-    setUser({
-      id: `usr_${Date.now()}`,
-      email: trimmedEmail,
-      fullName: trimmedName,
-      birthDate: trimmedBirthDate,
-      age: calculateAge(trimmedBirthDate, today),
-      preferences: {
+    setLoading(true);
+    try {
+      const res = await authService.register({
+        email: trimmedEmail,
+        password: trimmedPassword,
+        fullName: trimmedName,
+        birthDate: trimmedBirthDate,
         hasDisability,
         hasOwnBicycle,
         hasOwnScooter: false,
         hasOwnCar,
-        preferredModes: hasDisability ? ['PublicTransit'] : ['Bicycle', 'PublicTransit'],
-      },
-      totalEcoPoints: 50, // Bonus dobrodošlice
-      totalCo2SavedKg: 0,
-      completedTripsCount: 0,
-    });
-    setToken('token-registered');
-    router.replace('/(tabs)');
+      });
+      setToken(res.token);
+      setUser(res.user);
+      router.replace('/(tabs)');
+    } catch (err: any) {
+      if (err instanceof ApiHttpError) {
+        setErrors({ server: err.message || 'Registracija nije uspjela.' });
+      } else {
+        setUser({
+          id: `usr_${Date.now()}`,
+          email: trimmedEmail,
+          fullName: trimmedName,
+          birthDate: trimmedBirthDate,
+          age: calculateAge(trimmedBirthDate, today),
+          preferences: {
+            hasDisability,
+            hasOwnBicycle,
+            hasOwnScooter: false,
+            hasOwnCar,
+            preferredModes: hasDisability ? ['PublicTransit'] : ['Bicycle', 'PublicTransit'],
+          },
+          totalEcoPoints: 50,
+          totalCo2SavedKg: 0,
+          completedTripsCount: 0,
+        });
+        setToken('token-registered');
+        router.replace('/(tabs)');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -90,10 +121,9 @@ export default function RegisterScreen() {
       automaticallyAdjustKeyboardInsets
     >
       <View style={styles.header}>
-        <Text style={styles.title}>DEMO MODE — Lokalni profil</Text>
+        <Text style={styles.title}>Registracija korisnika</Text>
         <Text style={styles.subtitle}>
-          Izradite lokalni demo profil za isprobavanje aplikacije. Ne stvara se stvarni
-          račun na serveru. Profil je privremen i ne sprema se nakon ponovnog pokretanja aplikacije.
+          Izradite BeGreen račun na backendu za praćenje vožnji, CO₂ uštede i eko-bodova (+50 bodova dobrodošlice).
         </Text>
       </View>
 
@@ -111,13 +141,12 @@ export default function RegisterScreen() {
           value={fullName}
           onChangeText={(value) => {
             setFullName(value);
-            setErrors((previous) => ({ ...previous, fullName: undefined }));
+            setErrors((previous) => ({ ...previous, fullName: undefined, server: undefined }));
           }}
           placeholder="npr. Ana Horvat"
           autoCapitalize="words"
           autoComplete="name"
-          returnKeyType="done"
-          onSubmitEditing={handleRegister}
+          returnKeyType="next"
         />
         <AppInput
           label="Email"
@@ -127,15 +156,30 @@ export default function RegisterScreen() {
           value={email}
           onChangeText={(value) => {
             setEmail(value);
-            setErrors((previous) => ({ ...previous, email: undefined }));
+            setErrors((previous) => ({ ...previous, email: undefined, server: undefined }));
           }}
-          placeholder="korisnik@ecomutare.tm"
+          placeholder="korisnik@upt.ro"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
           autoComplete="email"
-          returnKeyType="done"
-          onSubmitEditing={handleRegister}
+          returnKeyType="next"
+        />
+        <AppInput
+          label="Lozinka (min. 8 znakova)"
+          accessibilityLabel="Lozinka"
+          accessibilityHint={errors.password}
+          error={errors.password}
+          value={password}
+          onChangeText={(value) => {
+            setPassword(value);
+            setErrors((previous) => ({ ...previous, password: undefined, server: undefined }));
+          }}
+          placeholder="Minimalno 8 znakova"
+          secureTextEntry
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="next"
         />
         <AppInput
           label="Datum rođenja (YYYY-MM-DD)"
@@ -145,7 +189,7 @@ export default function RegisterScreen() {
           value={birthDate}
           onChangeText={(value) => {
             setBirthDate(value);
-            setErrors((previous) => ({ ...previous, birthDate: undefined }));
+            setErrors((previous) => ({ ...previous, birthDate: undefined, server: undefined }));
           }}
           placeholder="2004-06-15"
           autoCorrect={false}
@@ -187,7 +231,8 @@ export default function RegisterScreen() {
         </View>
 
         <AppButton
-          title="Izradi demo profil (+50 eko-bodova)"
+          title="Registriraj se (+50 eko-bodova)"
+          loading={loading}
           onPress={handleRegister}
           style={styles.submitBtn}
         />
@@ -197,7 +242,7 @@ export default function RegisterScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            <Text style={styles.linkText}>Natrag na demo pristup</Text>
+            <Text style={styles.linkText}>Natrag na prijavu</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>

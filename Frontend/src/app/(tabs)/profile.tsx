@@ -8,6 +8,8 @@ import { AppInput } from '../../components/common/AppInput';
 import { AppCard } from '../../components/common/AppCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
+import { authService } from '../../services/authService';
+import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useRouter } from 'expo-router';
 
 export default function ProfileScreen() {
@@ -44,6 +46,13 @@ export default function ProfileScreen() {
 
     setUser({ ...currentUser, fullName });
     handleCancel();
+
+    const currentToken = useUserStore.getState().token;
+    if (!API_CONFIG.USE_MOCK_FALLBACK && isRealJwtToken(currentToken)) {
+      void authService.updateProfile({ fullName }, currentUser).catch(() => {
+        // Lokalno ime već je ažurirano; tihi fallback ako backend nije dostupan
+      });
+    }
   };
 
   const handleLogout = () => {

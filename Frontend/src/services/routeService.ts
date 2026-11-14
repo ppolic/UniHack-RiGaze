@@ -721,6 +721,82 @@ async function buildRoadFollowingPlanResponse(
   };
 }
 
+async function enrichOptionsWithStreetGeometry(
+  options: RouteOptionDto[],
+  origin: GeoPoint,
+  destination: GeoPoint
+): Promise<RouteOptionDto[]> {
+  return Promise.all(
+    options.map(async (opt) => {
+      const profile: 'foot' | 'bike' | 'driving' =
+        opt.mode === 'Walk'
+          ? 'foot'
+          : opt.mode === 'Bike' || opt.mode === 'Scooter'
+          ? 'bike'
+          : 'driving';
+
+      const segs = Array.isArray(opt.segments) ? opt.segments : [];
+      const enrichedSegs =
+        segs.length > 0
+          ? await Promise.all(
+              segs.map(async (seg, idx) => {
+                const segStart = seg.geometry?.[0] || (idx === 0 ? origin : destination);
+                const segEnd =
+                  seg.geometry?.[seg.geometry.length - 1] ||
+                  (idx === segs.length - 1 ? destination : origin);
+                const needsStreetGeometry =
+                  !seg.geometry ||
+                  seg.geometry.length < 2 ||
+                  (seg.geometry.length === 2 &&
+                    haversineDistanceMeters(segStart, segEnd) > 60);
+
+                const segProfile: 'foot' | 'bike' | 'driving' =
+                  seg.mode === 'Walk'
+                    ? 'foot'
+                    : seg.mode === 'Bike' || seg.mode === 'Scooter'
+                    ? 'bike'
+                    : profile;
+
+                const geometry = needsStreetGeometry
+                  ? await fetchStreetGeometry(segStart, segEnd, segProfile)
+                  : seg.geometry;
+
+                return {
+                  ...seg,
+                  durationMinutes: Math.max(1, Math.round(seg.durationMinutes)),
+                  distanceKm: Number(seg.distanceKm.toFixed(2)),
+                  geometry,
+                };
+              })
+            )
+          : [
+              {
+                mode: opt.mode,
+                description: opt.title || opt.mode,
+                durationMinutes: Math.max(1, Math.round(opt.durationMinutes)),
+                distanceKm: Number(opt.distanceKm.toFixed(2)),
+                geometry: await fetchStreetGeometry(origin, destination, profile),
+              },
+            ];
+
+      return {
+        ...opt,
+        durationMinutes: Math.max(1, Math.round(opt.durationMinutes)),
+        distanceKm: Number(opt.distanceKm.toFixed(2)),
+        co2Grams: Math.round(opt.co2Grams),
+        segments: enrichedSegs,
+      };
+    })
+  );
+}
+
+interface BackendTripResponse {
+  id: number;
+  co2SavedGrams: number;
+  pointsEarned: number;
+  newBalance: number;
+}
+
 export const routeService = {
   async planRoute(request: RoutePlanRequest): Promise<RoutePlanResponse> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
@@ -732,12 +808,16 @@ export const routeService = {
         method: 'POST',
         body: JSON.stringify(request),
       });
-      // Ensure every segment returned by backend has multi-point road geometry
-      const hasDetailedGeometry = apiRes.options?.every((opt) =>
-        opt.segments?.every((seg) => seg.geometry && seg.geometry.length >= 2)
-      );
-      if (hasDetailedGeometry && apiRes.options?.length > 0) {
-        return apiRes;
+      if (apiRes.options && apiRes.options.length > 0) {
+        const enrichedOptions = await enrichOptionsWithStreetGeometry(
+          apiRes.options,
+          request.origin,
+          request.destination
+        );
+        return {
+          ...apiRes,
+          options: enrichedOptions,
+        };
       }
       return buildRoadFollowingPlanResponse(request);
     } catch (err) {
@@ -749,20 +829,59 @@ export const routeService = {
   async recordTrip(tripData: {
     mode: string;
     distanceMeters: number;
+    durationSeconds?: number;
+    originName?: string;
+    destinationName?: string;
+    originLatitude?: number;
+    originLongitude?: number;
+    destinationLatitude?: number;
+    destinationLongitude?: number;
     co2SavedGrams: number;
     ecoPoints: number;
-  }): Promise<{ success: boolean; newPointsTotal: number }> {
+    startedAt?: string;
+    endedAt?: string;
+  }): Promise<{
+    success: boolean;
+    newPointsTotal?: number;
+    pointsEarned?: number;
+    co2SavedGrams?: number;
+    fromBackend?: boolean;
+  }> {
     if (API_CONFIG.USE_MOCK_FALLBACK) {
-      return { success: true, newPointsTotal: 390 };
+      return { success: true, pointsEarned: tripData.ecoPoints, fromBackend: false };
     }
+
+    const durationSec = Math.max(60, tripData.durationSeconds ?? 600);
+    const now = Date.now();
+    const body = {
+      mode: tripData.mode,
+      originName: tripData.originName || 'Polazište',
+      destinationName: tripData.destinationName || 'Odredište',
+      originLatitude: tripData.originLatitude ?? 45.7537,
+      originLongitude: tripData.originLongitude ?? 21.2257,
+      destinationLatitude: tripData.destinationLatitude ?? 45.7474,
+      destinationLongitude: tripData.destinationLongitude ?? 21.2263,
+      distanceKm: Math.max(0.01, Number((tripData.distanceMeters / 1000).toFixed(2))),
+      durationMinutes: Math.max(1, Math.round(durationSec / 60)),
+      startedAt: tripData.startedAt ?? new Date(now - durationSec * 1000).toISOString(),
+      endedAt: tripData.endedAt ?? new Date(now).toISOString(),
+    };
+
     try {
-      return await apiFetch('/trips', {
+      const res = await apiFetch<BackendTripResponse>('/trips', {
         method: 'POST',
-        body: JSON.stringify(tripData),
+        body: JSON.stringify(body),
       });
+      return {
+        success: true,
+        newPointsTotal: res.newBalance,
+        pointsEarned: res.pointsEarned,
+        co2SavedGrams: res.co2SavedGrams,
+        fromBackend: true,
+      };
     } catch (err) {
       console.warn('API /trips unreachable, recording locally:', err);
-      return { success: true, newPointsTotal: 390 };
+      return { success: true, pointsEarned: tripData.ecoPoints, fromBackend: false };
     }
   },
 };

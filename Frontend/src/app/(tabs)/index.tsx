@@ -374,21 +374,39 @@ export default function MapScreen() {
     }
 
     setLastTripEarlyFinish(false);
-    const co2Saved = Math.max(0, 390 - selectedOption.co2Grams);
-    setLastCo2Saved(co2Saved);
+    let co2Saved = Math.max(0, 390 - selectedOption.co2Grams);
+    let earnedPoints = selectedOption.ecoPoints;
+    let backendNewBalance: number | undefined;
 
     try {
-      await routeService.recordTrip({
+      const tripResult = await routeService.recordTrip({
         mode: selectedOption.mode,
         distanceMeters: Math.round(selectedOption.distanceKm * 1000),
+        durationSeconds: Math.round(selectedOption.durationMinutes * 60),
+        originName: endpoints.originName,
+        destinationName: endpoints.destinationName || 'Odredište',
+        originLatitude: endpoints.origin.lat,
+        originLongitude: endpoints.origin.lng,
+        destinationLatitude: endpoints.destination?.lat,
+        destinationLongitude: endpoints.destination?.lng,
         co2SavedGrams: co2Saved,
         ecoPoints: selectedOption.ecoPoints,
       });
+      if (tripResult.fromBackend) {
+        if (typeof tripResult.co2SavedGrams === 'number') {
+          co2Saved = tripResult.co2SavedGrams;
+        }
+        if (typeof tripResult.pointsEarned === 'number') {
+          earnedPoints = tripResult.pointsEarned;
+        }
+        backendNewBalance = tripResult.newPointsTotal;
+      }
     } catch (err) {
       console.warn('Greška pri spremanju vožnje, nastavljamo lokalno:', err);
     }
 
-    addEcoPoints(selectedOption.ecoPoints, co2Saved);
+    setLastCo2Saved(co2Saved);
+    addEcoPoints(earnedPoints, co2Saved, backendNewBalance);
     setTripModalVisible(true);
   };
 

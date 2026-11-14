@@ -38,10 +38,12 @@ export type WarningType =
   | 'Snow'
   | 'Cold'
   | 'Windy'
+  | 'AirQuality'
   | 'Slope'
   | 'Helmet'
   | 'NoBikeLane'
   | 'NotAccessible'
+  | 'RoadHazard'
   | 'Estimate';
 
 export interface RouteWarningDto {

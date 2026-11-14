@@ -685,35 +685,157 @@ async function fetchPmtParkings(): Promise<ParkingDetail[]> {
   }
 }
 
+interface BackendMobilityStationDto {
+  id: string;
+  name: string;
+  vehicleType: string;
+  lat: number;
+  lng: number;
+  availableVehicles: number;
+  unlockCostRon: number;
+}
+
+interface BackendParkingLotDto {
+  id: string;
+  name: string;
+  zone: string;
+  lat: number;
+  lng: number;
+  hourlyRateRon: number;
+  availableSpots: number;
+  accessibleSpots: number;
+  hasDisabledAccess: boolean;
+}
+
+interface BackendTransitStopDto {
+  id: string;
+  name: string;
+  lat: number;
+  lng: number;
+  wheelchairAccessible: boolean;
+  lines: string[];
+}
+
+function mapBackendStation(s: BackendMobilityStationDto): StationLocation {
+  const isScooter = s.vehicleType.toLowerCase().includes('scooter');
+  return {
+    id: s.id,
+    name: s.name,
+    type: isScooter ? 'scooter_station' : 'bike_station',
+    lat: s.lat,
+    lng: s.lng,
+    availableBikes: s.availableVehicles,
+    totalDocks: s.availableVehicles + 6,
+    isWheelchairAccessible: false,
+    dataSource: 'EcoMutare Backend (VeloTM/Micromobility)',
+  };
+}
+
+function mapBackendTransitStop(s: BackendTransitStopDto): StationLocation {
+  const joined = (s.lines || []).join(' ').toLowerCase();
+  const type: StationLocation['type'] = joined.includes('tram')
+    ? 'tram'
+    : joined.includes('trole')
+    ? 'trolleybus'
+    : 'bus';
+  return {
+    id: s.id,
+    name: s.name,
+    type,
+    lat: s.lat,
+    lng: s.lng,
+    lines: s.lines || [],
+    isWheelchairAccessible: s.wheelchairAccessible,
+    dataSource: 'EcoMutare Backend (STPT)',
+  };
+}
+
+function mapBackendParking(p: BackendParkingLotDto): ParkingDetail {
+  const z = (p.zone || '').toLowerCase();
+  const tariffColor: ParkingDetail['tariffColor'] = z.includes('verde')
+    ? 'green'
+    : z.includes('roș') || z.includes('ros')
+    ? 'red'
+    : z.includes('galben')
+    ? 'yellow'
+    : 'blue';
+  return {
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    spotsAvailable: p.availableSpots,
+    totalSpots: p.availableSpots + 30,
+    hourlyRateRon: Number(p.hourlyRateRon),
+    isAccessible: p.hasDisabledAccess,
+    accessibleSpots: p.accessibleSpots,
+    zone: p.zone,
+    tariffColor,
+    dataSource: 'EcoMutare Backend (TimPark)',
+  };
+}
+
 export const transitService = {
   /**
-   * Returns ALL real SMTT public transport stops (bus, tram, trolleybus) + VeloTM bike stations
-   * across Timișoara so the map always displays the full city network independent of selected route.
+   * Returns ALL real SMTT public transport stops (bus, tram, trolleybus) + VeloTM bike/scooter stations
+   * merged with EcoMutare backend metadata across Timișoara.
    */
   async getNearbyStations(
     lat = 45.7537,
     lng = 21.2257,
     maxTransitStops = 1000
   ): Promise<StationLocation[]> {
-    try {
-      const { stops } = await fetchPmtTransitNetwork();
-      const limitedStops =
-        maxTransitStops >= stops.length ? stops : stops.slice(0, maxTransitStops);
+    const [backendStationsRes, backendStopsRes, pmtRes] = await Promise.allSettled([
+      !API_CONFIG.USE_MOCK_FALLBACK
+        ? apiFetch<BackendMobilityStationDto[]>('/stations')
+        : Promise.resolve([]),
+      !API_CONFIG.USE_MOCK_FALLBACK
+        ? apiFetch<BackendTransitStopDto[]>(`/transit/stops/nearby?lat=${lat}&lng=${lng}`)
+        : Promise.resolve([]),
+      fetchPmtTransitNetwork(),
+    ]);
 
-      return [...VELOTM_STATIONS, ...limitedStops];
-    } catch (err) {
-      if (!API_CONFIG.USE_MOCK_FALLBACK) {
-        try {
-          const apiStops = await apiFetch<StationLocation[]>(
-            `/transit/stops/nearby?lat=${lat}&lng=${lng}`
-          );
-          return [...VELOTM_STATIONS, ...apiStops];
-        } catch {
-          // fallback below
+    const backendStations =
+      backendStationsRes.status === 'fulfilled' && Array.isArray(backendStationsRes.value)
+        ? backendStationsRes.value.map(mapBackendStation)
+        : [];
+    const mobilityStations = [...backendStations];
+    for (const v of VELOTM_STATIONS) {
+      if (!mobilityStations.some((m) => m.id === v.id)) {
+        mobilityStations.push(v);
+      }
+    }
+
+    const backendStops =
+      backendStopsRes.status === 'fulfilled' && Array.isArray(backendStopsRes.value)
+        ? backendStopsRes.value.map(mapBackendTransitStop)
+        : [];
+
+    if (pmtRes.status === 'fulfilled') {
+      const pmtStops = pmtRes.value.stops;
+      const limitedStops =
+        maxTransitStops >= pmtStops.length ? [...pmtStops] : pmtStops.slice(0, maxTransitStops);
+
+      // Enrich matching PMT stops with accessibility flags from backend STPT dataset
+      for (const bStop of backendStops) {
+        const match = limitedStops.find(
+          (p) => haversineDistanceMeters(p, bStop) < 75
+        );
+        if (match) {
+          match.isWheelchairAccessible = bStop.isWheelchairAccessible;
+        } else {
+          limitedStops.unshift(bStop);
         }
       }
-      return [...VELOTM_STATIONS, ...FALLBACK_STPT_STOPS];
+
+      return [...mobilityStations, ...limitedStops];
     }
+
+    if (backendStops.length > 0) {
+      return [...mobilityStations, ...backendStops];
+    }
+
+    return [...mobilityStations, ...FALLBACK_STPT_STOPS];
   },
 
   /**
@@ -838,21 +960,36 @@ export const transitService = {
   },
 
   /**
-   * Returns real TimPark parking lots from Primăria Timișoara /api/mobile/parking.
+   * Returns real TimPark parking lots from Backend /parkings + Primăria Timișoara /api/mobile/parking.
    */
   async getParkings(): Promise<ParkingDetail[]> {
-    try {
-      return await fetchPmtParkings();
-    } catch {
-      if (!API_CONFIG.USE_MOCK_FALLBACK) {
-        try {
-          return await apiFetch<ParkingDetail[]>('/parkings');
-        } catch {
-          // fallback below
+    const [backendRes, pmtRes] = await Promise.allSettled([
+      !API_CONFIG.USE_MOCK_FALLBACK
+        ? apiFetch<BackendParkingLotDto[]>('/parkings')
+        : Promise.resolve([]),
+      fetchPmtParkings(),
+    ]);
+
+    const backendParkings =
+      backendRes.status === 'fulfilled' && Array.isArray(backendRes.value)
+        ? backendRes.value.map(mapBackendParking)
+        : [];
+
+    if (pmtRes.status === 'fulfilled') {
+      const merged = [...backendParkings];
+      for (const lot of pmtRes.value) {
+        if (!merged.some((b) => haversineDistanceMeters(b, lot) < 60)) {
+          merged.push(lot);
         }
       }
-      return FALLBACK_PARKINGS;
+      return merged.length > 0 ? merged : FALLBACK_PARKINGS;
     }
+
+    if (backendParkings.length > 0) {
+      return backendParkings;
+    }
+
+    return FALLBACK_PARKINGS;
   },
 
   /**
