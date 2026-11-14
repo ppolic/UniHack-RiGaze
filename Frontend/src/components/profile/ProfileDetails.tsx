@@ -16,7 +16,8 @@ import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceM
 import { useTranslation } from '../../hooks/useTranslation';
 
 export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?: number | null }> = ({ children, verifiedAge }) => {
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
+  const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
   const {
     user,
     updatePreferences,
@@ -43,9 +44,29 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           </View>
         </View>
         <View style={styles.badgesRow}>
-          <Badge label={verifiedAge === undefined || verifiedAge === null ? t.profileAgeUnconfirmed : t.ageBadge(verifiedAge)} variant="neutral" />
+          {user.organizationBadge && (
+            <Badge label={user.organizationBadge} variant="success" />
+          )}
+          {user.passkeyEnabled && (
+            <Badge label="Auth0 Passkey Biometrie ⚡" variant="info" />
+          )}
+          <Badge
+            label={
+              user.zeroKnowledgeAgeVerified
+                ? `GDPR Zero-Knowledge: ${user.ageCategory ?? 'Adult'} 🛡️`
+                : (verifiedAge === undefined || verifiedAge === null
+                ? t.profileAgeUnconfirmed
+                : t.ageBadge(verifiedAge))
+            }
+            variant="neutral"
+          />
+          {user.trustBadge && (
+            <Badge label={user.trustBadge} variant="warning" />
+          )}
           {hasDisability && <Badge label={t.accessibilityActiveBadge} variant="info" />}
-          {(wcagLargeText || wcagTextRouteMode) && <Badge label={t.profileVisualOptionsActive} variant="success" />}
+          {(wcagLargeText || wcagTextRouteMode) && (
+            <Badge label={t.profileVisualOptionsActive} variant="success" />
+          )}
         </View>
         {children && <View style={styles.editor}>{children}</View>}
       </AppCard>

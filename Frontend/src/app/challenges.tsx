@@ -84,6 +84,17 @@ export default function ChallengesScreen() {
             <Text style={styles.description}>{t.challengesSubtitle}</Text>
           </View>
 
+          {user?.organizationBadge && (
+            <View style={{ backgroundColor: colors.surfaceMuted, padding: spacing.md, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, gap: 4 }}>
+              <Text style={{ ...typography.captionMedium, color: colors.primaryDark, fontWeight: '700' }}>
+                🎓 Green Campus Challenge: {user.organizationBadge}
+              </Text>
+              <Text style={{ ...typography.caption, color: colors.textSecondary }}>
+                Vaši zeleni kilometri automatski se pribrajaju na rang listu za {user.verifiedOrganization ?? 'vašu organizaciju'}!
+              </Text>
+            </View>
+          )}
+
           <AppCard style={styles.notice}>
             <Text style={styles.sectionTitle} accessibilityRole="header">{t.challengesNoticeTitle}</Text>
             <Text style={styles.description}>

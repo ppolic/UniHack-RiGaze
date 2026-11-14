@@ -3,7 +3,11 @@ import { Redirect } from 'expo-router';
 import { useAuth } from '../hooks/useAuth';
 
 export default function Index() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   // Authenticated startup opens Home; the Map keeps its existing route.
   if (isAuthenticated) {
