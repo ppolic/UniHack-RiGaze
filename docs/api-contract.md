@@ -21,13 +21,13 @@ Planira opcije puta od A do B prema profilu korisnika, vremenu i pravilima.
 
 **TransportMode:** `Walk`, `Bike`, `Scooter`, `PublicTransport`, `Car`, `Carpool`, `Combined`
 **WeatherCondition:** `Clear`, `Rain`, `Snow`, `Cold`, `Windy`
-**WarningType:** `Rain`, `Snow`, `Cold`, `Windy`, `Slope`, `Helmet`, `NoBikeLane`, `NotAccessible`, `Estimate`
+**WarningType:** `Rain`, `Snow`, `Cold`, `Windy`, `AirQuality`, `Slope`, `Helmet`, `NoBikeLane`, `NotAccessible`, `Estimate`
 
 ### Odgovor `200`
 
 | Polje | Opis |
 |---|---|
-| `weather` | `condition`, `temperatureC`, `precipitationMm` |
+| `weather` | `condition`, `temperatureC`, `precipitationMm`, `europeanAqi`, `pm25`, `pm10`, `airQualityCategory` |
 | `options[]` | sortirano po `ecoRank` (1 = najzelenije) |
 | `isMock` | `true` dok planer vraća testne podatke (FE prikazuje oznaku "demo") |
 
@@ -98,7 +98,9 @@ Pogreške validacije (npr. `lat` izvan raspona, nedostaje `origin`) vraćaju `40
 | `ageCategory = Adult` | `Car` dopušten; sve ostalo ovisno o invaliditetu |
 | `Walk`, `PublicTransport` | uvijek dostupni |
 
-**Vrijeme:** kiša dodaje upozorenje `Rain` na `Bike` i `Scooter`. Snijeg/hladnoća/vjetar analogno dodaju `Snow`/`Cold`/`Windy`.
+**Vrijeme i kvaliteta zraka:**
+- Kiša dodaje upozorenje `Rain` na `Bike` i `Scooter`. Snijeg/hladnoća/vjetar analogno dodaju `Snow`/`Cold`/`Windy`.
+- **Kvaliteta zraka (`AirQuality`):** prati se putem javnog Open-Meteo Air Quality API-ja (`european_aqi`, `pm2_5`, `pm10`) te lokalnih RNMCA mjernih postaja u Timișoari (`TM-1 Calea Șagului`, `TM-5 Calea Aradului`, `Pasaj Michelangelo`, `Gara de Nord`, `Calea Buziașului` – dostupno i na `GET /air-quality/stations`). Ako ruta prolazi kroz dionicu s nižom kvalitetom zraka (`EAQI >= 40` ili `PM2.5 >= 15 µg/m³`), opcije `Walk`, `Bike` i `Scooter` dobivaju upozorenje `AirQuality` da kretanje na otvorenom na toj dionici možda neće biti najugodnije.
 
 **Rangiranje i preporuka**
 1. `ecoRank`: sortiranje po `co2Grams` rastuće, pa po `durationMinutes`; rang kreće od 1.
