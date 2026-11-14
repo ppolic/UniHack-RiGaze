@@ -141,6 +141,23 @@ export const authService = {
     return { ...authenticatedResponse(res), expiresAtUtc: res.expiresAtUtc };
   },
 
+  async loginWithAuth0(payload: {
+    email?: string;
+    displayName?: string;
+    auth0Sub?: string;
+    accessToken?: string;
+    idToken?: string;
+    organizationName?: string;
+    usedPasskey?: boolean;
+    zeroKnowledgeAgeCategory?: string;
+  }): Promise<AuthResponse> {
+    const res = await apiFetch<BackendAuthResponse>('/auth/auth0', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    return authenticatedResponse(res);
+  },
+
   async login(payload: LoginPayload): Promise<AuthResponse> {
     const res = await apiFetch<BackendAuthResponse>('/auth/login', {
       method: 'POST',

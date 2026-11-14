@@ -80,7 +80,6 @@ export default function RootLayout() {
       clientId={clientId}
       authorizationParams={{
         redirect_uri: redirectUri,
-        audience: ENV.AUTH0_AUDIENCE,
       }}
     >
       <BackendSessionBridge><AppNavigation /></BackendSessionBridge>

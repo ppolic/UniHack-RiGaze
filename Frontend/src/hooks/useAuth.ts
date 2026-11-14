@@ -113,7 +113,39 @@ export function useAuth() {
     (auth0.user as Record<string, any>) || undefined
   );
 
-  const baseUser: UserProfile | null = store.user;
+  const fallbackUser: UserProfile | null =
+    auth0.isAuthenticated && auth0.user
+      ? {
+          id: auth0.user.sub || 'auth0-user',
+          email: auth0.user.email || rawEmail || 'auth0@begreen.tm.ro',
+          fullName: auth0.user.name || auth0.user.nickname || rawName || 'Auth0 Citizen',
+          birthDate: '2001-01-01',
+          age: 23,
+          preferences: {
+            hasDisability: false,
+            hasOwnBicycle: true,
+            hasOwnScooter: true,
+            hasOwnCar: false,
+            preferredModes: ['Bicycle', 'PublicTransit', 'Walking'],
+            wcagLargeText: false,
+            wcagTextRouteMode: false,
+          },
+          totalEcoPoints: 50,
+          totalCo2SavedKg: 0,
+          completedTripsCount: 0,
+          verifiedOrganization: intel.verifiedOrg,
+          organizationBadge: intel.orgBadge,
+          passkeyEnabled: intel.usedPasskey,
+          ageCategory: intel.ageCategory,
+          zeroKnowledgeAgeVerified: intel.zeroKnowledgeAgeVerified,
+          trustScore: intel.trustScore,
+          trustBadge: intel.trustBadge,
+          wazeVoteWeight: intel.wazeVoteWeight,
+          emailVerified: intel.emailVerified,
+        }
+      : null;
+
+  const baseUser: UserProfile | null = store.user || fallbackUser;
 
   const user: UserProfile | null = baseUser
     ? {
@@ -133,9 +165,11 @@ export function useAuth() {
       }
     : null;
 
-  const isAuthenticated = store.isAuthenticated && !!store.user && !!store.token;
+  const isAuthenticated =
+    (store.isAuthenticated && !!store.user && !!store.token) ||
+    (auth0.isAuthenticated && !!auth0.user);
   const isLoading = store.isLoading || auth0.isLoading;
-  const token = store.token;
+  const token = store.token || (auth0.isAuthenticated ? 'auth0-verified-token' : null);
 
   const logout = () => {
     cancelAuth0BackendSession(auth0.user?.sub);

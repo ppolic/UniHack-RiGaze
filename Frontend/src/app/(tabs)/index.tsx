@@ -248,9 +248,9 @@ export default function MapScreen() {
     planningPending.current = true;
     setIsLoading(true);
     try {
-      const userAge = user?.age ?? 22;
       const ageCategory: AgeCategory =
-        userAge < 14 ? 'Under14' : userAge < 16 ? 'From14To15' : 'Adult';
+        user?.ageCategory ??
+        (user?.age ? (user.age < 14 ? 'Under14' : user.age < 16 ? 'From14To15' : 'Adult') : 'Adult');
 
       const response = await routeService.planRoute({
         origin: currentEndpoints.origin,

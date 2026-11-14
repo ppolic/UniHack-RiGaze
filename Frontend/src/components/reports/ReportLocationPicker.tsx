@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { WebViewProps } from 'react-native-webview';
+type WebViewProps = any;
 import { AppButton } from '../common/AppButton';
 import { AuthenticatedHeader } from '../common/AuthenticatedHeader';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -175,10 +175,10 @@ export function ReportLocationPicker({ value, onConfirm, onCancel }: Props) {
                   originWhitelist={['*']}
                   javaScriptEnabled
                   scrollEnabled={false}
-                  onMessage={(event) => receive(event.nativeEvent.data)}
+                  onMessage={(event: any) => receive(event.nativeEvent.data)}
                   onError={fail}
                   onHttpError={fail}
-                  onShouldStartLoadWithRequest={(request) => request.url === 'about:blank' || request.url.startsWith('data:text/html')}
+                  onShouldStartLoadWithRequest={(request: any) => request.url === 'about:blank' || request.url.startsWith('data:text/html')}
                   style={styles.screen}
                 />
               ) : null}

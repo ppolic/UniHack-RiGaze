@@ -28,8 +28,32 @@ export default function LoginScreen() {
     user,
   } = useAuth0();
 
-  const signup = () =>
-    login({ authorizationParams: { screen_hint: 'signup' } });
+  React.useEffect(() => {
+    if (isAuthenticated && user) {
+      const timer = setTimeout(() => {
+        router.replace('/(tabs)/home');
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user]);
+
+  const signup = async () => {
+    try {
+      setErrorMsg(null);
+      await login({ authorizationParams: { screen_hint: 'signup' } });
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Neuspješna Auth0 registracija.');
+    }
+  };
+
+  const handleAuth0Login = async () => {
+    try {
+      setErrorMsg(null);
+      await login();
+    } catch (err: any) {
+      setErrorMsg(err?.message || 'Neuspješna Auth0 prijava.');
+    }
+  };
 
   const logout = () =>
     auth0Logout({
@@ -81,10 +105,7 @@ export default function LoginScreen() {
 
   if (isAuthenticated && user) {
     return (
-      <ScrollView
-        contentContainerStyle={styles.container}
-        keyboardShouldPersistTaps="handled"
-      >
+      <View style={styles.container}>
         <View style={styles.header}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoText}>🌱</Text>
@@ -93,20 +114,23 @@ export default function LoginScreen() {
         </View>
 
         <AppCard style={styles.formCard}>
-          <Text style={styles.demoNotice}>Logged in as {user.email}</Text>
-          <Text style={styles.formTitle}>User Profile</Text>
-          <Text style={styles.profilePre}>{JSON.stringify(user, null, 2)}</Text>
-          <AppButton title="Logout" onPress={logout} style={styles.submitBtn} />
-          <TouchableOpacity
+          <Text style={styles.formTitle}>
+            {localize('Autentificare reușită!', 'Authentication successful!')}
+          </Text>
+          <Text style={styles.demoNotice}>
+            {localize('Bun venit, ', 'Welcome, ')}{user.name || user.email}
+          </Text>
+          <ActivityIndicator size="small" color={colors.primary} style={{ marginVertical: spacing.md }} />
+          <AppButton
+            title={localize('Continuă în aplicație', 'Continue to application')}
             onPress={() => router.replace('/(tabs)/home')}
-            style={styles.switchAuth}
-          >
-            <Text style={styles.linkText}>
-              {localize('Continuă în aplicație', 'Continue to application')}
-            </Text>
+            style={styles.submitBtn}
+          />
+          <TouchableOpacity onPress={logout} style={styles.switchAuth}>
+            <Text style={styles.linkText}>Logout</Text>
           </TouchableOpacity>
         </AppCard>
-      </ScrollView>
+      </View>
     );
   }
 
@@ -178,7 +202,7 @@ export default function LoginScreen() {
           <AppButton
             title="Login"
             variant="outline"
-            onPress={() => login()}
+            onPress={handleAuth0Login}
             style={styles.auth0Btn}
           />
         </View>
