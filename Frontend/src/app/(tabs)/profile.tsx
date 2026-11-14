@@ -2,30 +2,28 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Keyboard } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography } from '../../theme/typography';
-import { spacing } from '../../theme/spacing';
+import { spacing, borderRadius } from '../../theme/spacing';
 import { colors } from '../../theme/colors';
 import { ProfileDetails } from '../../components/profile/ProfileDetails';
 import { AppButton } from '../../components/common/AppButton';
 import { AppInput } from '../../components/common/AppInput';
 import { AppCard } from '../../components/common/AppCard';
 import { useAuth } from '../../hooks/useAuth';
-import { useUserStore } from '../../store/userStore';
-import { authService } from '../../services/authService';
-import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useAuth0 } from '@auth0/auth0-react';
 import { captureSession, verifyAccount } from '../../services/fe2Session';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileScreen() {
-  const { user, token, setUser, logout } = useAuth();
+  const { user, token, saveProfileChanges, logout } = useAuth();
   const { logout: auth0Logout, user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
   const router = useRouter();
-  const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
   const [verifiedAge, setVerifiedAge] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveConfirmation, setSaveConfirmation] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     let active = true;
@@ -46,6 +44,7 @@ export default function ProfileScreen() {
     if (!user) return;
     setDraft({ userId: user.id, name: user.fullName });
     setNameError(undefined);
+    setSaveConfirmation(null);
   };
 
   const handleCancel = () => {
@@ -54,10 +53,8 @@ export default function ProfileScreen() {
     Keyboard.dismiss();
   };
 
-  const handleSave = () => {
-    // Preserve preferences and totals changed elsewhere while the editor was open.
-    const currentUser = useUserStore.getState().user;
-    if (!draft || !currentUser || currentUser.id !== draft.userId) {
+  const handleSave = async () => {
+    if (!draft || !user || user.id !== draft.userId) {
       handleCancel();
       return;
     }
@@ -68,14 +65,34 @@ export default function ProfileScreen() {
       return;
     }
 
-    setUser({ ...currentUser, fullName });
-    handleCancel();
-
-    const currentToken = useUserStore.getState().token;
-    if (!API_CONFIG.USE_MOCK_FALLBACK && isRealJwtToken(currentToken)) {
-      void authService.updateProfile({ fullName }, currentUser).catch(() => {
-        // Lokalno ime već je ažurirano; tihi fallback ako backend nije dostupan
+    setIsSaving(true);
+    setSaveConfirmation(null);
+    try {
+      await saveProfileChanges({
+        fullName,
+        preferences: user.preferences,
       });
+      handleCancel();
+      setSaveConfirmation(t.profileSavedConfirmation);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSavePreferences = async () => {
+    if (!user) return;
+    setIsSaving(true);
+    setSaveConfirmation(null);
+    try {
+      const trimmedDraft =
+        draft && draft.userId === user.id ? draft.name.trim() : undefined;
+      await saveProfileChanges({
+        ...(trimmedDraft ? { fullName: trimmedDraft } : {}),
+        preferences: user.preferences,
+      });
+      setSaveConfirmation(t.profileSavedConfirmation);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -108,7 +125,14 @@ export default function ProfileScreen() {
             <Text style={styles.description}>{t.profileSubtitle}</Text>
           </View>
 
-          <ProfileDetails verifiedAge={verifiedAge}>
+          <ProfileDetails
+            verifiedAge={verifiedAge}
+            onSavePreferences={() => {
+              void handleSavePreferences();
+            }}
+            savingPreferences={isSaving}
+            saveConfirmation={saveConfirmation}
+          >
             {user && (draft?.userId === user.id ? (
               <View style={styles.editor}>
                 <View accessibilityLiveRegion="polite">
@@ -127,7 +151,9 @@ export default function ProfileScreen() {
                     autoComplete="name"
                     returnKeyType="done"
                     submitBehavior="submit"
-                    onSubmitEditing={handleSave}
+                    onSubmitEditing={() => {
+                      void handleSave();
+                    }}
                     onKeyPress={({ nativeEvent }) => {
                       if (nativeEvent.key === 'Escape') handleCancel();
                     }}
@@ -137,65 +163,94 @@ export default function ProfileScreen() {
                   {t.profileNameSyncNote}
                 </Text>
                 <View style={styles.editActions}>
-                  <AppButton title={t.save} onPress={handleSave} style={styles.editButton} />
-                  <AppButton title={t.cancel} variant="outline" onPress={handleCancel} style={styles.editButton} />
+                  <AppButton
+                    title={isSaving ? t.savingChangesBtn : t.save}
+                    onPress={() => {
+                      void handleSave();
+                    }}
+                    disabled={isSaving}
+                    style={styles.editButton}
+                  />
+                  <AppButton
+                    title={t.cancel}
+                    variant="outline"
+                    onPress={handleCancel}
+                    disabled={isSaving}
+                    style={styles.editButton}
+                  />
                 </View>
               </View>
             ) : (
-              <AppButton title={t.editProfileBtn} variant="outline" onPress={handleEdit} style={styles.actionButton} />
+              <View style={styles.editor}>
+                <AppButton
+                  title={t.editProfileBtn}
+                  variant="outline"
+                  onPress={handleEdit}
+                  style={styles.actionButton}
+                />
+                {saveConfirmation && (
+                  <View style={styles.confirmationBanner} accessibilityLiveRegion="polite">
+                    <Text style={styles.confirmationText}>✅ {saveConfirmation}</Text>
+                  </View>
+                )}
+              </View>
             ))}
           </ProfileDetails>
 
           <AppCard style={styles.sessionCard}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
-              🛡️ Auth0 Sigurnost & Digitalni Identitet
+              {t.profileAuth0SecurityTitle}
             </Text>
             <View style={{ gap: spacing.md, marginTop: spacing.xs }}>
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  1. 🎓 Auth0 Organizations (Verified Carpool)
+                  {t.profileAuth0OrgTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.organizationBadge ?? 'Timișoara Citizen 🌱'}
+                  {user?.organizationBadge ?? t.profileAuth0OrgDefaultBadge}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Siguran Carpool otključan za {user?.verifiedOrganization ?? 'kampus i partnerske tvrtke (UPT, UVT, Continental)'}.
+                  {t.profileAuth0OrgDesc(
+                    user?.verifiedOrganization ?? t.profileAuth0OrgDefaultTarget
+                  )}
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  2. ♿ Auth0 Passkeys (Biometrija)
+                  {t.profileAuth0PasskeyTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.passkeyEnabled ? 'Aktivno (WebAuthn / FaceID / Otisak prsta) ⚡' : 'Podržano u Universal Loginu'}
+                  {user?.passkeyEnabled
+                    ? t.profileAuth0PasskeyEnabled
+                    : t.profileAuth0PasskeyDisabled}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Pristupačna prijava u 1 sekundi za bicikliste s rukavicama i osobe s invaliditetom.
+                  {t.profileAuth0PasskeyDesc}
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  3. 🛡️ GDPR Zero-Knowledge Provjera Dobi
+                  {t.profileAuth0ZkpTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  Status: {user?.ageCategory ?? 'Adult'} (Zero-Knowledge Action Shield)
+                  {t.profileAuth0ZkpStatusPrefix} {user?.ageCategory ?? 'Adult'} (Zero-Knowledge Action Shield)
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Aplikacija ne pohranjuje datum rođenja djece; zakonska pravila za e-romobile primjenjuju se automatski.
+                  {t.profileAuth0ZkpDesc}
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  4. 🤖 Bot Detection & Waze Citizen Trust Score
+                  {t.profileAuth0TrustTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.trustBadge ?? 'Waze Trust Score: 85/100 (2x Glas)'}
+                  {user?.trustBadge ?? t.profileAuth0TrustFallback}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Verificirani Auth0 račun daje veću težinu prijavama prepreka na karti i štiti kupone od botova.
+                  {t.profileAuth0TrustDesc}
                 </Text>
               </View>
             </View>
@@ -209,7 +264,7 @@ export default function ProfileScreen() {
 
           {isAuth0Authenticated && auth0User && (
             <AppCard style={styles.sessionCard}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">User Profile (Auth0)</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">{t.profileAuth0JsonTitle}</Text>
               <Text style={{ fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary }}>
                 {JSON.stringify(auth0User, null, 2)}
               </Text>
@@ -236,4 +291,17 @@ const styles = StyleSheet.create({
   editButton: { flexGrow: 1, minHeight: 48 },
   actionButton: { minHeight: 48 },
   sessionCard: { gap: spacing.lg },
+  confirmationBanner: {
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  confirmationText: {
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
+  },
 });

@@ -5,19 +5,71 @@ import {
   StyleSheet,
   Switch,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
+import { AppButton } from '../common/AppButton';
 import { Badge } from '../common/Badge';
 import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceModal';
 import { useTranslation } from '../../hooks/useTranslation';
 
-export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?: number | null }> = ({ children, verifiedAge }) => {
-  const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
+interface ProfileDetailsProps {
+  children?: React.ReactNode;
+  verifiedAge?: number | null;
+  onSavePreferences?: () => void;
+  savingPreferences?: boolean;
+  saveConfirmation?: string | null;
+}
+
+interface PreferenceRowProps {
+  label: string;
+  description: string;
+  value: boolean;
+  onChange: (nextValue: boolean) => void;
+}
+
+const PreferenceToggleRow: React.FC<PreferenceRowProps> = ({
+  label,
+  description,
+  value,
+  onChange,
+}) => (
+  <View style={styles.toggleRow}>
+    <Pressable
+      style={styles.toggleInfo}
+      onPress={() => onChange(!value)}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+      hitSlop={{ top: 6, bottom: 6, left: 4, right: 8 }}
+    >
+      <Text style={styles.toggleLabel}>{label}</Text>
+      <Text style={styles.toggleDesc}>{description}</Text>
+    </Pressable>
+    <Switch
+      value={value}
+      onValueChange={onChange}
+      trackColor={{ false: colors.controlBorder, true: colors.primary }}
+      thumbColor={colors.surface}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+    />
+  </View>
+);
+
+export const ProfileDetails: React.FC<ProfileDetailsProps> = ({
+  children,
+  verifiedAge,
+  onSavePreferences,
+  savingPreferences = false,
+  saveConfirmation,
+}) => {
+  const { t } = useTranslation();
   const {
     user,
     updatePreferences,
@@ -28,6 +80,48 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
   const [wcagModalVisible, setWcagModalVisible] = useState(false);
 
   if (!user) return null;
+
+  const mobilityToggles = [
+    {
+      key: 'hasDisability' as const,
+      label: t.disabilityLabel,
+      description: t.profileAccessibilityHint,
+      value: !!user.preferences.hasDisability,
+    },
+    {
+      key: 'hasOwnBicycle' as const,
+      label: t.ownBikeLabel,
+      description: t.profileOwnBikeHint,
+      value: !!user.preferences.hasOwnBicycle,
+    },
+    {
+      key: 'hasOwnScooter' as const,
+      label: t.ownScooterLabel,
+      description: t.ownScooterDesc,
+      value: !!user.preferences.hasOwnScooter,
+    },
+    {
+      key: 'hasOwnCar' as const,
+      label: t.ownCarLabel,
+      description: t.profileOwnCarHint,
+      value: !!user.preferences.hasOwnCar,
+    },
+  ];
+
+  const law232Toggles = [
+    {
+      key: 'wcagLargeText' as const,
+      label: t.wcagLargeTextLabel,
+      description: t.wcagLargeTextDesc,
+      value: wcagLargeText,
+    },
+    {
+      key: 'wcagTextRouteMode' as const,
+      label: t.wcagTextMapLabel,
+      description: t.wcagTextMapDesc,
+      value: wcagTextRouteMode,
+    },
+  ];
 
   return (
     <View style={styles.container}>
@@ -48,7 +142,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             <Badge label={user.organizationBadge} variant="success" />
           )}
           {user.passkeyEnabled && (
-            <Badge label="Auth0 Passkey Biometrie ⚡" variant="info" />
+            <Badge label={t.profilePasskeyBadge} variant="info" />
           )}
           <Badge
             label={
@@ -76,66 +170,17 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
         {t.accessibilityAndVehicles}
       </Text>
       <AppCard style={styles.settingsCard}>
-        {/* Disability Toggle */}
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>{t.disabilityLabel}</Text>
-            <Text style={styles.toggleDesc}>
-              {t.profileAccessibilityHint}
-            </Text>
-          </View>
-          <Switch
-            value={user.preferences.hasDisability}
-            onValueChange={(val) => updatePreferences({ hasDisability: val })}
-            trackColor={{ false: colors.controlBorder, true: colors.primary }}
-            thumbColor={colors.surface}
-            accessibilityRole="switch"
-            accessibilityLabel={t.disabilityLabel}
-            accessibilityState={{ checked: user.preferences.hasDisability }}
-          />
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Own Bicycle Toggle */}
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>{t.ownBikeLabel}</Text>
-            <Text style={styles.toggleDesc}>
-              {t.profileOwnBikeHint}
-            </Text>
-          </View>
-          <Switch
-            value={user.preferences.hasOwnBicycle}
-            onValueChange={(val) => updatePreferences({ hasOwnBicycle: val })}
-            trackColor={{ false: colors.controlBorder, true: colors.primary }}
-            thumbColor={colors.surface}
-            accessibilityRole="switch"
-            accessibilityLabel={t.ownBikeLabel}
-            accessibilityState={{ checked: user.preferences.hasOwnBicycle }}
-          />
-        </View>
-
-        <View style={styles.divider} />
-
-        {/* Own Car Toggle */}
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>{t.ownCarLabel}</Text>
-            <Text style={styles.toggleDesc}>
-              {t.profileOwnCarHint}
-            </Text>
-          </View>
-          <Switch
-            value={user.preferences.hasOwnCar}
-            onValueChange={(val) => updatePreferences({ hasOwnCar: val })}
-            trackColor={{ false: colors.controlBorder, true: colors.primary }}
-            thumbColor={colors.surface}
-            accessibilityRole="switch"
-            accessibilityLabel={t.ownCarLabel}
-            accessibilityState={{ checked: user.preferences.hasOwnCar }}
-          />
-        </View>
+        {mobilityToggles.map((item, idx) => (
+          <React.Fragment key={item.key}>
+            {idx > 0 && <View style={styles.divider} />}
+            <PreferenceToggleRow
+              label={item.label}
+              description={item.description}
+              value={item.value}
+              onChange={(val) => updatePreferences({ [item.key]: val })}
+            />
+          </React.Fragment>
+        ))}
       </AppCard>
 
       {/* WCAG 2.1 Level AA / Romanian Law 232/2022 / EN 301 549 Section */}
@@ -143,43 +188,17 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
         {t.wcagSectionHeader}
       </Text>
       <AppCard style={styles.settingsCard}>
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>{t.wcagLargeTextLabel}</Text>
-            <Text style={styles.toggleDesc}>
-              {t.wcagLargeTextDesc}
-            </Text>
-          </View>
-          <Switch
-            value={wcagLargeText}
-            onValueChange={(val) => updatePreferences({ wcagLargeText: val })}
-            trackColor={{ false: colors.controlBorder, true: colors.primary }}
-            thumbColor={colors.surface}
-            accessibilityRole="switch"
-            accessibilityLabel={t.wcagLargeTextLabel}
-            accessibilityState={{ checked: wcagLargeText }}
-          />
-        </View>
-
-        <View style={styles.divider} />
-
-        <View style={styles.toggleRow}>
-          <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>{t.wcagTextMapLabel}</Text>
-            <Text style={styles.toggleDesc}>
-              {t.wcagTextMapDesc}
-            </Text>
-          </View>
-          <Switch
-            value={wcagTextRouteMode}
-            onValueChange={(val) => updatePreferences({ wcagTextRouteMode: val })}
-            trackColor={{ false: colors.controlBorder, true: colors.primary }}
-            thumbColor={colors.surface}
-            accessibilityRole="switch"
-            accessibilityLabel={t.wcagTextMapLabel}
-            accessibilityState={{ checked: wcagTextRouteMode }}
-          />
-        </View>
+        {law232Toggles.map((item, idx) => (
+          <React.Fragment key={item.key}>
+            {idx > 0 && <View style={styles.divider} />}
+            <PreferenceToggleRow
+              label={item.label}
+              description={item.description}
+              value={item.value}
+              onChange={(val) => updatePreferences({ [item.key]: val })}
+            />
+          </React.Fragment>
+        ))}
 
         <View style={styles.divider} />
 
@@ -202,6 +221,21 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           <Text style={styles.statementBtnArrow}>➔</Text>
         </TouchableOpacity>
       </AppCard>
+
+      {onSavePreferences && (
+        <AppButton
+          title={savingPreferences ? t.savingChangesBtn : t.savePreferencesBtn}
+          onPress={onSavePreferences}
+          disabled={savingPreferences}
+          style={styles.savePrefsBtn}
+        />
+      )}
+
+      {saveConfirmation && (
+        <View style={styles.confirmationBanner} accessibilityLiveRegion="polite">
+          <Text style={styles.confirmationText}>✅ {saveConfirmation}</Text>
+        </View>
+      )}
 
       <AccessibilityComplianceModal
         visible={wcagModalVisible}
@@ -234,4 +268,18 @@ const styles = StyleSheet.create({
   statementBtnTitle: { ...typography.bodyMedium, color: colors.textInverse },
   statementBtnSub: { ...typography.caption, color: colors.textOnDark, marginTop: spacing.xs },
   statementBtnArrow: { ...typography.h3, color: colors.textInverse },
+  savePrefsBtn: { minHeight: 48 },
+  confirmationBanner: {
+    backgroundColor: colors.successLight,
+    borderWidth: 1,
+    borderColor: colors.success,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  confirmationText: {
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
+  },
 });

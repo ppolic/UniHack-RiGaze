@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useUserStore } from '../store/userStore';
-import { UserProfile } from '../types/user';
+import {
+  applySavedProfileOverrides,
+  useUserStore,
+} from '../store/userStore';
+import { UserPreferences, UserProfile } from '../types/user';
 import { AgeCategory } from '../types/route';
 
 export function resolveAuth0Intelligence(
@@ -76,10 +80,10 @@ export function resolveAuth0Intelligence(
   const wazeVoteWeight = trustScore >= 85 ? 3 : trustScore >= 65 ? 2 : 1;
   const trustBadge =
     trustScore >= 85
-      ? `Trusted Waze Guardian 🛡️ (${wazeVoteWeight}x Glas)`
+      ? `Trusted Waze Guardian 🛡️ (${wazeVoteWeight}x)`
       : trustScore >= 65
-      ? `Verified Community Member ✅ (${wazeVoteWeight}x Glas)`
-      : `Standard Citizen Account 🌱 (${wazeVoteWeight}x Glas)`;
+      ? `Verified Community Member ✅ (${wazeVoteWeight}x)`
+      : `Standard Citizen Account 🌱 (${wazeVoteWeight}x)`;
 
   return {
     verifiedOrg,
@@ -116,7 +120,7 @@ export function useAuth() {
   const baseUser: UserProfile | null =
     store.user ??
     (isAuth0 && auth0.user
-      ? {
+      ? applySavedProfileOverrides({
           id: auth0.user.sub || 'auth0|user',
           email: rawEmail,
           fullName: rawName,
@@ -134,7 +138,7 @@ export function useAuth() {
           totalEcoPoints: 100,
           totalCo2SavedKg: 0,
           completedTripsCount: 0,
-        }
+        })
       : null);
 
   const user: UserProfile | null = baseUser
@@ -159,6 +163,40 @@ export function useAuth() {
   const isLoading = store.isLoading || auth0.isLoading;
   const token = store.token || (isAuth0 ? 'auth0-session' : null);
 
+  // Sync Auth0 session into Zustand so profile edits and preference toggles always have store state.
+  useEffect(() => {
+    if (isAuth0 && user && !store.user) {
+      if (!store.token && token) {
+        store.setToken(token);
+      }
+      store.setUser(user);
+    }
+  }, [isAuth0, store, token, user]);
+
+  const setUser = (nextUser: UserProfile | null) => {
+    const state = useUserStore.getState();
+    if (nextUser && !state.token && token) {
+      state.setToken(token);
+    }
+    state.setUser(nextUser);
+  };
+
+  const updatePreferences = (newPrefs: Partial<UserPreferences>) => {
+    const state = useUserStore.getState();
+    if (!state.user && user) {
+      if (!state.token && token) {
+        state.setToken(token);
+      }
+      state.setUser(user);
+    }
+    useUserStore.getState().updatePreferences(newPrefs);
+  };
+
+  const saveProfileChanges = (updates: {
+    fullName?: string;
+    preferences?: Partial<UserPreferences>;
+  }) => useUserStore.getState().saveProfileChanges(updates, user, token);
+
   const logout = () => {
     store.logout();
     if (auth0.isAuthenticated) {
@@ -179,6 +217,9 @@ export function useAuth() {
     token,
     isAuthenticated,
     isLoading,
+    setUser,
+    updatePreferences,
+    saveProfileChanges,
     logout,
     isStudentDemo: !!user?.email?.includes('student'),
     hasDisability: !!user?.preferences?.hasDisability,

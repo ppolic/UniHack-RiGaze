@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  TextInput,
   StyleSheet,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
@@ -14,7 +13,6 @@ import { useTranslation } from '../../hooks/useTranslation';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { AppButton } from './AppButton';
 
 interface AccessibilityComplianceModalProps {
   visible: boolean;
@@ -42,12 +40,6 @@ const STATEMENT_COPY: Record<
     measures: string[];
     enforcementTitle: string;
     enforcementBody: string;
-    feedbackTitle: string;
-    feedbackDesc: string;
-    feedbackPlaceholder: string;
-    feedbackSubmitBtn: string;
-    feedbackEmptyError: string;
-    feedbackSuccessMsg: string;
     closeLabel: string;
   }
 > = {
@@ -91,14 +83,6 @@ const STATEMENT_COPY: Record<
     enforcementTitle: 'Procedura de asigurare a respectării legii (ADR)',
     enforcementBody:
       'Autoritatea națională responsabilă cu monitorizarea și aplicarea Legii nr. 232/2022 în România este Autoritatea pentru Digitalizarea României (ADR — https://www.adr.gov.ro). Puteți transmite sesizări și către Primăria Municipiului Timișoara (Serviciul Mobilitate Urbană).',
-    feedbackTitle: 'Mecanism de feedback (Art. 7 — Legea 232/2022)',
-    feedbackDesc:
-      'Dacă întâmpinați bariere de accesibilitate sau aveți nevoie de informații într-un format accesibil, raportați mai jos:',
-    feedbackPlaceholder: 'Descrieți problema de accesibilitate întâlnită...',
-    feedbackSubmitBtn: 'Trimite sesizarea de accesibilitate',
-    feedbackEmptyError: 'Vă rugăm să introduceți o descriere a barierei de accesibilitate.',
-    feedbackSuccessMsg:
-      'Sesizarea dumneavoastră a fost înregistrată conform Art. 7 din Legea nr. 232/2022. Echipa tehnică va răspunde în cel mai scurt timp.',
     closeLabel: 'Închide fereastra',
   },
   en: {
@@ -141,14 +125,6 @@ const STATEMENT_COPY: Record<
     enforcementTitle: 'Enforcement Procedure & Supervisory Authority (ADR)',
     enforcementBody:
       'In Romania, the national body responsible for enforcing Law no. 232/2022 is the Authority for the Digitalization of Romania (Autoritatea pentru Digitalizarea României — ADR, https://www.adr.gov.ro), in coordination with Primăria Municipiului Timișoara.',
-    feedbackTitle: 'Accessibility Feedback Mechanism (Art. 7 — Law 232/2022)',
-    feedbackDesc:
-      'Notify our accessibility team of any barriers or request essential route data in an accessible format:',
-    feedbackPlaceholder: 'Describe the accessibility barrier or feedback...',
-    feedbackSubmitBtn: 'Submit Accessibility Report',
-    feedbackEmptyError: 'Please enter a short description of the accessibility barrier.',
-    feedbackSuccessMsg:
-      'Your accessibility barrier report has been logged under Art. 7 of Law no. 232/2022. Thank you for helping keep Timișoara mobility inclusive.',
     closeLabel: 'Close',
   },
 };
@@ -165,9 +141,6 @@ export const AccessibilityComplianceModal: React.FC<
 
   const { language } = useTranslation();
   const [lang, setLang] = useState<StatementLanguage>(language);
-  const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackError, setFeedbackError] = useState<string | null>(null);
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
   useEffect(() => {
     setLang(language);
@@ -188,17 +161,6 @@ export const AccessibilityComplianceModal: React.FC<
     val: boolean
   ) => {
     updatePreferences({ [key]: val });
-  };
-
-  const handleSubmitFeedback = () => {
-    if (!feedbackText.trim()) {
-      setFeedbackError(copy.feedbackEmptyError);
-      setFeedbackSubmitted(false);
-      return;
-    }
-    setFeedbackError(null);
-    setFeedbackSubmitted(true);
-    setFeedbackText('');
   };
 
   return (
@@ -280,10 +242,16 @@ export const AccessibilityComplianceModal: React.FC<
                   <React.Fragment key={item.key}>
                     {index > 0 && <View style={styles.divider} />}
                     <View style={styles.switchRow}>
-                      <View style={styles.switchInfo}>
+                      <TouchableOpacity
+                        style={styles.switchInfo}
+                        onPress={() => handleTogglePreference(item.key, !value)}
+                        activeOpacity={0.75}
+                        accessibilityRole="button"
+                        accessibilityLabel={item.accessibilityLabel}
+                      >
                         <Text style={styles.switchLabel}>{item.label}</Text>
                         <Text style={styles.switchDesc}>{item.desc}</Text>
-                      </View>
+                      </TouchableOpacity>
                       <Switch
                         value={value}
                         onValueChange={(val) =>
@@ -329,54 +297,6 @@ export const AccessibilityComplianceModal: React.FC<
 
             <Text style={styles.subHeading}>{copy.enforcementTitle}</Text>
             <Text style={styles.paragraph}>{copy.enforcementBody}</Text>
-
-            {/* Section 3: Mandatory Feedback Mechanism */}
-            <Text style={styles.sectionTitle} accessibilityRole="header">
-              {copy.feedbackTitle}
-            </Text>
-            <Text style={styles.paragraph}>{copy.feedbackDesc}</Text>
-
-            <TextInput
-              style={styles.feedbackInput}
-              value={feedbackText}
-              onChangeText={(txt) => {
-                setFeedbackText(txt);
-                if (feedbackError) setFeedbackError(null);
-              }}
-              placeholder={copy.feedbackPlaceholder}
-              placeholderTextColor={colors.textMuted}
-              multiline
-              numberOfLines={3}
-              accessibilityLabel={copy.feedbackTitle}
-              accessibilityHint={copy.feedbackDesc}
-            />
-
-            {feedbackError && (
-              <View
-                style={styles.errorBox}
-                accessibilityLiveRegion="polite"
-              >
-                <Text style={styles.errorText}>⚠️ {feedbackError}</Text>
-              </View>
-            )}
-
-            {feedbackSubmitted && (
-              <View
-                style={styles.successBox}
-                accessibilityLiveRegion="polite"
-              >
-                <Text style={styles.successText}>
-                  ✅ {copy.feedbackSuccessMsg}
-                </Text>
-              </View>
-            )}
-
-            <AppButton
-              title={copy.feedbackSubmitBtn}
-              onPress={handleSubmitFeedback}
-              size="md"
-              style={styles.submitBtn}
-            />
           </ScrollView>
         </View>
       </View>
@@ -568,50 +488,5 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: colors.textPrimary,
     flex: 1,
-  },
-  feedbackInput: {
-    backgroundColor: colors.background,
-    borderWidth: 1.5,
-    borderColor: colors.controlBorder,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    minHeight: 74,
-    textAlignVertical: 'top',
-    color: colors.textPrimary,
-    ...typography.body,
-    fontSize: 13,
-    marginBottom: spacing.sm,
-  },
-  errorBox: {
-    backgroundColor: colors.dangerLight,
-    borderWidth: 1,
-    borderColor: colors.danger,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  errorText: {
-    ...typography.captionMedium,
-    fontSize: 12,
-    color: colors.danger,
-    fontWeight: '700',
-  },
-  successBox: {
-    backgroundColor: colors.successLight,
-    borderWidth: 1,
-    borderColor: colors.success,
-    borderRadius: borderRadius.md,
-    padding: spacing.sm,
-    marginBottom: spacing.sm,
-  },
-  successText: {
-    ...typography.captionMedium,
-    fontSize: 12,
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
-  submitBtn: {
-    marginBottom: spacing.sm,
   },
 });

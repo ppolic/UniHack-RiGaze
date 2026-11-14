@@ -294,6 +294,9 @@ export const translations = {
     ownBikeLabel: 'Dețin bicicletă proprie',
     ownBikeDesc:
       'Nu sugerează închiriere, ci rute directe cu bicicleta.',
+    ownScooterLabel: 'Dețin trotinetă electrică proprie',
+    ownScooterDesc:
+      'Include rute directe cu trotineta personală fără închiriere.',
     ownCarLabel: 'Dețin automobil',
     ownCarDesc:
       'Activează opțiunea de condus cu parcare recomandată.',
@@ -307,11 +310,39 @@ export const translations = {
     displayNameLabel: 'Nume afișat',
     displayNameEmptyError: 'Introdu un nume afișat. Numele nu poate fi gol.',
     editProfileBtn: 'Editează profilul',
+    savePreferencesBtn: 'Salvează preferințele',
+    savingChangesBtn: 'Se salvează…',
+    profileSavedConfirmation: 'Modificările au fost salvate.',
+    profileSaveError:
+      'Modificările au fost salvate local, dar nu s-au putut sincroniza cu serverul.',
+    profilePasskeyBadge: 'Auth0 Passkey Biometrie ⚡',
+    profileAuth0SecurityTitle: '🛡️ Auth0 Securitate & Identitate Digitală',
+    profileAuth0OrgTitle: '1. 🎓 Auth0 Organizations (Verified Carpool)',
+    profileAuth0OrgDefaultBadge: 'Cetățean Timișoara 🌱',
+    profileAuth0OrgDefaultTarget:
+      'campus și companii partenere (UPT, UVT, Continental)',
+    profileAuth0OrgDesc: (org: string) =>
+      `Carpool securizat deblocat pentru ${org}.`,
+    profileAuth0PasskeyTitle: '2. ♿ Auth0 Passkeys (Biometrie)',
+    profileAuth0PasskeyEnabled:
+      'Activ (WebAuthn / FaceID / Amprentă) ⚡',
+    profileAuth0PasskeyDisabled: 'Suportat în Auth0 Universal Login',
+    profileAuth0PasskeyDesc:
+      'Autentificare accesibilă în 1 secundă pentru bicicliștii cu mănuși și persoanele cu dizabilități.',
+    profileAuth0ZkpTitle: '3. 🛡️ Verificare a vârstei GDPR Zero-Knowledge',
+    profileAuth0ZkpStatusPrefix: 'Status:',
+    profileAuth0ZkpDesc:
+      'Aplicația nu stochează data exactă a nașterii; regulile legale pentru trotinete electrice se aplică automat.',
+    profileAuth0TrustTitle:
+      '4. 🤖 Protecție anti-boți & Scor de încredere cetățean (Waze)',
+    profileAuth0TrustFallback: 'Scor de încredere Waze: 85/100 (2x)',
+    profileAuth0TrustDesc:
+      'Contul Auth0 verificat oferă o pondere mai mare raportărilor de obstacole și protejează cupoanele împotriva boților.',
+    profileAuth0JsonTitle: 'Profil utilizator (Auth0)',
     logoutBtn: 'Deconectare',
     statementModalTitleBtn:
       '📜 Declarație Legea 232/2022 & WCAG 2.1 AA (RO / EN)',
-    statementModalSubBtn:
-      'Declarație privind accesibilitatea • EN 301 549 • Feedback ADR',
+    statementModalSubBtn: 'Declarație privind accesibilitatea • EN 301 549',
     statementModalA11y:
       'Deschide declarația de accesibilitate Legea 232/2022 și WCAG 2.1 AA în română și engleză',
 
@@ -1058,6 +1089,9 @@ export const translations = {
     ownBikeLabel: 'I own a bicycle',
     ownBikeDesc:
       'Suggests direct bicycle routes instead of rentals.',
+    ownScooterLabel: 'I own an e-scooter',
+    ownScooterDesc:
+      'Includes direct personal e-scooter routes without rentals.',
     ownCarLabel: 'I own a car',
     ownCarDesc:
       'Enables driving options with recommended parking.',
@@ -1071,11 +1105,39 @@ export const translations = {
     displayNameLabel: 'Display name',
     displayNameEmptyError: 'Enter a display name. Name cannot be empty.',
     editProfileBtn: 'Edit Profile',
+    savePreferencesBtn: 'Save Preferences',
+    savingChangesBtn: 'Saving…',
+    profileSavedConfirmation: 'Your changes have been saved.',
+    profileSaveError:
+      'Changes saved locally, but could not sync with the server.',
+    profilePasskeyBadge: 'Auth0 Passkey Biometrics ⚡',
+    profileAuth0SecurityTitle: '🛡️ Auth0 Security & Digital Identity',
+    profileAuth0OrgTitle: '1. 🎓 Auth0 Organizations (Verified Carpool)',
+    profileAuth0OrgDefaultBadge: 'Timișoara Citizen 🌱',
+    profileAuth0OrgDefaultTarget:
+      'campus & partner companies (UPT, UVT, Continental)',
+    profileAuth0OrgDesc: (org: string) =>
+      `Secure Carpool unlocked for ${org}.`,
+    profileAuth0PasskeyTitle: '2. ♿ Auth0 Passkeys (Biometrics)',
+    profileAuth0PasskeyEnabled:
+      'Active (WebAuthn / FaceID / Fingerprint) ⚡',
+    profileAuth0PasskeyDisabled: 'Supported in Auth0 Universal Login',
+    profileAuth0PasskeyDesc:
+      'Accessible 1-second sign-in for cyclists wearing gloves and persons with disabilities.',
+    profileAuth0ZkpTitle: '3. 🛡️ GDPR Zero-Knowledge Age Verification',
+    profileAuth0ZkpStatusPrefix: 'Status:',
+    profileAuth0ZkpDesc:
+      'The app never stores children’s birth dates; statutory rules for e-scooters apply automatically.',
+    profileAuth0TrustTitle:
+      '4. 🤖 Bot Detection & Waze Citizen Trust Score',
+    profileAuth0TrustFallback: 'Waze Trust Score: 85/100 (2x)',
+    profileAuth0TrustDesc:
+      'A verified Auth0 account increases the weight of your hazard reports and protects vouchers from bots.',
+    profileAuth0JsonTitle: 'User Profile (Auth0)',
     logoutBtn: 'Sign Out',
     statementModalTitleBtn:
       '📜 Law 232/2022 & WCAG 2.1 AA Statement (RO / EN)',
-    statementModalSubBtn:
-      'Accessibility statement • EN 301 549 • ADR Feedback',
+    statementModalSubBtn: 'Accessibility statement • EN 301 549',
     statementModalA11y:
       'Open Romanian Law 232/2022 and WCAG 2.1 AA Accessibility Statement in Romanian and English',
 

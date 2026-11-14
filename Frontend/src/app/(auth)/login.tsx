@@ -70,30 +70,6 @@ export default function LoginScreen() {
     }
   };
 
-  const handleDemoBypass = () => {
-    setUser({
-      id: 'demo-upt-student',
-      email: 'student@student.upt.ro',
-      fullName: 'Alex Popescu (UPT Student)',
-      birthDate: '2003-05-14',
-      age: 21,
-      preferences: {
-        hasDisability: false,
-        hasOwnBicycle: true,
-        hasOwnScooter: false,
-        hasOwnCar: false,
-        preferredModes: ['Bicycle', 'PublicTransit'],
-        wcagLargeText: false,
-        wcagTextRouteMode: false,
-      },
-      totalEcoPoints: 240,
-      totalCo2SavedKg: 12.5,
-      completedTripsCount: 18,
-    });
-    setToken('demo-jwt-token');
-    router.replace('/(tabs)/home');
-  };
-
   if (isLoading) {
     return (
       <View style={styles.container}>
@@ -252,13 +228,6 @@ export default function LoginScreen() {
           loading={loading}
           onPress={handleLogin}
           style={styles.submitBtn}
-        />
-
-        <AppButton
-          title={t.demoBypassButton}
-          onPress={handleDemoBypass}
-          variant="outline"
-          style={{ marginTop: spacing.sm }}
         />
 
         <TouchableOpacity
