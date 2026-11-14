@@ -31,6 +31,7 @@ public enum WarningType
     Helmet,
     NoBikeLane,
     NotAccessible,
+<<<<<<< HEAD
     Estimate,
     RoadBlockade,
     InaccessibleArea,
@@ -57,6 +58,10 @@ public enum CommunityReportCategory
 
     /// <summary>Potvrđeni zastoj ili preusmjeravanje STPT javnog prijevoza na terenu.</summary>
     TransitDisruption
+=======
+    RoadHazard,
+    Estimate
+>>>>>>> BE2
 }
 
 // Dobna kategorija (bez prave verifikacije dobi, izvodi se iz datuma rođenja pri registraciji)
@@ -65,4 +70,14 @@ public enum AgeCategory
     Under14,
     From14To15,
     Adult
+}
+
+// Kategorija Waze-style građanske prijave na terenu u Timișoari
+public enum CommunityReportCategory
+{
+    RoadBlockade,
+    BlockedBikeLane,
+    InaccessibleArea,
+    MissingBikeLane,
+    TransitDisruption
 }

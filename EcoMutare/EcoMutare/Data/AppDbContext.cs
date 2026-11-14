@@ -21,6 +21,10 @@ public class AppDbContext : DbContext
     public DbSet<StopTime> StopTimes => Set<StopTime>();
     public DbSet<GapCell> GapCells => Set<GapCell>();
 
+    // Sat 24–38: Carpool dijeljenje vožnje
+    public DbSet<CarpoolRide> CarpoolRides => Set<CarpoolRide>();
+    public DbSet<CarpoolBooking> CarpoolBookings => Set<CarpoolBooking>();
+
     // Waze-style građanske prijave (blokade cesta, nepristupačna područja, nedostajuće biciklističke staze)
     public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
 
@@ -32,7 +36,11 @@ public class AppDbContext : DbContext
         base.OnModelCreating(b);
 
         // Users
-        b.Entity<User>().HasIndex(x => x.Email).IsUnique();
+        b.Entity<User>(e =>
+        {
+            e.HasIndex(x => x.Email).IsUnique();
+            e.Property(x => x.AgeCategory).HasConversion<string>().HasMaxLength(20);
+        });
 
         // Stations / Parkings
         b.Entity<Station>(e =>
@@ -97,6 +105,26 @@ public class AppDbContext : DbContext
 
         // GapCells
         b.Entity<GapCell>().HasIndex(x => new { x.GridX, x.GridY }).IsUnique();
+
+        // CarpoolRides & CarpoolBookings
+        b.Entity<CarpoolRide>(e =>
+        {
+            e.Property(x => x.EstimatedFuelCostPerKmRon).HasPrecision(8, 2);
+            e.Property(x => x.RecommendedPricePerSeatRon).HasPrecision(8, 2);
+            e.HasOne(x => x.Driver).WithMany()
+                .HasForeignKey(x => x.DriverId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.IsActive, x.DepartureTime });
+            e.HasIndex(x => new { x.OriginLatitude, x.OriginLongitude });
+        });
+
+        b.Entity<CarpoolBooking>(e =>
+        {
+            e.HasOne(x => x.CarpoolRide).WithMany(r => r.Bookings)
+                .HasForeignKey(x => x.CarpoolRideId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.Passenger).WithMany()
+                .HasForeignKey(x => x.PassengerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.CarpoolRideId, x.PassengerId });
+        });
 
         // CommunityReports (Waze-style prijave)
         b.Entity<CommunityReport>(e =>

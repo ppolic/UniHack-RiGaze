@@ -1,5 +1,12 @@
+using System.Text;
 using EcoMutare.Data;
+using EcoMutare.Services.Auth;
+using EcoMutare.Services.Community;
+using EcoMutare.Services.Insights;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,8 +35,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
     }
 });
 
-// Memory cache za ORS rute (1h), Open-Meteo vrijeme (30 min) i elevaciju (6h)
+// Memory cache za ORS rute (1h), Open-Meteo vrijeme (30 min), elevaciju (6h) i Sesizări (15 min)
 builder.Services.AddMemoryCache();
+builder.Services.AddHttpClient();
 
 // HttpClient za Open-Meteo (forecast + elevation, besplatno bez ključa) s resilience politikom
 builder.Services.AddHttpClient<EcoMutare.Integrations.OpenMeteo.OpenMeteoClient>((sp, client) =>
@@ -52,6 +60,7 @@ builder.Services.AddHttpClient<EcoMutare.Services.Routing.IRoutingProvider, EcoM
     client.Timeout = TimeSpan.FromSeconds(Math.Max(2, opts.TimeoutSeconds));
 }).AddStandardResilienceHandler();
 
+<<<<<<< HEAD
 // Pravila, Waze Community Intelligence i glavni multimodalni planer ruta (sat 12-30), uz MockRoutePlanner kao fallback iza Routing:UseMock
 builder.Services.AddHttpClient();
 builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
@@ -59,12 +68,78 @@ builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
 builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
 builder.Services.AddSingleton<EcoMutare.Services.Community.ICommunityIntelligenceService, EcoMutare.Services.Community.CommunityIntelligenceService>();
 builder.Services.AddSingleton<EcoMutare.Services.Insights.IGreenIntelligenceService, EcoMutare.Services.Insights.GreenIntelligenceService>();
+=======
+// Pravila, Waze Community Intelligence, Green Intelligence i glavni multimodalni planer ruta (sat 12-48)
+builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
+    builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
+builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
+builder.Services.AddSingleton<ICommunityIntelligenceService, CommunityIntelligenceService>();
+builder.Services.AddSingleton<IGreenIntelligenceService, GreenIntelligenceService>();
+>>>>>>> BE2
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();
 
-// Swagger (UI + OpenAPI dokument na /swagger/v1/swagger.json)
+// JWT autentikacija (register/login u AuthController). Ako Jwt:Key nije postavljen na serveru, koristi se siguran fallback ključ.
+const string FallbackJwtKey = "EcoMutareTimisoaraUniHack2026SuperSecretJwtKeyMin32Bytes!";
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
+{
+    jwt.Key = FallbackJwtKey;
+}
+
+builder.Services.Configure<JwtOptions>(opts =>
+{
+    builder.Configuration.GetSection(JwtOptions.SectionName).Bind(opts);
+    if (string.IsNullOrWhiteSpace(opts.Key) || opts.Key.Length < 32)
+    {
+        opts.Key = FallbackJwtKey;
+    }
+});
+builder.Services.AddScoped<JwtTokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false; // zadržava "sub" claim kakav jest
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+    });
+builder.Services.AddAuthorization();
+
+// Swagger (UI + OpenAPI dokument na /swagger/v1/swagger.json + Authorize Bearer gumb)
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.CustomSchemaIds(t => t.FullName?.Replace("+", ".") ?? t.Name);
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "Unesite JWT token dobiven na POST /auth/login (npr. 'Bearer eyJhbGci...') ili samo token.",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 // CORS: otvoreno za hackathon (web verzija i dashboard dolaze s drugih portova)
 builder.Services.AddCors(options =>
@@ -80,42 +155,41 @@ builder.Services.Configure<EcoMutare.Integrations.OpenRouteService.OpenRouteServ
     builder.Configuration.GetSection(EcoMutare.Integrations.OpenRouteService.OpenRouteServiceOptions.SectionName));
 builder.Services.Configure<EcoMutare.Integrations.OpenMeteo.OpenMeteoOptions>(
     builder.Configuration.GetSection(EcoMutare.Integrations.OpenMeteo.OpenMeteoOptions.SectionName));
-
 builder.Services.Configure<EcoMutare.Integrations.Gemini.GeminiOptions>(
     builder.Configuration.GetSection(EcoMutare.Integrations.Gemini.GeminiOptions.SectionName));
 
 var app = builder.Build();
 
-// Automatska inicijalizacija baze na serveru pri pokretanju
+// Automatska inicijalizacija i seed baze na serveru pri pokretanju (BE2 sat 38–48)
 using (var scope = app.Services.CreateScope())
 {
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
     try
     {
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.Database.EnsureCreated();
-        logger.LogInformation("MySQL baza uspješno spojena i verificirana.");
+        var insights = scope.ServiceProvider.GetRequiredService<IGreenIntelligenceService>();
+        await DatabaseSeeder.SeedAllAsync(db, insights, logger);
+        logger.LogInformation("MySQL baza uspješno spojena, verificirana i napunjena demo podacima.");
     }
     catch (Exception ex)
     {
-        logger.LogWarning("Upozorenje: Spajanje na MySQL bazu nije uspjelo ({Message}). Provjerite ConnectionStrings:DefaultConnection ili pokrenite MySQL server.", ex.Message);
+        logger.LogWarning("Upozorenje: Spajanje/seed na MySQL bazu nije uspjelo ({Message}). API nastavlja raditi preko ugrađenog fallback spremnika.", ex.Message);
     }
 }
 
-if (string.IsNullOrWhiteSpace(app.Configuration["Gemini:ApiKey"]))
-{
-    app.Logger.LogWarning("Gemini:ApiKey nije postavljen. Koristi: dotnet user-secrets set \"Gemini:ApiKey\" \"<kljuc>\"");
-}
-
-// Upozorenje pri startu ako ORS ključ nije postavljen
 if (string.IsNullOrWhiteSpace(app.Configuration["OpenRouteService:ApiKey"]))
 {
-    app.Logger.LogWarning("OpenRouteService:ApiKey nije postavljen. Koristi: dotnet user-secrets set \"OpenRouteService:ApiKey\" \"<kljuc>\"");
+    app.Logger.LogWarning("OpenRouteService:ApiKey nije postavljen. Koristi se pametni lokalni fallback za Timișoaru ili postavi ključ u User Secrets.");
 }
 
 // Swagger je uključen i u produkciji (dio demoa)
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    // Token za zaštićene endpointe: klikni Authorize u gornjem desnom kutu ili u konzoli preglednika:
+    // localStorage.setItem('ecomutare_jwt', '<token>') i osvježi stranicu.
+    c.UseRequestInterceptor("(req) => { var t = localStorage.getItem('ecomutare_jwt'); if (t && !req.headers['Authorization']) { req.headers['Authorization'] = 'Bearer ' + t; } return req; }");
+});
 
 // HTTPS redirect samo izvan developmenta (Expo Go ne vjeruje dev certifikatu)
 if (!app.Environment.IsDevelopment())
@@ -126,6 +200,7 @@ if (!app.Environment.IsDevelopment())
 // CORS mora biti prije UseAuthorization
 app.UseCors("Dev");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
