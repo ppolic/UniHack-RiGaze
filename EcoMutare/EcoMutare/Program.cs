@@ -1,4 +1,8 @@
+using System.Text;
 using EcoMutare.Data;
+using EcoMutare.Services.Auth;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -60,9 +64,36 @@ builder.Services.AddSingleton<EcoMutare.Services.Insights.IGreenIntelligenceServ
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();
 
+// JWT autentikacija (register/login u AuthController). Ključ: Jwt:Key (user-secrets ili env Jwt__Key), min. 32 znaka.
+builder.Services.Configure<JwtOptions>(builder.Configuration.GetSection(JwtOptions.SectionName));
+builder.Services.AddScoped<JwtTokenService>();
+var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
+{
+    throw new InvalidOperationException("Jwt:Key nije postavljen ili je kraći od 32 znaka. Koristi: dotnet user-secrets set \"Jwt:Key\" \"<min 32 znaka>\" (u Dockeru env Jwt__Key).");
+}
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(o =>
+    {
+        o.MapInboundClaims = false; // zadržava "sub" claim kakav jest
+        o.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwt.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwt.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+    });
+builder.Services.AddAuthorization();
+
 // Swagger (UI + OpenAPI dokument na /swagger/v1/swagger.json)
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+    c.CustomSchemaIds(t => t.FullName?.Replace("+", ".") ?? t.Name));
 
 // CORS: otvoreno za hackathon (web verzija i dashboard dolaze s drugih portova)
 builder.Services.AddCors(options =>
@@ -113,7 +144,12 @@ if (string.IsNullOrWhiteSpace(app.Configuration["OpenRouteService:ApiKey"]))
 
 // Swagger je uključen i u produkciji (dio demoa)
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    // Token za zaštićene endpointe: prijavi se na /auth/login, pa u konzoli preglednika:
+    // localStorage.setItem('ecomutare_jwt', '<token>') i osvježi stranicu.
+    c.UseRequestInterceptor("(req) => { var t = localStorage.getItem('ecomutare_jwt'); if (t) { req.headers['Authorization'] = 'Bearer ' + t; } return req; }");
+});
 
 // HTTPS redirect samo izvan developmenta (Expo Go ne vjeruje dev certifikatu)
 if (!app.Environment.IsDevelopment())
@@ -124,6 +160,7 @@ if (!app.Environment.IsDevelopment())
 // CORS mora biti prije UseAuthorization
 app.UseCors("Dev");
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
