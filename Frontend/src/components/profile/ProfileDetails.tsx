@@ -44,9 +44,29 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           </View>
         </View>
         <View style={styles.badgesRow}>
-          <Badge label={verifiedAge === undefined || verifiedAge === null ? localize('Vârstă neconfirmată', 'Age unconfirmed') : t.ageBadge(verifiedAge)} variant="neutral" />
+          {user.organizationBadge && (
+            <Badge label={user.organizationBadge} variant="success" />
+          )}
+          {user.passkeyEnabled && (
+            <Badge label="Auth0 Passkey Biometrie ⚡" variant="info" />
+          )}
+          <Badge
+            label={
+              user.zeroKnowledgeAgeVerified
+                ? `GDPR Zero-Knowledge: ${user.ageCategory ?? 'Adult'} 🛡️`
+                : (verifiedAge === undefined || verifiedAge === null
+                ? localize('Vârstă neconfirmată', 'Age unconfirmed')
+                : t.ageBadge(verifiedAge))
+            }
+            variant="neutral"
+          />
+          {user.trustBadge && (
+            <Badge label={user.trustBadge} variant="warning" />
+          )}
           {hasDisability && <Badge label={t.accessibilityActiveBadge} variant="info" />}
-          {(wcagLargeText || wcagTextRouteMode) && <Badge label={localize('Opțiuni vizuale active', 'Visual options enabled')} variant="success" />}
+          {(wcagLargeText || wcagTextRouteMode) && (
+            <Badge label={localize('Opțiuni vizuale active', 'Visual options enabled')} variant="success" />
+          )}
         </View>
         {children && <View style={styles.editor}>{children}</View>}
       </AppCard>

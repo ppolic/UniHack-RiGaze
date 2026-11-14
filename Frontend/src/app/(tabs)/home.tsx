@@ -32,6 +32,22 @@ export default function HomeScreen() {
               {firstName ? `Bună, ${firstName}!` : 'Bine ai venit!'}
             </Text>
             <Text style={styles.intro}>Un drum mai bun începe cu o alegere verde.</Text>
+            {user?.organizationBadge && (
+              <View style={{ flexDirection: 'row', gap: spacing.xs, flexWrap: 'wrap', marginTop: 6 }}>
+                <View style={{ backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full, borderWidth: 1, borderColor: colors.primary }}>
+                  <Text style={{ ...typography.captionMedium, color: colors.primaryDark, fontWeight: '700' }}>
+                    {user.organizationBadge}
+                  </Text>
+                </View>
+                {user.trustBadge && (
+                  <View style={{ backgroundColor: colors.surfaceMuted, paddingHorizontal: spacing.sm, paddingVertical: 4, borderRadius: borderRadius.full }}>
+                    <Text style={{ ...typography.captionMedium, color: colors.textSecondary }}>
+                      {user.trustBadge}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           <View style={styles.hero}>
