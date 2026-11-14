@@ -51,4 +51,8 @@ public enum CommunityReportCategory
     InaccessibleArea,
     MissingBikeLane,
     TransitDisruption
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 8736cf5530481dfa309b75bdd851a36a3829ce9b

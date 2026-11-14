@@ -97,6 +97,7 @@ public class RewardsController : ControllerBase
             PointsSpent = cost,
             NewBalance = balance,
             TransactionId = txn.Id,
+            DiscountCode = $"ECOMUTARE-TM-{reward.Id:D2}-{txn.Id:D4}"
         });
     }
 

@@ -1,15 +1,18 @@
+using EcoMutare.Data;
 using EcoMutare.Domain;
 using EcoMutare.Dtos;
 using EcoMutare.Services.Insights;
 using EcoMutare.Services.Routing;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace EcoMutare.Controllers;
 
 /// <summary>
-/// Interni dijagnostički i verifikacijski testovi za BE1:
-/// Provjerava RulesEngine (dobna ograničenja, invaliditet, kaciga, snijeg),
-/// EcoScoreCalculator (bodovi, CO2 formula) i GreenIntelligenceService (prostorne udaljenosti i rešetka).
+/// Dijagnostički kontroler i čuvar infrastrukture za demo (BE1 + BE2 sat 36–48):
+/// - Jedinični testovi planera i pravila (/debug/tests/run-all),
+/// - Health check i status MySQL baze (/health, /debug/tests/db-status),
+/// - 1-click punjenje/reset svih demo podataka u MySQL bazi (/admin/seed-demo).
 /// </summary>
 [ApiController]
 [Route("debug/tests")]
@@ -17,11 +20,85 @@ public class DiagnosticsController : ControllerBase
 {
     private readonly IRulesEngine _rules;
     private readonly IGreenIntelligenceService _insights;
+    private readonly AppDbContext _db;
+    private readonly ILogger<DiagnosticsController> _logger;
 
-    public DiagnosticsController(IRulesEngine rules, IGreenIntelligenceService insights)
+    public DiagnosticsController(
+        IRulesEngine rules,
+        IGreenIntelligenceService insights,
+        AppDbContext db,
+        ILogger<DiagnosticsController> logger)
     {
         _rules = rules;
         _insights = insights;
+        _db = db;
+        _logger = logger;
+    }
+
+    /// <summary>Health check endpoint za produkcijski server i brzu provjeru statusa MySQL baze prije demoa.</summary>
+    [HttpGet("/health")]
+    [HttpGet("db-status")]
+    public async Task<ActionResult<object>> GetHealthAndDatabaseStatus(CancellationToken ct)
+    {
+        try
+        {
+            bool canConnect = await _db.Database.CanConnectAsync(ct);
+            if (!canConnect)
+            {
+                return Ok(new
+                {
+                    Status = "Degraded (In-Memory Fallback Active)",
+                    MySqlConnected = false,
+                    Message = "API radi normalno preko in-memory fallbacka, ali MySQL baza trenutno nije dostupna."
+                });
+            }
+
+            return Ok(new
+            {
+                Status = "Healthy (Production Ready)",
+                MySqlConnected = true,
+                ServerTimeUtc = DateTime.UtcNow,
+                TableCounts = new
+                {
+                    Users = await _db.Users.CountAsync(ct),
+                    Stations = await _db.Stations.CountAsync(ct),
+                    Parkings = await _db.Parkings.CountAsync(ct),
+                    TransitRoutes = await _db.Routes.CountAsync(ct),
+                    TransitStops = await _db.Stops.CountAsync(ct),
+                    TransitTrips = await _db.TransitTrips.CountAsync(ct),
+                    TransitStopTimes = await _db.StopTimes.CountAsync(ct),
+                    CarpoolRides = await _db.CarpoolRides.CountAsync(ct),
+                    CarpoolBookings = await _db.CarpoolBookings.CountAsync(ct),
+                    CommunityWazeReports = await _db.CommunityReports.CountAsync(ct),
+                    FavoriteRoutes = await _db.FavoriteRoutes.CountAsync(ct),
+                    GapCells = await _db.GapCells.CountAsync(ct),
+                    Rewards = await _db.Rewards.CountAsync(ct),
+                    TripHistories = await _db.TripHistories.CountAsync(ct),
+                    PointTransactions = await _db.PointTransactions.CountAsync(ct)
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return Ok(new
+            {
+                Status = "Degraded (In-Memory Fallback Active)",
+                MySqlConnected = false,
+                Error = ex.Message
+            });
+        }
+    }
+
+    /// <summary>
+    /// 1-Click Demo Seeder (sat 38–48 BE2): osigurava sve tablice u MySQL-u i puni 5 demo računa (lozinka Demo123!),
+    /// GTFS vozni red, VeloTM stanice, TimPark parkinge, Carpool vožnje, Waze prijave, Favorite rute i GapCells.
+    /// </summary>
+    [HttpPost("/admin/seed-demo")]
+    [HttpPost("seed-demo")]
+    public async Task<ActionResult<object>> SeedDemoDatabase(CancellationToken ct)
+    {
+        await DatabaseSeeder.SeedAllAsync(_db, _insights, _logger, ct);
+        return await GetHealthAndDatabaseStatus(ct);
     }
 
     [HttpGet("run-all")]
