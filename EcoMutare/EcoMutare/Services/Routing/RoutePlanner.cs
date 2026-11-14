@@ -1,6 +1,5 @@
 using EcoMutare.Domain;
 using EcoMutare.Dtos;
-using EcoMutare.Services.Community;
 using Microsoft.Extensions.Options;
 
 namespace EcoMutare.Services.Routing;
@@ -8,15 +7,13 @@ namespace EcoMutare.Services.Routing;
 /// <summary>
 /// Glavni multimodalni planer ruta za Timișoaru (sat 12–24).
 /// Spaja OpenRouteService profile, Open-Meteo prognozu i elevaciju, javne podatke Timișoare
-/// (VeloTM stanice, STPT javni prijevoz, TimPark parkirališta, biciklističke staze),
-/// Waze-style prijave građana u stvarnom vremenu i RulesEngine.
+/// (VeloTM stanice, STPT javni prijevoz, TimPark parkirališta, biciklističke staze) i RulesEngine.
 /// </summary>
 public class RoutePlanner : IRoutePlanner
 {
     private readonly IRoutingProvider _routing;
     private readonly IWeatherProvider _weather;
     private readonly IRulesEngine _rules;
-    private readonly ICommunityIntelligenceService _community;
     private readonly MockRoutePlanner _mockFallback;
     private readonly RoutingOptions _options;
 
@@ -24,14 +21,12 @@ public class RoutePlanner : IRoutePlanner
         IRoutingProvider routing,
         IWeatherProvider weather,
         IRulesEngine rules,
-        ICommunityIntelligenceService community,
         MockRoutePlanner mockFallback,
         IOptions<RoutingOptions> options)
     {
         _routing = routing;
         _weather = weather;
         _rules = rules;
-        _community = community;
         _mockFallback = mockFallback;
         _options = options.Value;
     }
@@ -186,7 +181,6 @@ public class RoutePlanner : IRoutePlanner
             });
         }
 
-        ApplyCommunityWazeHazards(options, profile.HasDisability);
         RankAndMarkRecommended(options);
 
         return new RoutePlanResponse
@@ -797,56 +791,13 @@ public class RoutePlanner : IRoutePlanner
         request.PreferredModes.Count == 0 ||
         request.PreferredModes.Contains(mode);
 
-    private void ApplyCommunityWazeHazards(List<RouteOptionDto> options, bool hasDisability)
-    {
-        foreach (var opt in options)
-        {
-            var allPoints = opt.Segments.SelectMany(s => s.Geometry).ToList();
-            if (allPoints.Count == 0) continue;
-
-            var hazards = _community.GetHazardsNearGeometry(allPoints, opt.Mode, hasDisability, thresholdMeters: 210.0);
-            foreach (var h in hazards)
-            {
-                var wType = h.Category switch
-                {
-                    CommunityReportCategory.BlockedBikeLane => WarningType.BlockedBikeLane,
-                    CommunityReportCategory.InaccessibleArea => WarningType.InaccessibleArea,
-                    CommunityReportCategory.MissingBikeLane => WarningType.CrowdsourcedMissingBikeLane,
-                    _ => WarningType.RoadBlockade
-                };
-
-                string msg = h.Category switch
-                {
-                    CommunityReportCategory.BlockedBikeLane =>
-                        $"Waze upozorenje ({h.ConfirmationsCount}👍): {h.Title} ({h.StreetOrZone}). {h.Description}",
-                    CommunityReportCategory.InaccessibleArea =>
-                        $"Waze pristupačnost ({h.ConfirmationsCount}👍): {h.Title} ({h.StreetOrZone}). {h.Description}",
-                    CommunityReportCategory.MissingBikeLane =>
-                        $"Zajednica prijavljuje ({h.ConfirmationsCount}👍): Na dionici '{h.StreetOrZone}' nedostaje biciklistička staza unatoč čestom prolasku.",
-                    _ =>
-                        $"Waze blokada na ruti ({h.ConfirmationsCount}👍): {h.Title} ({h.StreetOrZone})."
-                };
-
-                if (!opt.Warnings.Any(w => w.Message == msg))
-                {
-                    opt.Warnings.Add(new RouteWarningDto
-                    {
-                        Type = wType,
-                        Message = msg
-                    });
-                }
-            }
-        }
-    }
-
     private static void RankAndMarkRecommended(List<RouteOptionDto> options)
     {
         if (options.Count == 0) return;
 
-        // Sortiraj po CO2 rastuće, pa ima li aktivnu Waze blokadu na ruti, pa po eko-bodovima padajuće, pa po trajanju rastuće
+        // Sortiraj po CO2 rastuće, pa po eko-bodovima padajuće, pa po trajanju rastuće
         var sorted = options
             .OrderBy(o => o.Co2Grams)
-            .ThenBy(o => o.Warnings.Any(w => w.Type is WarningType.RoadBlockade or WarningType.BlockedBikeLane or WarningType.InaccessibleArea) ? 1 : 0)
             .ThenByDescending(o => o.EcoPoints)
             .ThenBy(o => o.DurationMinutes)
             .ToList();
@@ -862,12 +813,11 @@ public class RoutePlanner : IRoutePlanner
 
         double fastest = options.Min(o => o.DurationMinutes);
 
-        // Preporuči najzeleniju opciju bez nepovoljnih vremenskih/infrastrukturnih/Waze blokada čije trajanje je razumno
+        // Preporuči najzeleniju opciju bez nepovoljnih vremenskih/infrastrukturnih/zračnih upozorenja čije trajanje je razumno
         var bestClean = options.FirstOrDefault(o =>
             o.Mode != TransportMode.Car &&
             o.DurationMinutes <= fastest * 2.2 &&
-            !o.Warnings.Any(w => w.Type is WarningType.Rain or WarningType.Snow or WarningType.NoBikeLane
-                or WarningType.AirQuality or WarningType.RoadBlockade or WarningType.BlockedBikeLane or WarningType.InaccessibleArea));
+            !o.Warnings.Any(w => w.Type is WarningType.Rain or WarningType.Snow or WarningType.NoBikeLane or WarningType.AirQuality));
 
         var recommended = bestClean
                           ?? options.FirstOrDefault(o => o.Mode != TransportMode.Car && o.DurationMinutes <= fastest * 2.5)

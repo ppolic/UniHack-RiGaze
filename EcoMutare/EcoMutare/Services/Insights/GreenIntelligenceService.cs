@@ -1,6 +1,5 @@
 using EcoMutare.Domain;
 using EcoMutare.Dtos;
-using EcoMutare.Services.Community;
 using EcoMutare.Services.Routing;
 
 namespace EcoMutare.Services.Insights;
@@ -8,9 +7,8 @@ namespace EcoMutare.Services.Insights;
 /// <summary>
 /// BE1 servis (sat 24–30) koji predaje BE2-u i gradskom dashboardu:
 /// 1) Izračun točne ortogonalne udaljenosti bilo koje točke do najbliže biciklističke staze (segment polylinea) i STPT stanice,
-/// 2) Podjelu Timișoare u ~500m prostornu rešetku i mapiranje putovanja, Favorite ruta i Waze prijava na ćelije,
-/// 3) Izračun indeksa praznine (GapCells: potražnja + Favorite rute + Waze MissingBikeLane glasovi + auto-udio + udaljenost od staze)
-///    te generiranje prijedloga za participativni proračun Grada Temišvara (https://decidem.primariatm.ro).
+/// 2) Podjelu Timișoare u ~500m prostornu rešetku i mapiranje putovanja na ćelije,
+/// 3) Izračun indeksa praznine (GapCells: visoka potražnja + velik auto-udio + udaljenost od staze/JPP-a) i top 3 zone za ulaganje.
 /// </summary>
 public interface IGreenIntelligenceService
 {
@@ -31,13 +29,11 @@ public class GreenIntelligenceService : IGreenIntelligenceService
     private const double CellLatStep = 0.0045;
     private const double CellLngStep = 0.0064;
 
-    private readonly ICommunityIntelligenceService _community;
     private readonly List<CityTripRecordDto> _recordedTrips = new();
     private readonly object _sync = new();
 
-    public GreenIntelligenceService(ICommunityIntelligenceService community)
+    public GreenIntelligenceService()
     {
-        _community = community;
         _recordedTrips.AddRange(GenerateRealisticTimisoaraSeedTrips());
     }
 
@@ -149,9 +145,6 @@ public class GreenIntelligenceService : IGreenIntelligenceService
             }
         }
 
-        var communityReports = _community.GetCachedReportsSnapshot(onlyActive: true);
-        var favoriteRoutes = _community.GetCachedFavoriteRoutesSnapshot();
-
         var zones = GetTimisoaraGridZones();
         var cells = new List<GapCellDto>(zones.Count);
 
@@ -168,37 +161,11 @@ public class GreenIntelligenceService : IGreenIntelligenceService
                 new() { Lat = Math.Round(zone.Center.Lat + halfLat, 6), Lng = Math.Round(zone.Center.Lng - halfLng, 6) }
             };
 
-            // 1. Putovanja koja prolaze kroz ćeliju (~390m)
+            // Putovanje pripada ili prolazi kroz ćeliju ako polazište, odredište ili linija kretanja siječe radijus ćelije (~380m)
             var matchingTrips = trips.Where(t => TripPassesThroughCell(t, zone.Center, 390.0)).ToList();
 
-            // 2. Favorite rute građana koje sijeku ćeliju (svaka omiljena ruta nosi WeeklyFrequency tjednih prolazaka)
-            var matchingFavorites = favoriteRoutes
-                .Where(f => SegmentPassesThroughCell(
-                    new GeoPoint { Lat = f.OriginLat, Lng = f.OriginLng },
-                    new GeoPoint { Lat = f.DestinationLat, Lng = f.DestinationLng },
-                    zone.Center,
-                    420.0))
-                .ToList();
-
-            int favWeeklyDemand = matchingFavorites.Sum(f => f.WeeklyFrequency);
-
-            // 3. Izravne prijave građana "Ovdje fali biciklistička staza!" (MissingBikeLane) u blizini ćelije (~550m)
-            int missingBikeLaneVotes = communityReports
-                .Where(r => r.Category == CommunityReportCategory.MissingBikeLane &&
-                            TimisoaraPublicData.HaversineMeters(r.Location, zone.Center) <= 550.0)
-                .Sum(r => r.ConfirmationsCount);
-
-            // Ako su korisnici na Favorite ruti označili MissingBikeLaneOnRoute, dodaj i njihove tjedne prolaske u glasove
-            missingBikeLaneVotes += matchingFavorites.Where(f => f.MissingBikeLaneOnRoute).Sum(f => f.WeeklyFrequency);
-
-            // 4. Aktivne Waze blokade ceste / nedostupna područja u ćeliji (~500m)
-            int activeHazards = communityReports
-                .Count(r => r.Category != CommunityReportCategory.MissingBikeLane &&
-                            TimisoaraPublicData.HaversineMeters(r.Location, zone.Center) <= 500.0);
-
-            int total = matchingTrips.Count + favWeeklyDemand;
-            int carCount = matchingTrips.Count(t => t.Mode == TransportMode.Car) +
-                           matchingFavorites.Where(f => f.PreferredMode == TransportMode.Car).Sum(f => f.WeeklyFrequency);
+            int total = matchingTrips.Count;
+            int carCount = matchingTrips.Count(t => t.Mode == TransportMode.Car);
             int greenCount = total - carCount;
             double carShare = total > 0 ? Math.Round((double)carCount / total, 2) : 0.0;
 
@@ -207,19 +174,14 @@ public class GreenIntelligenceService : IGreenIntelligenceService
             var (accStopDist, _) = GetNearestTransitStopDistance(zone.Center, onlyWheelchairAccessible: true);
 
             // Formula za GapScore (0..100):
-            // Potražnja (putovanja + Favorite rute, do 30 bodova) + udio automobila (do 25 bodova) +
-            // udaljenost od staze/JPP-a (do 25 bodova) + crowdsourced MissingBikeLane glasovi građana (do 20 bodova)
-            double demandFactor = Math.Clamp(total / 52.0, 0.0, 1.0) * 30.0;
-            double carFactor = carShare * 25.0;
-            double bikeDeficitFactor = Math.Clamp((bikeDist - 120.0) / 850.0, 0.0, 1.0) * 18.0;
-            double transitDeficitFactor = Math.Clamp((stopDist - 150.0) / 750.0, 0.0, 1.0) * 7.0;
-            double citizenVoiceFactor = Math.Clamp(missingBikeLaneVotes / 40.0, 0.0, 1.0) * 20.0;
+            // Visoka potražnja (do 35 bodova) + visok udio automobila (do 35 bodova) + udaljenost od staze i JPP-a (do 30 bodova)
+            double demandFactor = Math.Clamp(total / 48.0, 0.0, 1.0) * 35.0;
+            double carFactor = carShare * 35.0;
+            double bikeDeficitFactor = Math.Clamp((bikeDist - 120.0) / 850.0, 0.0, 1.0) * 20.0;
+            double transitDeficitFactor = Math.Clamp((stopDist - 150.0) / 750.0, 0.0, 1.0) * 10.0;
 
-            double gapScore = Math.Round(Math.Clamp(demandFactor + carFactor + bikeDeficitFactor + transitDeficitFactor + citizenVoiceFactor, 0.0, 100.0), 1);
-            bool isGap = gapScore >= 56.0 && (bikeDist >= 350.0 || carShare >= 0.50 || missingBikeLaneVotes >= 15);
-
-            var intervention = BuildInterventionRecommendation(zone.ZoneName, bikeDist, stopDist, carShare, missingBikeLaneVotes);
-            var decidemDraft = BuildDecidemProposalDraft(zone.ZoneName, total, missingBikeLaneVotes, favWeeklyDemand, bikeDist, bikeName);
+            double gapScore = Math.Round(Math.Clamp(demandFactor + carFactor + bikeDeficitFactor + transitDeficitFactor, 0.0, 100.0), 1);
+            bool isGap = gapScore >= 58.0 && (bikeDist >= 350.0 || carShare >= 0.55);
 
             cells.Add(new GapCellDto
             {
@@ -231,9 +193,6 @@ public class GreenIntelligenceService : IGreenIntelligenceService
                 CarTrips = carCount,
                 GreenTrips = greenCount,
                 CarShare = carShare,
-                CitizenBikeLaneRequestsCount = missingBikeLaneVotes,
-                FavoriteRoutesDemandCount = favWeeklyDemand,
-                ActiveHazardsCount = activeHazards,
                 DistanceToNearestBikeLaneMeters = bikeDist,
                 NearestBikeLaneName = bikeName,
                 DistanceToNearestTransitStopMeters = stopDist,
@@ -241,14 +200,12 @@ public class GreenIntelligenceService : IGreenIntelligenceService
                 DistanceToAccessibleTransitStopMeters = accStopDist,
                 GapScore = gapScore,
                 IsInfrastructureGap = isGap,
-                RecommendedIntervention = intervention,
-                DecidemProposalDraft = decidemDraft
+                RecommendedIntervention = BuildInterventionRecommendation(zone.ZoneName, bikeDist, stopDist, carShare)
             });
         }
 
         var ranked = cells
             .OrderByDescending(c => c.GapScore)
-            .ThenByDescending(c => c.CitizenBikeLaneRequestsCount)
             .ThenByDescending(c => c.TotalTrips)
             .ToList();
 
@@ -263,21 +220,11 @@ public class GreenIntelligenceService : IGreenIntelligenceService
     public InsightsGapsResponseDto GetGapsReport(IEnumerable<CityTripRecordDto>? customTrips = null)
     {
         var cells = CalculateGapCells(customTrips).ToList();
-        var missingLaneHotspots = _community.GetCachedReportsSnapshot(onlyActive: true)
-            .Where(r => r.Category == CommunityReportCategory.MissingBikeLane)
-            .OrderByDescending(r => r.ConfirmationsCount)
-            .ToList();
-
-        var favCount = _community.GetCachedFavoriteRoutesSnapshot().Count;
-
         return new InsightsGapsResponseDto
         {
             IsSimulationData = true,
             GridCellSizeMeters = 500,
-            TotalCitizenBikeLaneRequests = missingLaneHotspots.Sum(h => h.ConfirmationsCount),
-            TotalFavoriteRoutesTracked = favCount,
             BikeCorridors = TimisoaraPublicData.BikeCorridors.ToList(),
-            MissingBikeLaneHotspots = missingLaneHotspots,
             Cells = cells
         };
     }
@@ -298,12 +245,9 @@ public class GreenIntelligenceService : IGreenIntelligenceService
         }
 
         var cells = CalculateGapCells(trips);
-        var reports = _community.GetCachedReportsSnapshot(onlyActive: true);
-        var favs = _community.GetCachedFavoriteRoutesSnapshot();
 
-        int totalTrips = trips.Count + favs.Sum(f => f.WeeklyFrequency);
-        int greenTrips = trips.Count(t => t.Mode != TransportMode.Car) +
-                         favs.Where(f => f.PreferredMode != TransportMode.Car).Sum(f => f.WeeklyFrequency);
+        int totalTrips = trips.Count;
+        int greenTrips = trips.Count(t => t.Mode != TransportMode.Car);
         double totalSavedCo2Kg = Math.Round(trips.Sum(t => t.Co2SavedGrams) / 1000.0, 1);
         double greenSplitPct = totalTrips > 0 ? Math.Round((double)greenTrips / totalTrips * 100.0, 1) : 0.0;
 
@@ -317,15 +261,11 @@ public class GreenIntelligenceService : IGreenIntelligenceService
                 Center = c.Center,
                 GapScore = c.GapScore,
                 TotalTrips = c.TotalTrips,
-                CitizenBikeLaneRequestsCount = c.CitizenBikeLaneRequestsCount,
-                FavoriteRoutesDemandCount = c.FavoriteRoutesDemandCount,
                 CarSharePercent = Math.Round(c.CarShare * 100.0, 1),
                 DistanceToBikeLaneMeters = c.DistanceToNearestBikeLaneMeters,
                 DistanceToTransitStopMeters = c.DistanceToNearestTransitStopMeters,
-                Reason = $"{c.TotalTrips} tjednih putovanja ({Math.Round(c.CarShare * 100)}% osobnim vozilom), {c.CitizenBikeLaneRequestsCount} glasova građana za biciklističku stazu, {c.DistanceToNearestBikeLaneMeters:F0} m do najbliže postojeće staze.",
-                ProposedAction = c.RecommendedIntervention,
-                DecidemProposalDraft = c.DecidemProposalDraft,
-                DecidemSubmissionUrl = "https://decidem.primariatm.ro"
+                Reason = $"{c.TotalTrips} putovanja ({Math.Round(c.CarShare * 100)}% osobnim vozilom), {c.DistanceToNearestBikeLaneMeters:F0} m do najbliže biciklističke staze.",
+                ProposedAction = c.RecommendedIntervention
             })
             .ToList();
 
@@ -337,9 +277,6 @@ public class GreenIntelligenceService : IGreenIntelligenceService
             GreenTripsCount = greenTrips,
             GreenModalSplitPercent = greenSplitPct,
             IdentifiedGapCellsCount = cells.Count(c => c.IsInfrastructureGap),
-            ActiveRoadBlockadesAndHazardsCount = reports.Count(r => r.Category != CommunityReportCategory.MissingBikeLane),
-            CitizenMissingBikeLaneVotesCount = reports.Where(r => r.Category == CommunityReportCategory.MissingBikeLane).Sum(r => r.ConfirmationsCount),
-            TrackedFavoriteRoutesCount = favs.Count,
             TopInvestmentZones = top3
         };
     }
@@ -374,42 +311,32 @@ public class GreenIntelligenceService : IGreenIntelligenceService
         return Math.Sqrt(projX * projX + projY * projY);
     }
 
-    private static bool TripPassesThroughCell(CityTripRecordDto trip, GeoPoint cellCenter, double radiusMeters) =>
-        SegmentPassesThroughCell(trip.Origin, trip.Destination, cellCenter, radiusMeters);
-
-    private static bool SegmentPassesThroughCell(GeoPoint origin, GeoPoint destination, GeoPoint cellCenter, double radiusMeters)
+    private static bool TripPassesThroughCell(CityTripRecordDto trip, GeoPoint cellCenter, double radiusMeters)
     {
-        if (TimisoaraPublicData.HaversineMeters(origin, cellCenter) <= radiusMeters ||
-            TimisoaraPublicData.HaversineMeters(destination, cellCenter) <= radiusMeters)
+        if (TimisoaraPublicData.HaversineMeters(trip.Origin, cellCenter) <= radiusMeters ||
+            TimisoaraPublicData.HaversineMeters(trip.Destination, cellCenter) <= radiusMeters)
         {
             return true;
         }
 
-        return PointToSegmentDistanceMeters(cellCenter, origin, destination) <= radiusMeters;
+        return PointToSegmentDistanceMeters(cellCenter, trip.Origin, trip.Destination) <= radiusMeters;
     }
 
-    private static string BuildInterventionRecommendation(string zoneName, double bikeDist, double stopDist, double carShare, int citizenVotes)
+    private static string BuildInterventionRecommendation(string zoneName, double bikeDist, double stopDist, double carShare)
     {
-        if (citizenVotes >= 20 || (bikeDist >= 550 && stopDist >= 450))
+        if (bikeDist >= 550 && stopDist >= 450)
         {
-            return $"Prioritet #1 (potvrđeno s {citizenVotes} glasova građana): Izgradnja zaštićene biciklističke staze (piste de biciclete) i postavljanje VeloTM stanice u zoni {zoneName}.";
+            return $"Izgradnja spojne biciklističke staze (piste de biciclete) i uvođenje nove VeloTM / STPT stanice u zoni {zoneName}.";
         }
         if (bikeDist >= 400)
         {
-            return $"Prioritetna izgradnja spojne biciklističke trake za povezivanje zone {zoneName} s glavnom mrežom koridora.";
+            return $"Prioritetna izgradnja zaštićene biciklističke trake za povezivanje zone {zoneName} s glavnom mrežom koridora.";
         }
         if (carShare >= 0.60)
         {
             return $"Pojačanje frekvencije STPT javnog prijevoza i postavljanje VeloTM mikro-mobilnost stanice u zoni {zoneName}.";
         }
-        return $"Dobro pokrivena zona – redovito održavanje postojećih biciklističkih koridora i pristupačnih rampi.";
-    }
-
-    private static string BuildDecidemProposalDraft(string zoneName, int totalTrips, int citizenVotes, int favDemand, double bikeDist, string nearestLane)
-    {
-        return $"[Decidem Timișoara – Propunere Buget Participativ] Amenajare pistă de biciclete protejată în zona {zoneName}: " +
-               $"Coridorul înregistrează {totalTrips} deplasări analizate ({favDemand} pe rute favorite săptămânale) și {citizenVotes} raportări directe ale cetățenilor, " +
-               $"fiind situat la {bikeDist:F0} m de cea mai apropiată pistă existentă ({nearestLane}).";
+        return $"Dobro pokrivena zona – održavanje postojećih biciklističkih koridora i pristupačnih prijelaza.";
     }
 
     private record GridZoneDefinition(string CellId, string ZoneName, GeoPoint Center);

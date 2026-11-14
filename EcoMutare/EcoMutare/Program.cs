@@ -60,22 +60,12 @@ builder.Services.AddHttpClient<EcoMutare.Services.Routing.IRoutingProvider, EcoM
     client.Timeout = TimeSpan.FromSeconds(Math.Max(2, opts.TimeoutSeconds));
 }).AddStandardResilienceHandler();
 
-<<<<<<< HEAD
-// Pravila, Waze Community Intelligence i glavni multimodalni planer ruta (sat 12-30), uz MockRoutePlanner kao fallback iza Routing:UseMock
-builder.Services.AddHttpClient();
-builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
-    builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
-builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
-builder.Services.AddSingleton<EcoMutare.Services.Community.ICommunityIntelligenceService, EcoMutare.Services.Community.CommunityIntelligenceService>();
-builder.Services.AddSingleton<EcoMutare.Services.Insights.IGreenIntelligenceService, EcoMutare.Services.Insights.GreenIntelligenceService>();
-=======
 // Pravila, Waze Community Intelligence, Green Intelligence i glavni multimodalni planer ruta (sat 12-48)
 builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
     builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
 builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
 builder.Services.AddSingleton<ICommunityIntelligenceService, CommunityIntelligenceService>();
 builder.Services.AddSingleton<IGreenIntelligenceService, GreenIntelligenceService>();
->>>>>>> BE2
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();
 
