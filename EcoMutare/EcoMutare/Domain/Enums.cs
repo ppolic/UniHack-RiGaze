@@ -1,4 +1,4 @@
-namespace EcoMutare.Domain;
+﻿namespace EcoMutare.Domain;
 
 public enum TransportMode
 {
@@ -31,6 +31,7 @@ public enum WarningType
     Helmet,
     NoBikeLane,
     NotAccessible,
+    RoadHazard,
     Estimate
 }
 
@@ -40,4 +41,14 @@ public enum AgeCategory
     Under14,
     From14To15,
     Adult
+}
+
+// Kategorija Waze-style građanske prijave na terenu u Timișoari
+public enum CommunityReportCategory
+{
+    RoadBlockade,
+    BlockedBikeLane,
+    InaccessibleArea,
+    MissingBikeLane,
+    TransitDisruption
 }
