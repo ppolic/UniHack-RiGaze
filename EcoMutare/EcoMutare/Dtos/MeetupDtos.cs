@@ -157,3 +157,4 @@ public class MeetupEligibilityResponse
     /// <summary>Razlog zabrane (null ako je dopušteno).</summary>
     public string? Reason { get; set; }
 }
+ 

@@ -9,6 +9,16 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace EcoMutare.Services.Community;
 
+public enum ReportPhotoStatus { Ok, NotFound, Forbidden }
+
+public class ReportPhotoResult
+{
+    public ReportPhotoStatus Status { get; set; }
+    public CommunityReportDto? Report { get; set; }
+    /// <summary>URL prethodne fotografije (ako je zamijenjena), da je pozivatelj može obrisati s diska.</summary>
+    public string? PreviousPhotoUrl { get; set; }
+}
+
 public interface ICommunityIntelligenceService
 {
     Task<IReadOnlyList<CommunityReportDto>> GetReportsAsync(
@@ -26,6 +36,12 @@ public interface ICommunityIntelligenceService
     Task<CommunityReportActionResponseDto> ReportMissingBikeLaneAsync(MissingBikeLaneRequestDto req, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ConfirmReportAsync(int id, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ResolveReportAsync(int id, CancellationToken ct = default);
+    /// <summary>
+    /// Veže fotografiju uz prijavu. Samo autor prijave (ReportedByUserId) smije dodati ili zamijeniti fotografiju.
+    /// storePhoto se poziva tek nakon provjere vlasništva i vraća URL spremljene datoteke.
+    /// </summary>
+    Task<ReportPhotoResult> SetReportPhotoAsync(int id, int userId, Func<CancellationToken, Task<string>> storePhoto, CancellationToken ct = default);
+
     IReadOnlyList<HazardCategoryMenuDto> GetHazardCategoryMenu();
 
     IReadOnlyList<CommunityReportDto> GetHazardsNearGeometry(
@@ -397,6 +413,53 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             OfficialCityIntegrationNote = target.ConfirmationsCount >= 3
                 ? "Status: COMMUNITY VERIFIED (3+ potvrde građana na terenu)."
                 : "Prijava čeka dodatne potvrde za status Community Verified."
+        };
+    }
+
+    public async Task<ReportPhotoResult> SetReportPhotoAsync(
+        int id, int userId, Func<CancellationToken, Task<string>> storePhoto, CancellationToken ct = default)
+    {
+        EnsureSyncedWithDatabase();
+
+        CommunityReport? target;
+        lock (_sync)
+        {
+            target = _memoryReports.FirstOrDefault(r => r.Id == id);
+        }
+
+        if (target is null) return new ReportPhotoResult { Status = ReportPhotoStatus.NotFound };
+        if (target.ReportedByUserId != userId) return new ReportPhotoResult { Status = ReportPhotoStatus.Forbidden };
+
+        string newUrl = await storePhoto(ct);
+
+        string? previous;
+        lock (_sync)
+        {
+            previous = target.PhotoUrl;
+            target.PhotoUrl = newUrl;
+        }
+
+        try
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var dbReport = await db.CommunityReports.FindAsync(new object[] { id }, ct);
+            if (dbReport is not null)
+            {
+                dbReport.PhotoUrl = newUrl;
+                await db.SaveChangesAsync(ct);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug("Spremanje fotografije prijave u MySQL nije uspjelo: {Msg}", ex.Message);
+        }
+
+        return new ReportPhotoResult
+        {
+            Status = ReportPhotoStatus.Ok,
+            Report = MapReportDto(target, null),
+            PreviousPhotoUrl = previous
         };
     }
 
@@ -983,6 +1046,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             ExternalSesizariId = r.ExternalSesizariId,
             OfficialActionUrl = r.OfficialActionUrl,
             OfficialChannelLabel = label,
+            PhotoUrl = r.PhotoUrl,
             DistanceMetersFromQuery = dist,
             CreatedAt = r.CreatedAt
         };

@@ -553,6 +553,7 @@ public static class DatabaseSeeder
             "ALTER TABLE `Users` ADD COLUMN `OwnsBike` tinyint(1) NOT NULL DEFAULT 0;",
             "ALTER TABLE `Users` ADD COLUMN `OwnsScooter` tinyint(1) NOT NULL DEFAULT 0;",
             "ALTER TABLE `Users` ADD COLUMN `OwnsCar` tinyint(1) NOT NULL DEFAULT 0;",
+            "ALTER TABLE `CommunityReports` ADD COLUMN `PhotoUrl` varchar(255) NULL;",
             @"CREATE TABLE IF NOT EXISTS `CarpoolRides` (
                 `Id` int NOT NULL AUTO_INCREMENT,
                 `DriverId` int NULL,
@@ -602,6 +603,7 @@ public static class DatabaseSeeder
                 `Source` varchar(100) NOT NULL DEFAULT '',
                 `ExternalSesizariId` varchar(60) NULL,
                 `OfficialActionUrl` varchar(255) NOT NULL DEFAULT '',
+                `PhotoUrl` varchar(255) NULL,
                 `ReportedByUserId` int NULL,
                 `CreatedAt` datetime(6) NOT NULL,
                 PRIMARY KEY (`Id`)

@@ -25,6 +25,8 @@ public class CommunityReportDto
     public string? ExternalSesizariId { get; set; }
     public string OfficialActionUrl { get; set; } = string.Empty;
     public string OfficialChannelLabel { get; set; } = string.Empty;
+    /// <summary>Relativni URL fotografije (dodajte osnovni URL API-ja); null ako prijava nema fotografiju.</summary>
+    public string? PhotoUrl { get; set; }
     public double? DistanceMetersFromQuery { get; set; }
     public DateTime CreatedAt { get; set; }
 }
@@ -59,6 +61,16 @@ public class CreateCommunityReportRequestDto
     public bool AffectsWheelchair { get; set; } = false;
 
     public int? UserId { get; set; }
+}
+
+/// <summary>
+/// Prijava s fotografijom u jednom zahtjevu (multipart/form-data): ista polja kao CreateCommunityReportRequestDto
+/// plus datoteka Photo (JPEG ili PNG, najviše 5 MB). UserId se uvijek uzima iz prijave (tokena), ne iz forme.
+/// </summary>
+public class CreateCommunityReportWithPhotoRequest : CreateCommunityReportRequestDto
+{
+    /// <summary>Fotografija s kamere (JPEG/PNG, najviše 5 MB).</summary>
+    public IFormFile? Photo { get; set; }
 }
 
 /// <summary>

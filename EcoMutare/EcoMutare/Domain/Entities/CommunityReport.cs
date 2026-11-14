@@ -2,11 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace EcoMutare.Domain.Entities;
 
-/// <summary>
 /// Građanska prijava na terenu u stvarnom vremenu u Timișoari:
 /// blokade cesta, nedostupna područja za osobe s invaliditetom, blokirane biciklističke staze
 /// ili prijava koridora gdje nedostaje biciklistička staza unatoč čestom prolasku građana.
-/// </summary>
+
 public class CommunityReport
 {
     public int Id { get; set; }
@@ -54,6 +53,10 @@ public class CommunityReport
     /// </summary>
     [MaxLength(255)]
     public string OfficialActionUrl { get; set; } = "https://sesizari.primariatm.ro";
+
+    /// <summary>Relativni URL fotografije prijave (npr. /reports/photos/ab12...jpg); null ako nema fotografije.</summary>
+    [MaxLength(255)]
+    public string? PhotoUrl { get; set; }
 
     public int? ReportedByUserId { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
