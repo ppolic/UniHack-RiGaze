@@ -426,3 +426,23 @@ FodyWeavers.xsd
 
 # Official VS Code C# Dev Kit Extension exclusion
 #*.lscache
+
+.env
+
+# Lokalne postavke i tajne (da API ključevi i lokalni MySQL passwordi ne završe na GitHubu)
+**/appsettings.Development.json
+**/appsettings.Local.json
+**/appsettings.*.local.json
+**/appseting.Development.json
+
+# Sve varijante .env datoteka (trenutni *.env ne hvata .env.local ili .env.production)
+.env*
+!.env.example
+
+# Lokalni certifikati i ključevi
+*.pem
+*.key
+
+# OS datoteke
+.DS_Store
+Thumbs.db
