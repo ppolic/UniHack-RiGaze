@@ -673,16 +673,80 @@ async function buildRoadFollowingPlanResponse(
     ],
   };
 
+  // 6. WALK BUDDY OPTION (Social walk companion - equal values as walk + social points)
+  const walkBuddyOption: RouteOptionDto = {
+    id: 'walk-buddy',
+    mode: 'WalkBuddy',
+    title: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    durationMinutes: walkDurationMin,
+    distanceKm: walkDistKm,
+    costRon: 0,
+    co2Grams: 0,
+    ecoPoints: walkOption.ecoPoints + 20,
+    ecoRank: 1,
+    isRecommended: false,
+    segments: [
+      {
+        mode: 'WalkBuddy',
+        description: 'Šetnja u društvu verificiranog Walk Buddyja',
+        durationMinutes: walkDurationMin,
+        distanceKm: walkDistKm,
+        geometry: walkGeometry,
+      },
+    ],
+    warnings: [],
+  };
+
+  // 7. BIKE POOL OPTION (Group cycling / bike convoy)
+  const bikePoolOption: RouteOptionDto = {
+    id: 'bike-pool',
+    mode: 'BikePool',
+    title: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    durationMinutes: totalBikeDurationMin,
+    distanceKm: totalBikeDistKm,
+    costRon: bikeOption.costRon,
+    co2Grams: 0,
+    ecoPoints: bikeOption.ecoPoints + 20,
+    ecoRank: 1,
+    isRecommended: false,
+    segments: [
+      {
+        mode: 'BikePool',
+        description: 'Zajednička biciklistička vožnja u grupi (Bike Pool)',
+        durationMinutes: totalBikeDurationMin,
+        distanceKm: totalBikeDistKm,
+        geometry: directBikeGeometry,
+      },
+    ],
+    warnings: bikeOption.warnings,
+  };
+
+  // 8. VERIFIED CARPOOL OPTION (Shared car ride)
+  const carpoolOption: RouteOptionDto = {
+    id: 'carpool',
+    mode: 'Carpool',
+    title: 'Verified Carpool 🚗👥',
+    durationMinutes: carDriveMin + carWalkMin,
+    distanceKm: totalCarDistKm,
+    costRon: Math.max(1, Number((carOption.costRon / 3).toFixed(1))),
+    co2Grams: Math.round(carCo2 / 3),
+    ecoPoints: 35,
+    ecoRank: 4,
+    isRecommended: false,
+    segments: carSegments,
+    warnings: [],
+  };
+
   // Assemble & filter by user profile
   let options: RouteOptionDto[] = [];
   if (profile.hasDisability) {
-    options = [transitOption, walkOption, carOption];
+    options = [transitOption, walkOption, walkBuddyOption, carOption];
   } else if (profile.ageCategory === 'Under14') {
-    options = [walkOption, transitOption];
+    options = [walkOption, walkBuddyOption, transitOption];
   } else if (profile.ageCategory === 'From14To15') {
-    options = [bikeOption, walkOption, transitOption, scooterOption];
+    options = [bikeOption, bikePoolOption, walkOption, walkBuddyOption, transitOption, scooterOption];
   } else {
-    options = [bikeOption, transitOption, walkOption, scooterOption, carOption];
+    options = [bikeOption, bikePoolOption, transitOption, walkOption, walkBuddyOption, carpoolOption, scooterOption, carOption];
   }
 
   // Pick the optimal recommended option based on distance & profile

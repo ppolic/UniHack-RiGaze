@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, useWindowDimensions } from 'react-native';
 import { RouteOptionDto } from '../../types/route';
 import { colors } from '../../theme/colors';
@@ -22,16 +22,44 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
   const desktop = useWindowDimensions().width >= 768;
   const { wcagLargeText } = useAuth();
   const { t, translateMessage } = useTranslation();
+
+  // Social companion & pooling interactive state
+  const isWalkLike = option.mode === 'Walk' || option.mode === 'WalkBuddy';
+  const isBikeLike = option.mode === 'Bike' || option.mode === 'BikePool';
+  const isCarLike = option.mode === 'Car' || option.mode === 'Carpool';
+
+  const [walkChoice, setWalkChoice] = useState<'alone' | 'buddy'>(
+    option.mode === 'WalkBuddy' ? 'buddy' : 'alone'
+  );
+  const [isEnrolledAsBuddy, setIsEnrolledAsBuddy] = useState(option.mode === 'WalkBuddy');
+  const [joinedBuddy, setJoinedBuddy] = useState<string | null>(null);
+
+  const [bikeChoice, setBikeChoice] = useState<'alone' | 'pool'>(
+    option.mode === 'BikePool' ? 'pool' : 'alone'
+  );
+  const [isEnrolledInBikePool, setIsEnrolledInBikePool] = useState(option.mode === 'BikePool');
+  const [joinedBikeGroup, setJoinedBikeGroup] = useState<string | null>(null);
+
+  const [carChoice, setCarChoice] = useState<'alone' | 'carpool'>(
+    option.mode === 'Carpool' ? 'carpool' : 'alone'
+  );
+  const [acceptedPassenger, setAcceptedPassenger] = useState<string | null>(null);
+  const [carpoolSeats, setCarpoolSeats] = useState(3);
+
   const getModeColor = (mode: string) => {
     switch (mode) {
       case 'Bike':
+      case 'BikePool':
         return colors.modes.bicycle;
       case 'PublicTransport':
         return colors.modes.publicTransit;
       case 'Walk':
+      case 'WalkBuddy':
         return colors.modes.walking;
       case 'Scooter':
         return colors.modes.scooter;
+      case 'Carpool':
+        return colors.modes.carpooling;
       case 'Car':
       default:
         return colors.modes.carWithParking;
@@ -42,12 +70,18 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
     switch (mode) {
       case 'Bike':
         return t.modeBikeLabel;
+      case 'BikePool':
+        return 'Bike Pool 🚴‍♂️🤝🚴‍♀️';
       case 'PublicTransport':
         return t.modeTransitLabel;
       case 'Walk':
         return t.modeWalkLabel;
+      case 'WalkBuddy':
+        return 'Walk Buddy 🚶‍♂️🤝🚶‍♀️';
       case 'Scooter':
         return t.modeScooterLabel;
+      case 'Carpool':
+        return 'Carpool 🚗👥';
       case 'Car':
         return t.modeCarLabel;
       default:
@@ -240,6 +274,228 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
           ))}
         </View>
       )}
+
+      {/* 1. WALK BUDDY INTERACTIVE COMPANION SELECTION */}
+      {isSelected && isWalkLike && (
+        <View style={styles.socialBox}>
+          <Text style={styles.socialQuestionTitle}>
+            🚶‍♂️ Planiraš šetnju: Želiš li šetati sam(a) ili s Walk Buddyjem?
+          </Text>
+          <View style={styles.socialChoiceRow}>
+            <TouchableOpacity
+              onPress={() => setWalkChoice('alone')}
+              style={[styles.socialChoiceBtn, walkChoice === 'alone' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, walkChoice === 'alone' && styles.socialChoiceTextActive]}>
+                🚶 Šetam sam(a)
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setWalkChoice('buddy')}
+              style={[styles.socialChoiceBtn, walkChoice === 'buddy' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, walkChoice === 'buddy' && styles.socialChoiceTextActive]}>
+                🤝 Walk Buddy (+20 bodova)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {walkChoice === 'buddy' && (
+            <View style={styles.buddySubSection}>
+              <Text style={styles.buddySubTitle}>Obližnji ponuđeni Walk Buddyji:</Text>
+              <View style={styles.buddyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.buddyName}>🎓 Elena V. (Studentica UPT)</Text>
+                  <Text style={styles.buddyMeta}>Udaljena 150m • Ide istom rutom prema centru</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setJoinedBuddy('Elena V.')}
+                  style={[styles.buddyJoinBtn, joinedBuddy === 'Elena V.' && styles.buddyJoinBtnActive]}
+                >
+                  <Text style={styles.buddyJoinBtnText}>
+                    {joinedBuddy === 'Elena V.' ? '✓ Spojeni!' : 'Spoji se'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.buddyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.buddyName}>🏢 Radu P. (Continental Commuter)</Text>
+                  <Text style={styles.buddyMeta}>Udaljen 280m • Kreće za 3 minute</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setJoinedBuddy('Radu P.')}
+                  style={[styles.buddyJoinBtn, joinedBuddy === 'Radu P.' && styles.buddyJoinBtnActive]}
+                >
+                  <Text style={styles.buddyJoinBtnText}>
+                    {joinedBuddy === 'Radu P.' ? '✓ Spojeni!' : 'Spoji se'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsEnrolledAsBuddy(!isEnrolledAsBuddy)}
+                style={styles.enrollToggleRow}
+              >
+                <View style={[styles.checkbox, isEnrolledAsBuddy && styles.checkboxActive]}>
+                  {isEnrolledAsBuddy && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.enrollText}>
+                  Omogući me kao ponuđenog Walk Buddyja na ovoj ruti
+                </Text>
+              </TouchableOpacity>
+              {isEnrolledAsBuddy && (
+                <Text style={styles.enrolledSuccess}>
+                  ✅ Registriran si kao ponuđeni Walk Buddy! Drugi građani te vide na ruti.
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* 2. BIKE POOL INTERACTIVE GROUP CYCLING */}
+      {isSelected && isBikeLike && (
+        <View style={styles.socialBox}>
+          <Text style={styles.socialQuestionTitle}>
+            🚴 Planiraš bicikl: Voziš li sam(a) ili želiš Bike Pool grupu?
+          </Text>
+          <View style={styles.socialChoiceRow}>
+            <TouchableOpacity
+              onPress={() => setBikeChoice('alone')}
+              style={[styles.socialChoiceBtn, bikeChoice === 'alone' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, bikeChoice === 'alone' && styles.socialChoiceTextActive]}>
+                🚴 Vozim sam(a)
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setBikeChoice('pool')}
+              style={[styles.socialChoiceBtn, bikeChoice === 'pool' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, bikeChoice === 'pool' && styles.socialChoiceTextActive]}>
+                🚴‍♂️🚴‍♀️ Bike Pool (+20 bodova)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {bikeChoice === 'pool' && (
+            <View style={styles.buddySubSection}>
+              <Text style={styles.buddySubTitle}>Obližnje biciklističke grupe (Bike Pool):</Text>
+              <View style={styles.buddyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.buddyName}>🚴 VeloTM Campus Convoy (UPT/UVT)</Text>
+                  <Text style={styles.buddyMeta}>3 biciklista • Polazak sa Studentskog trga</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setJoinedBikeGroup('VeloTM Convoy')}
+                  style={[styles.buddyJoinBtn, joinedBikeGroup === 'VeloTM Convoy' && styles.buddyJoinBtnActive]}
+                >
+                  <Text style={styles.buddyJoinBtnText}>
+                    {joinedBikeGroup === 'VeloTM Convoy' ? '✓ U grupi!' : 'Pridruži se'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setIsEnrolledInBikePool(!isEnrolledInBikePool)}
+                style={styles.enrollToggleRow}
+              >
+                <View style={[styles.checkbox, isEnrolledInBikePool && styles.checkboxActive]}>
+                  {isEnrolledInBikePool && <Text style={styles.checkmark}>✓</Text>}
+                </View>
+                <Text style={styles.enrollText}>
+                  Omogući me kao člana / organizatora Bike Poola
+                </Text>
+              </TouchableOpacity>
+              {isEnrolledInBikePool && (
+                <Text style={styles.enrolledSuccess}>
+                  ✅ Tvoj Bike Pool je otvoren za priključivanje biciklista na ruti!
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* 3. CARPOOL / DIJELJENJE VOŽNJE ZA VOZAČE */}
+      {isSelected && isCarLike && (
+        <View style={styles.socialBox}>
+          <Text style={styles.socialQuestionTitle}>
+            🚗 Planiraš vožnju autom: Voziš li sam(a) ili želiš povesti još ljudi?
+          </Text>
+          <View style={styles.socialChoiceRow}>
+            <TouchableOpacity
+              onPress={() => setCarChoice('alone')}
+              style={[styles.socialChoiceBtn, carChoice === 'alone' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, carChoice === 'alone' && styles.socialChoiceTextActive]}>
+                🚗 Vozim sam(a)
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setCarChoice('carpool')}
+              style={[styles.socialChoiceBtn, carChoice === 'carpool' && styles.socialChoiceBtnActive]}
+            >
+              <Text style={[styles.socialChoiceText, carChoice === 'carpool' && styles.socialChoiceTextActive]}>
+                👥 Ponudi Carpool (+35 bodova)
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {carChoice === 'carpool' && (
+            <View style={styles.buddySubSection}>
+              <Text style={styles.buddySubTitle}>Putnici na tvojoj ruti koji traže prijevoz do obližnje lokacije:</Text>
+              <View style={styles.buddyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.buddyName}>🎓 Mihai S. (UPT Elektro)</Text>
+                  <Text style={styles.buddyMeta}>Traži prijevoz do Complex Studențesc</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setAcceptedPassenger('Mihai S.')}
+                  style={[styles.buddyJoinBtn, acceptedPassenger === 'Mihai S.' && styles.buddyJoinBtnActive]}
+                >
+                  <Text style={styles.buddyJoinBtnText}>
+                    {acceptedPassenger === 'Mihai S.' ? '✓ Prihvaćen!' : 'Povezi (+35 pts)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.buddyItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.buddyName}>🏢 Andreea D. (Continental)</Text>
+                  <Text style={styles.buddyMeta}>Traži prijevoz prema Calea Buziașului</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setAcceptedPassenger('Andreea D.')}
+                  style={[styles.buddyJoinBtn, acceptedPassenger === 'Andreea D.' && styles.buddyJoinBtnActive]}
+                >
+                  <Text style={styles.buddyJoinBtnText}>
+                    {acceptedPassenger === 'Andreea D.' ? '✓ Prihvaćen!' : 'Povezi (+35 pts)'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+                <Text style={{ ...typography.caption, color: colors.textSecondary, fontWeight: '700' }}>
+                  Slobodnih mjesta u autu:
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 6 }}>
+                  {[1, 2, 3, 4].map((num) => (
+                    <TouchableOpacity
+                      key={num}
+                      onPress={() => setCarpoolSeats(num)}
+                      style={[styles.seatBtn, carpoolSeats === num && styles.seatBtnActive]}
+                    >
+                      <Text style={[styles.seatBtnText, carpoolSeats === num && styles.seatBtnTextActive]}>
+                        {num}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </View>
+          )}
+        </View>
+      )}
     </TouchableOpacity>
   );
 };
@@ -354,5 +610,165 @@ const styles = StyleSheet.create({
   largeCaption: {
     fontSize: 14,
     lineHeight: 19,
+  },
+  socialBox: {
+    marginTop: spacing.md,
+    padding: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    gap: spacing.sm,
+  },
+  socialQuestionTitle: {
+    ...typography.bodyMedium,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+  socialChoiceRow: {
+    flexDirection: 'row',
+    gap: spacing.xs + 2,
+    marginTop: 4,
+  },
+  socialChoiceBtn: {
+    flex: 1,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surface,
+  },
+  socialChoiceBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  socialChoiceText: {
+    ...typography.captionMedium,
+    color: colors.textPrimary,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  socialChoiceTextActive: {
+    color: colors.textInverse,
+    fontWeight: '800',
+  },
+  buddySubSection: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.xs + 2,
+  },
+  buddySubTitle: {
+    ...typography.captionMedium,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    marginBottom: 2,
+  },
+  buddyItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    padding: spacing.sm,
+    borderRadius: borderRadius.sm,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: spacing.sm,
+  },
+  buddyName: {
+    ...typography.captionMedium,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  buddyMeta: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+    marginTop: 1,
+  },
+  buddyJoinBtn: {
+    minHeight: 32,
+    paddingHorizontal: spacing.sm + 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.primaryLight,
+    borderWidth: 1,
+    borderColor: colors.primary,
+    borderRadius: borderRadius.full,
+  },
+  buddyJoinBtnActive: {
+    backgroundColor: colors.primary,
+  },
+  buddyJoinBtnText: {
+    ...typography.captionMedium,
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
+  enrollToggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    marginTop: spacing.xs + 2,
+    paddingVertical: 2,
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxActive: {
+    backgroundColor: colors.primary,
+  },
+  checkmark: {
+    color: colors.textInverse,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  enrollText: {
+    ...typography.caption,
+    color: colors.textPrimary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  enrolledSuccess: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.primary,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  seatBtn: {
+    minWidth: 32,
+    height: 32,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  seatBtnActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  seatBtnText: {
+    ...typography.captionMedium,
+    color: colors.textPrimary,
+    fontWeight: '700',
+  },
+  seatBtnTextActive: {
+    color: colors.textInverse,
+    fontWeight: '800',
   },
 });

@@ -75,6 +75,7 @@ export default function MapScreen() {
   const modeLabels: Record<string, string> = {
     Walk: t.modeWalk, Bike: t.modeBike, Scooter: t.modeScooter, Car: t.modeCar,
     PublicTransport: t.modePublicTransport, Carpool: t.modeCarpool, Combined: t.modeCombined,
+    WalkBuddy: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️', BikePool: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
   };
   const {
     user,

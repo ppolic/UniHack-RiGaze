@@ -14,122 +14,136 @@
 }
 
 /* ==========================================================================
-   HIGH CONTRAST DARK MODE (WCAG AAA Compliance: >7:1 Contrast Ratio)
+   HIGH CONTRAST DARK MODE (DARK GREEN THEME - WCAG AAA)
+   Pozadina: Tamna zelena (#103B2C / #164D3B)
+   Crte i rubovi: Svijetla limeta / mint (#D3EF6A / #A3E635 / #E8F3EB)
+   Slova i ikonice: Svijetla čisto bijela (#FFFFFF) i svijetla mint (#E8F3EB)
    ========================================================================== */
 
 html.high-contrast-dark,
 html.high-contrast-dark body,
-html.high-contrast-dark #root {
-  background-color: #0A0F0D !important;
+html.high-contrast-dark #root,
+html.high-contrast-dark [data-theme="high-contrast-dark"] {
+  background-color: #103B2C !important;
   color: #FFFFFF !important;
 }
 
-/* Backgrounds (Replaces Natural brand #F7F9F3) */
+/* 1. Glavne pozadine ekrana (React Native Web atomic .r-backgroundColor-1cc5qph i sve podloge) */
+html.high-contrast-dark .r-backgroundColor-1cc5qph,
 html.high-contrast-dark div[style*="background-color: rgb(247, 249, 243)"],
 html.high-contrast-dark [style*="background-color:#F7F9F3"],
 html.high-contrast-dark [style*="background-color: #F7F9F3"],
-html.high-contrast-dark [style*="background-color: rgb(247, 249, 243)"],
-html.high-contrast-dark [style*="background-color:rgb(247,249,243)"] {
-  background-color: #0A0F0D !important;
+html.high-contrast-dark div[class*="css-view"][style*="background-color: rgb(247, 249, 243)"] {
+  background-color: #103B2C !important;
 }
 
-/* Surface / Cards (Replaces Pure White #FFFFFF) with crisp high-contrast border */
+/* 2. Kartice i površine (Surface / Cards .r-backgroundColor-14lw9ot) -> Tamna zelena sa svijetlom crtom */
+html.high-contrast-dark .r-backgroundColor-14lw9ot,
 html.high-contrast-dark div[style*="background-color: rgb(255, 255, 255)"],
 html.high-contrast-dark [style*="background-color:#FFFFFF"],
 html.high-contrast-dark [style*="background-color: #ffffff"],
-html.high-contrast-dark [style*="background-color: #FFFFFF"],
-html.high-contrast-dark [style*="background-color: rgb(255, 255, 255)"],
-html.high-contrast-dark [style*="background-color:rgb(255,255,255)"] {
-  background-color: #121A15 !important;
-  border-color: #2D4236 !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+html.high-contrast-dark [style*="background-color: #FFFFFF"] {
+  background-color: #164D3B !important;
+  border: 1.5px solid #D3EF6A !important; /* Svijetla crta */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45) !important;
 }
 
-/* Muted / Accent Surfaces (Mint #E8F3EB) */
+/* 3. Muted elementi i značke (Mint .r-backgroundColor-1j7585a) */
+html.high-contrast-dark .r-backgroundColor-1j7585a,
 html.high-contrast-dark div[style*="background-color: rgb(232, 243, 235)"],
 html.high-contrast-dark [style*="background-color:#E8F3EB"],
-html.high-contrast-dark [style*="background-color: #E8F3EB"],
-html.high-contrast-dark [style*="background-color:rgb(232,243,235)"] {
-  background-color: #1B2921 !important;
-  border-color: #385544 !important;
+html.high-contrast-dark [style*="background-color: #E8F3EB"] {
+  background-color: #1E5E48 !important;
+  border-color: #D3EF6A !important;
 }
 
-/* Primary Forest Text (#164D3B) -> Crisp Pure White */
-html.high-contrast-dark [style*="color: rgb(22, 77, 59)"],
+/* 4. Slova (Text Primary .r-color-936s07) -> Svijetla čisto bijela slova (#FFFFFF) */
+html.high-contrast-dark .r-color-936s07,
+html.high-contrast-dark div[style*="color: rgb(22, 77, 59)"],
 html.high-contrast-dark [style*="color:#164D3B"],
-html.high-contrast-dark [style*="color: #164D3B"],
-html.high-contrast-dark [style*="color:rgb(22,77,59)"] {
+html.high-contrast-dark [style*="color: #164D3B"] {
   color: #FFFFFF !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
 }
 
-/* Secondary Muted Text (#52665B) -> High-Contrast Light Sage */
-html.high-contrast-dark [style*="color: rgb(82, 102, 91)"],
+/* 5. Sekundarna slova (.r-color-tc0cx2) -> Svijetla mint slova (#E8F3EB) */
+html.high-contrast-dark .r-color-tc0cx2,
+html.high-contrast-dark div[style*="color: rgb(82, 102, 91)"],
 html.high-contrast-dark [style*="color:#52665B"],
-html.high-contrast-dark [style*="color: #52665B"],
-html.high-contrast-dark [style*="color:rgb(82,102,91)"] {
-  color: #CFE3D7 !important;
+html.high-contrast-dark [style*="color: #52665B"] {
+  color: #E8F3EB !important;
 }
 
-/* Brand Green (#237A50) -> High-Contrast Vibrant Emerald Green */
-html.high-contrast-dark [style*="color: rgb(35, 122, 80)"],
-html.high-contrast-dark [style*="color:#237A50"],
-html.high-contrast-dark [style*="color: #237A50"],
-html.high-contrast-dark [style*="color:rgb(35,122,80)"] {
-  color: #4ADE80 !important;
+/* 6. Sve crte i obrubi (.r-borderColor-1df40nh) -> Svijetle crte */
+html.high-contrast-dark .r-borderColor-1df40nh,
+html.high-contrast-dark div[style*="border-color: rgb(181, 200, 187)"],
+html.high-contrast-dark [style*="border-color:#B5C8BB"],
+html.high-contrast-dark [style*="border-color:#6B8174"],
+html.high-contrast-dark div[style*="border-color: rgb(107, 129, 116)"] {
+  border-color: #D3EF6A !important; /* Svijetla limeta / mint crta */
 }
 
-/* Hero container in Dark Mode */
+/* 7. Ikonice i oznake */
+html.high-contrast-dark .r-color-1do22b7,
+html.high-contrast-dark div[style*="color: rgb(35, 122, 80)"],
+html.high-contrast-dark [style*="color:#237A50"] {
+  color: #D3EF6A !important; /* Svijetla limeta ikonica */
+}
+
+/* 8. Zaglavlje (Header) */
+html.high-contrast-dark header,
+html.high-contrast-dark .r-backgroundColor-14lw9ot.r-borderBottomColor-1df40nh {
+  background-color: #103B2C !important;
+  border-bottom: 2px solid #D3EF6A !important;
+}
+
+/* 9. Hero banner u tamnom načinu */
 html.high-contrast-dark [style*="background-color: rgb(35, 122, 80)"],
 html.high-contrast-dark [style*="background-color:#237A50"] {
-  background-color: #143323 !important;
-  border: 1px solid #2E6B47 !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+  background-color: #164D3B !important;
+  border: 2px solid #D3EF6A !important;
 }
 
-/* High Contrast Accent (Buttons / Hero badges) */
+/* 10. Gumbi sa svijetlim akcentom */
 html.high-contrast-dark [style*="background-color: rgb(211, 239, 106)"],
-html.high-contrast-dark [style*="background-color:#D3EF6A"],
-html.high-contrast-dark [style*="background-color: #D3EF6A"] {
-  background-color: #4ADE80 !important;
-  color: #062816 !important;
+html.high-contrast-dark [style*="background-color:#D3EF6A"] {
+  background-color: #D3EF6A !important;
+  color: #103B2C !important;
   font-weight: 800 !important;
 }
 
-/* Borders */
-html.high-contrast-dark [style*="border-color: rgb(181, 200, 187)"],
-html.high-contrast-dark [style*="border-color: rgb(107, 129, 116)"],
-html.high-contrast-dark [style*="border-color:#B5C8BB"],
-html.high-contrast-dark [style*="border-color:#6B8174"] {
-  border-color: #2D4236 !important;
-}
-
-/* Inputs and Forms */
+/* 11. Unosi teksta i forme (Inputs) */
 html.high-contrast-dark input,
 html.high-contrast-dark textarea {
-  background-color: #0E1612 !important;
+  background-color: #164D3B !important;
   color: #FFFFFF !important;
-  border: 1.5px solid #385544 !important;
+  border: 1.5px solid #D3EF6A !important;
 }
-
 html.high-contrast-dark input:focus,
 html.high-contrast-dark textarea:focus {
-  border-color: #4ADE80 !important;
-  outline: 2px solid #4ADE80 !important;
-  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.35) !important;
+  border-color: #FFFFFF !important;
+  box-shadow: 0 0 0 3px rgba(211, 239, 106, 0.4) !important;
 }
 
-/* High contrast custom scrollbars */
+/* 12. Modalni dijalozi i Bottom Sheet */
+html.high-contrast-dark [style*="border-color: rgb(22, 77, 59)"],
+html.high-contrast-dark [style*="border-color:#164D3B"] {
+  border-color: #D3EF6A !important;
+}
+
+/* 13. Scrollbar */
 html.high-contrast-dark ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 html.high-contrast-dark ::-webkit-scrollbar-track {
-  background: #0A0F0D;
+  background: #103B2C;
 }
 html.high-contrast-dark ::-webkit-scrollbar-thumb {
-  background: #2D4236;
+  background: #1E5E48;
+  border: 1px solid #D3EF6A;
   border-radius: 4px;
 }
 html.high-contrast-dark ::-webkit-scrollbar-thumb:hover {
-  background: #4ADE80;
+  background: #D3EF6A;
 }

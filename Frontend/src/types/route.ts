@@ -29,7 +29,9 @@ export type TransportMode =
   | 'PublicTransport'
   | 'Car'
   | 'Carpool'
-  | 'Combined';
+  | 'Combined'
+  | 'WalkBuddy'
+  | 'BikePool';
 
 export type WeatherCondition = 'Clear' | 'Rain' | 'Snow' | 'Cold' | 'Windy';
 
