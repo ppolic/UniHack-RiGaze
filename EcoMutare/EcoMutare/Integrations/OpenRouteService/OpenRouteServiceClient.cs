@@ -56,12 +56,92 @@ public class OpenRouteServiceClient : IRoutingProvider
             result = await TryCallOrsAsync(from, to, profile, ct);
         }
 
-        // Ako ORS ključ nije postavljen ili vanjski API padne, koristi pametni fallback s Open-Meteo elevacijom
-        // i javnim podacima Timișoare (mreža biciklističkih staza).
+        // Ako ORS nije konfiguriran, koristi javni OSRM za precizne cestovne rute po Timișoari
+        result ??= await TryCallOsrmAsync(from, to, profile, ct);
+
+        // Fallback na lokalnu uličnu mrežu i mostove Bege
         result ??= await BuildFallbackRouteAsync(from, to, profile, ct);
 
         _cache.Set(cacheKey, result, TimeSpan.FromHours(1));
         return result;
+    }
+
+    private async Task<RoutingResult?> TryCallOsrmAsync(
+        GeoPoint from,
+        GeoPoint to,
+        RoutingProfile profile,
+        CancellationToken ct)
+    {
+        try
+        {
+            var osrmProfile = profile switch
+            {
+                RoutingProfile.FootWalking => "foot",
+                RoutingProfile.Wheelchair => "foot",
+                RoutingProfile.CyclingRegular => "bike",
+                RoutingProfile.DrivingCar => "driving",
+                _ => "foot"
+            };
+
+            var fromLng = from.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var fromLat = from.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var toLng = to.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var toLat = to.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture);
+
+            var url = $"https://router.project-osrm.org/route/v1/{osrmProfile}/{fromLng},{fromLat};{toLng},{toLat}?overview=full&geometries=geojson";
+
+            using var req = new HttpRequestMessage(HttpMethod.Get, url);
+            req.Headers.UserAgent.ParseAdd("BeGreen/1.0");
+
+            using var resp = await _http.SendAsync(req, ct);
+            if (!resp.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            using var stream = await resp.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("routes", out var routes) || routes.GetArrayLength() == 0)
+            {
+                return null;
+            }
+
+            var route = routes[0];
+            double distanceMeters = route.GetProperty("distance").GetDouble();
+            double durationSeconds = route.GetProperty("duration").GetDouble();
+
+            var coords = route.GetProperty("geometry").GetProperty("coordinates");
+            var geometry = new List<GeoPoint>();
+            foreach (var coord in coords.EnumerateArray())
+            {
+                geometry.Add(new GeoPoint
+                {
+                    Lng = Math.Round(coord[0].GetDouble(), 6),
+                    Lat = Math.Round(coord[1].GetDouble(), 6)
+                });
+            }
+
+            if (geometry.Count < 2) return null;
+
+            double? bikeShare = profile == RoutingProfile.CyclingRegular ? 0.8 : null;
+
+            return new RoutingResult
+            {
+                DistanceMeters = Math.Round(distanceMeters, 1),
+                DurationSeconds = Math.Round(durationSeconds, 1),
+                Geometry = geometry,
+                AscentMeters = 0,
+                DescentMeters = 0,
+                AverageGradePercent = 0,
+                BikeLaneShare = bikeShare
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "OSRM routing fallback failed, using realistic street corridor fallback");
+            return null;
+        }
     }
 
     private async Task<RoutingResult?> TryCallOrsAsync(

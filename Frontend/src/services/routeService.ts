@@ -798,9 +798,9 @@ async function enrichOptionsWithStreetGeometry(
   return Promise.all(
     options.map(async (opt) => {
       const profile: 'foot' | 'bike' | 'driving' =
-        opt.mode === 'Walk'
+        opt.mode === 'Walk' || opt.mode === 'WalkBuddy'
           ? 'foot'
-          : opt.mode === 'Bike' || opt.mode === 'Scooter'
+          : opt.mode === 'Bike' || opt.mode === 'Scooter' || opt.mode === 'BikePool'
           ? 'bike'
           : 'driving';
 
@@ -813,22 +813,20 @@ async function enrichOptionsWithStreetGeometry(
                 const segEnd =
                   seg.geometry?.[seg.geometry.length - 1] ||
                   (idx === segs.length - 1 ? destination : origin);
-                const needsStreetGeometry =
-                  !seg.geometry ||
-                  seg.geometry.length < 2 ||
-                  (seg.geometry.length === 2 &&
-                    haversineDistanceMeters(segStart, segEnd) > 60);
+                const isRealStreetGeometry =
+                  Array.isArray(seg.geometry) &&
+                  seg.geometry.length >= 20;
 
                 const segProfile: 'foot' | 'bike' | 'driving' =
-                  seg.mode === 'Walk'
+                  seg.mode === 'Walk' || seg.mode === 'WalkBuddy'
                     ? 'foot'
-                    : seg.mode === 'Bike' || seg.mode === 'Scooter'
+                    : seg.mode === 'Bike' || seg.mode === 'Scooter' || seg.mode === 'BikePool'
                     ? 'bike'
                     : profile;
 
-                const geometry = needsStreetGeometry
-                  ? await fetchStreetGeometry(segStart, segEnd, segProfile)
-                  : seg.geometry;
+                const geometry = isRealStreetGeometry
+                  ? seg.geometry!
+                  : await fetchStreetGeometry(segStart, segEnd, segProfile);
 
                 return {
                   ...seg,
@@ -883,9 +881,72 @@ export const routeService = {
           request.origin,
           request.destination
         );
+
+        const walkOpt = enrichedOptions.find((o) => o.mode === 'Walk');
+        const bikeOpt = enrichedOptions.find((o) => o.mode === 'Bike');
+        const carOpt = enrichedOptions.find((o) => o.mode === 'Car');
+
+        const finalOptions = [...enrichedOptions];
+        if (walkOpt && !finalOptions.some((o) => o.mode === 'WalkBuddy')) {
+          finalOptions.push({
+            id: 'walk-buddy',
+            mode: 'WalkBuddy',
+            title: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+            durationMinutes: walkOpt.durationMinutes,
+            distanceKm: walkOpt.distanceKm,
+            costRon: 0,
+            co2Grams: 0,
+            ecoPoints: walkOpt.ecoPoints + 20,
+            ecoRank: 1,
+            isRecommended: false,
+            segments: walkOpt.segments?.map((s) => ({
+              ...s,
+              mode: 'WalkBuddy' as const,
+              description: 'Šetnja u društvu verificiranog Walk Buddyja',
+            })) || [],
+            warnings: [],
+          });
+        }
+        if (bikeOpt && !finalOptions.some((o) => o.mode === 'BikePool')) {
+          finalOptions.push({
+            id: 'bike-pool',
+            mode: 'BikePool',
+            title: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+            durationMinutes: bikeOpt.durationMinutes,
+            distanceKm: bikeOpt.distanceKm,
+            costRon: bikeOpt.costRon,
+            co2Grams: 0,
+            ecoPoints: bikeOpt.ecoPoints + 20,
+            ecoRank: 1,
+            isRecommended: false,
+            segments: bikeOpt.segments?.map((s) => ({
+              ...s,
+              mode: 'BikePool' as const,
+              description: 'Zajednička biciklistička vožnja u grupi (Bike Pool)',
+            })) || [],
+            warnings: bikeOpt.warnings || [],
+          });
+        }
+        if (carOpt && !finalOptions.some((o) => o.mode === 'Carpool')) {
+          finalOptions.push({
+            id: 'carpool',
+            mode: 'Carpool',
+            title: 'Verified Carpool 🚗👥',
+            durationMinutes: carOpt.durationMinutes,
+            distanceKm: carOpt.distanceKm,
+            costRon: Math.max(1, Number((carOpt.costRon / 3).toFixed(1))),
+            co2Grams: Math.round(carOpt.co2Grams / 3),
+            ecoPoints: 35,
+            ecoRank: 4,
+            isRecommended: false,
+            segments: carOpt.segments || [],
+            warnings: [],
+          });
+        }
+
         return {
           ...apiRes,
-          options: enrichedOptions,
+          options: finalOptions,
         };
       }
       return buildRoadFollowingPlanResponse(request);

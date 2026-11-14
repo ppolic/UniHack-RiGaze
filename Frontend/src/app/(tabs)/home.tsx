@@ -90,9 +90,7 @@ export default function HomeScreen() {
                 ]}
               >
                 <View style={styles.shortcutTop}>
-                  <View style={styles.shortcutIconWrap}>
-                    <Text style={styles.shortcutIcon} accessible={false}>{shortcut.icon}</Text>
-                  </View>
+                  <Text style={styles.shortcutIcon} accessible={false}>{shortcut.icon}</Text>
                   {shortcut.upcoming && <Text style={styles.upcoming}>{t.comingSoonLabel}</Text>}
                 </View>
                 <Text style={styles.shortcutTitle}>{shortcut.title}</Text>
@@ -125,35 +123,13 @@ const styles = StyleSheet.create({
   sectionHeader: { gap: spacing.xs },
   sectionTitle: { ...typography.h3, color: colors.textPrimary },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
-  shortcut: {
-    flexBasis: '45%',
-    flexGrow: 1,
-    minWidth: 0,
-    minHeight: 160,
-    backgroundColor: colors.surface,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: borderRadius.xl,
-    padding: spacing.lg,
-    gap: spacing.sm,
-    ...shadows.sm,
-  },
-  shortcutPressed: { backgroundColor: colors.surfaceMuted, borderColor: colors.primary },
+  shortcut: { flexBasis: '45%', flexGrow: 1, minWidth: 0, minHeight: 150, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.controlBorder, borderRadius: borderRadius.lg, padding: spacing.lg, gap: spacing.sm },
+  shortcutPressed: { backgroundColor: colors.surfaceMuted },
   wideShortcut: { flexBasis: '30%' },
   singleShortcut: { flexBasis: '100%' },
-  shortcutTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs, marginBottom: 2 },
-  shortcutIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.controlBorder,
-  },
-  shortcutIcon: { fontSize: 22, color: colors.primaryDark },
+  shortcutTop: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.xs },
+  shortcutIcon: { fontSize: 26, color: colors.primaryDark },
   upcoming: { ...typography.caption, color: colors.textSecondary },
-  shortcutTitle: { ...typography.bodyMedium, fontSize: 16, fontWeight: '700', color: colors.textPrimary },
-  shortcutDescription: { ...typography.caption, color: colors.textSecondary, lineHeight: 18 },
+  shortcutTitle: { ...typography.bodyMedium, color: colors.textPrimary },
+  shortcutDescription: { ...typography.caption, color: colors.textSecondary },
 });

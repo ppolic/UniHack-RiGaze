@@ -127,40 +127,44 @@ public static class TimisoaraPublicData
         return Math.Round((double)covered / geometry.Count, 2);
     }
 
-    /// <summary>Gradi realističnu geometriju kroz gradske koridore kada vanjski ORS nije dostupan.</summary>
+    /// <summary>Gradi realističnu geometriju kroz gradske koridore i mostove kada vanjski API nije dostupan.</summary>
     public static List<GeoPoint> BuildRealisticStreetGeometry(GeoPoint from, GeoPoint to, RoutingProfile profile, int steps = 12)
     {
-        var points = new List<GeoPoint>(steps + 1);
+        var points = new List<GeoPoint>();
+        points.Add(from);
 
-        // Za bicikl pokušavamo usmjeriti preko najbliže točke na Bega/centralnom biciklističkom koridoru
-        var midLat = (from.Lat + to.Lat) / 2.0 + (to.Lng - from.Lng) * 0.12;
-        var midLng = (from.Lng + to.Lng) / 2.0 - (to.Lat - from.Lat) * 0.12;
+        double dLat = to.Lat - from.Lat;
+        double dLng = to.Lng - from.Lng;
 
-        if (profile == RoutingProfile.CyclingRegular)
+        // Bega kanal teče oko lat ~45.7490 do 45.7525
+        bool northFrom = from.Lat > 45.7505;
+        bool northTo = to.Lat > 45.7505;
+
+        if (northFrom != northTo)
         {
-            var nearestCorridorPt = BikeCorridors
-                .SelectMany(c => c.Points)
-                .OrderBy(p => HaversineMeters(p, new GeoPoint { Lat = (from.Lat + to.Lat) / 2.0, Lng = (from.Lng + to.Lng) / 2.0 }))
-                .FirstOrDefault();
-
-            if (nearestCorridorPt is not null &&
-                HaversineMeters(nearestCorridorPt, from) < HaversineMeters(from, to) * 1.1)
+            // Glavni mostovi preko Bege u Temišvaru
+            var bridges = new[]
             {
-                midLat = nearestCorridorPt.Lat;
-                midLng = nearestCorridorPt.Lng;
-            }
-        }
+                new GeoPoint { Lat = 45.7503, Lng = 21.2268 }, // Podul Mihai Viteazu
+                new GeoPoint { Lat = 45.7488, Lng = 21.2355 }, // Podul Decebal
+                new GeoPoint { Lat = 45.7495, Lng = 21.2185 }, // Podul Traian
+                new GeoPoint { Lat = 45.7516, Lng = 21.2462 }, // Podul Dacilor
+            };
 
-        for (int i = 0; i <= steps; i++)
+            var bridge = bridges.OrderBy(b => HaversineMeters(from, b) + HaversineMeters(b, to)).First();
+            points.Add(new GeoPoint { Lat = Math.Round(from.Lat, 6), Lng = Math.Round(bridge.Lng, 6) });
+            points.Add(bridge);
+            points.Add(new GeoPoint { Lat = Math.Round(to.Lat, 6), Lng = Math.Round(bridge.Lng, 6) });
+        }
+        else
         {
-            double t = (double)i / steps;
-            // Kvadratna Bézierova krivulja kroz međutočku
-            double u = 1.0 - t;
-            double lat = u * u * from.Lat + 2 * u * t * midLat + t * t * to.Lat;
-            double lng = u * u * from.Lng + 2 * u * t * midLng + t * t * to.Lng;
-            points.Add(new GeoPoint { Lat = Math.Round(lat, 6), Lng = Math.Round(lng, 6) });
+            // Manhattan ulična mreža
+            points.Add(new GeoPoint { Lat = Math.Round(from.Lat + dLat * 0.4, 6), Lng = Math.Round(from.Lng + dLng * 0.15, 6) });
+            points.Add(new GeoPoint { Lat = Math.Round(from.Lat + dLat * 0.4, 6), Lng = Math.Round(from.Lng + dLng * 0.85, 6) });
+            points.Add(new GeoPoint { Lat = Math.Round(from.Lat + dLat * 0.85, 6), Lng = Math.Round(from.Lng + dLng * 0.85, 6) });
         }
 
+        points.Add(to);
         return points;
     }
 

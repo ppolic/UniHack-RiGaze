@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -8,17 +8,28 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
-import { useThemeMode } from '../hooks/useThemeMode';
 import { AuthenticatedHeader } from '../components/common/AuthenticatedHeader';
 
 function AppNavigation() {
   const { isAuthenticated, user } = useAuth();
   const { t } = useTranslation();
-  const { isDarkMode } = useThemeMode();
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.classList.remove('high-contrast-dark');
+      document.documentElement.removeAttribute('data-theme');
+      if (document.body) document.body.classList.remove('high-contrast-dark');
+      const override = document.getElementById('begreen-dark-theme-override');
+      if (override) override.remove();
+    }
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.removeItem('begreen_high_contrast_dark');
+    }
+  }, []);
 
   return (
     <SafeAreaProvider>
-      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
+      <StatusBar style="dark" />
       <Stack
         screenOptions={{
           headerShown: false,
