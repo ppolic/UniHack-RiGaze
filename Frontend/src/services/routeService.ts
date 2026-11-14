@@ -860,8 +860,8 @@ export const routeService = {
     const now = Date.now();
     const body = {
       mode: tripData.mode,
-      originName: tripData.originName || 'Polazište',
-      destinationName: tripData.destinationName || 'Odredište',
+      originName: tripData.originName || getTranslations().svcOriginFallback,
+      destinationName: tripData.destinationName || getTranslations().destination,
       originLatitude: tripData.originLatitude ?? 45.7537,
       originLongitude: tripData.originLongitude ?? 21.2257,
       destinationLatitude: tripData.destinationLatitude ?? 45.7474,

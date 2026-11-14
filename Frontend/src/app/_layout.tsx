@@ -8,7 +8,7 @@ import { useTranslation } from '../hooks/useTranslation';
 
 export default function RootLayout() {
   const { isAuthenticated, user, token } = useAuth();
-  const { language, t } = useTranslation();
+  const { t } = useTranslation();
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
@@ -22,8 +22,8 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Protected guard={isAuthenticated && !!user && !!token}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="challenges" options={{ headerShown: true, title: language === 'en' ? 'Challenges' : 'Provocări', headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
-          <Stack.Screen name="report-issue" options={{ headerShown: true, title: language === 'en' ? 'Report an issue' : 'Raportează o problemă', headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
+          <Stack.Screen name="challenges" options={{ headerShown: true, title: t.challengesHeaderTitle, headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
+          <Stack.Screen name="report-issue" options={{ headerShown: true, title: t.reportIssueHeaderTitle, headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
           <Stack.Screen
             name="dashboard"
             options={{

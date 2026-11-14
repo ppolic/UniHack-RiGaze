@@ -13,7 +13,7 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { transitService } from '../../services/transitService';
-import { WebLeafletMap } from './WebLeafletMap';
+import { WebLeafletMap, isLeafletAvailable } from './WebLeafletMap';
 import { useTranslation } from '../../hooks/useTranslation';
 import {
   GeoPoint,
@@ -47,9 +47,9 @@ export const TIMISOARA_CENTER = {
 };
 
 /**
- * Official Google Maps Aubergine Dark Mode JSON style.
+ * Neutral Google Dark Mode JSON fallback style (non-aubergine, matching Web Leaflet dark theme).
  */
-const AUBERGINE_MAP_STYLE = [
+const GOOGLE_DARK_MAP_STYLE = [
   {
     elementType: 'geometry',
     stylers: [{ color: colors.mapDarkLand }],
@@ -176,6 +176,109 @@ const AUBERGINE_MAP_STYLE = [
     featureType: 'water',
     elementType: 'labels.text.fill',
     stylers: [{ color: colors.mapDarkWaterLabel }],
+  },
+];
+
+/**
+ * Modern Google Maps Light Mode JSON style matching the neutral cool-grey/mint palette.
+ */
+const GOOGLE_LIGHT_MAP_STYLE = [
+  {
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightLand }],
+  },
+  {
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightLabel }],
+  },
+  {
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapLightLabelStroke }],
+  },
+  {
+    featureType: 'administrative.land_parcel',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightLabelSecondary }],
+  },
+  {
+    featureType: 'landscape.man_made',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightLandManMade }],
+  },
+  {
+    featureType: 'landscape.natural',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightLand }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightPoi }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightPoiLabel }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry.fill',
+    stylers: [{ color: colors.mapLightPark }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightParkLabel }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightRoadLocal }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapLightRoadStroke }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightRoadLabel }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapLightLabelStroke }],
+  },
+  {
+    featureType: 'road.arterial',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightRoadArterial }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightRoadHighway }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapLightRoadHighwayStroke }],
+  },
+  {
+    featureType: 'transit.line',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightTransitLine }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapLightWater }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapLightWaterLabel }],
   },
 ];
 
@@ -853,8 +956,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     );
   };
 
-  // Interactive Leaflet / OpenStreetMap Renderer for Web
-  const renderWebMap = () => (
+  // Shared interactive Leaflet Renderer for Web and Mobile (via WebView)
+  const renderLeafletMap = () => (
     <WebLeafletMap
       origin={origin}
       destination={destination}
@@ -893,14 +996,23 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   );
 
   return (
-    <View style={styles.container}>
-      {Platform.OS !== 'web' && MapView ? (
+    <View
+      style={[
+        styles.container,
+        {
+          backgroundColor: isDarkMap
+            ? colors.mapDarkLand
+            : colors.mapLightLand,
+        },
+      ]}
+    >
+      {!isLeafletAvailable && Platform.OS !== 'web' && MapView ? (
         <MapView
           ref={mapRef}
           style={styles.map}
           initialRegion={TIMISOARA_CENTER}
           userInterfaceStyle={isDarkMap ? 'dark' : 'light'}
-          customMapStyle={isDarkMap ? AUBERGINE_MAP_STYLE : []}
+          customMapStyle={isDarkMap ? GOOGLE_DARK_MAP_STYLE : GOOGLE_LIGHT_MAP_STYLE}
           showsPointsOfInterest={true}
           showsBuildings={true}
           showsUserLocation={hasLocationPermission}
@@ -1125,7 +1237,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             })}
         </MapView>
       ) : (
-        renderWebMap()
+        renderLeafletMap()
       )}
 
       {/* Individual Category Filter Chips below the Top Search Bar */}
@@ -1177,7 +1289,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         >
           <Text
             style={[
-              styles.tapTargetText,
+              styles.controlIcon,
               isDarkMap && styles.highContrastActiveText,
             ]}
           >

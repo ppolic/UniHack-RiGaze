@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import { UserProfile } from '../types/user';
 import { AgeCategory } from '../types/route';
 
@@ -106,7 +107,7 @@ export function mapAuthResponseToUserProfile(
 function authenticatedResponse(res: BackendAuthResponse): AuthResponse {
   if (!res || typeof res.token !== 'string' || !res.token.trim() ||
       !Number.isSafeInteger(res.userId) || res.userId <= 0) {
-    throw new Error('Server nije potvrdio autentifikaciju. Pokušajte ponovno.');
+    throw new Error(getTranslations().authUnconfirmedError);
   }
   return { token: res.token, user: mapAuthResponseToUserProfile(res) };
 }

@@ -16,8 +16,7 @@ import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceM
 import { useTranslation } from '../../hooks/useTranslation';
 
 export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?: number | null }> = ({ children, verifiedAge }) => {
-  const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
+  const { t } = useTranslation();
   const {
     user,
     updatePreferences,
@@ -44,9 +43,9 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           </View>
         </View>
         <View style={styles.badgesRow}>
-          <Badge label={verifiedAge === undefined || verifiedAge === null ? localize('Vârstă neconfirmată', 'Age unconfirmed') : t.ageBadge(verifiedAge)} variant="neutral" />
+          <Badge label={verifiedAge === undefined || verifiedAge === null ? t.profileAgeUnconfirmed : t.ageBadge(verifiedAge)} variant="neutral" />
           {hasDisability && <Badge label={t.accessibilityActiveBadge} variant="info" />}
-          {(wcagLargeText || wcagTextRouteMode) && <Badge label={localize('Opțiuni vizuale active', 'Visual options enabled')} variant="success" />}
+          {(wcagLargeText || wcagTextRouteMode) && <Badge label={t.profileVisualOptionsActive} variant="success" />}
         </View>
         {children && <View style={styles.editor}>{children}</View>}
       </AppCard>
@@ -61,7 +60,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           <View style={styles.toggleInfo}>
             <Text style={styles.toggleLabel}>{t.disabilityLabel}</Text>
             <Text style={styles.toggleDesc}>
-              {localize('Ține cont de accesibilitate când sunt propuse opțiunile de transport.', 'Consider accessibility when suggesting transport options.')}
+              {t.profileAccessibilityHint}
             </Text>
           </View>
           <Switch
@@ -82,7 +81,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           <View style={styles.toggleInfo}>
             <Text style={styles.toggleLabel}>{t.ownBikeLabel}</Text>
             <Text style={styles.toggleDesc}>
-              {localize('Folosește bicicleta proprie la planificarea călătoriilor.', 'Use your own bicycle when planning journeys.')}
+              {t.profileOwnBikeHint}
             </Text>
           </View>
           <Switch
@@ -103,7 +102,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           <View style={styles.toggleInfo}>
             <Text style={styles.toggleLabel}>{t.ownCarLabel}</Text>
             <Text style={styles.toggleDesc}>
-              {localize('Include opțiunile de călătorie cu mașina proprie.', 'Include travel options using your own car.')}
+              {t.profileOwnCarHint}
             </Text>
           </View>
           <Switch

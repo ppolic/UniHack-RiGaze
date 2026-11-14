@@ -1,4 +1,5 @@
 import { apiFetch, ApiHttpError, isRealJwtToken } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import { useUserStore } from '../store/userStore';
 import { ChallengeDefinition, CreateIssueReport, IssueReportReceipt, issueCategories } from '../types/community';
 
@@ -18,7 +19,7 @@ const isNonnegative = (value: unknown): value is number =>
 function currentSession() {
   const { user, token, isAuthenticated } = useUserStore.getState();
   if (!isAuthenticated || !user || !isRealJwtToken(token) || !/^[1-9]\d*$/.test(user.id)) {
-    throw new CommunitySessionError('Autentifică-te din nou pentru a continua.');
+    throw new CommunitySessionError(getTranslations().sessionSignInAgain);
   }
   return { userId: user.id, token };
 }
@@ -26,7 +27,7 @@ function currentSession() {
 function assertSession(session: ReturnType<typeof currentSession>) {
   const current = currentSession();
   if (current.userId !== session.userId || current.token !== session.token) {
-    throw new CommunitySessionError('Sesiunea s-a schimbat. Revino în ecran și încearcă din nou.');
+    throw new CommunitySessionError(getTranslations().sessionChangedRetry);
   }
 }
 
@@ -37,24 +38,25 @@ async function verifiedSession() {
   const identity = await apiFetch<unknown>('/auth/me', {}, session.token);
   assertSession(session);
   if (!isObject(identity) || identity.userId !== Number(session.userId)) {
-    throw new CommunitySessionError('Serverul nu a confirmat sesiunea contului tău. Autentifică-te din nou.');
+    throw new CommunitySessionError(getTranslations().sessionIdentityUnconfirmed);
   }
   return session;
 }
 
 export function communityErrorMessage(error: unknown, operation: 'load' | 'submit'): string {
+  const t = getTranslations();
   if (error instanceof CommunitySessionError || error instanceof CommunityBusyError) return error.message;
   if (error instanceof ApiHttpError && (error.status === 401 || error.status === 403)) {
-    return 'Sesiunea nu mai este validă. Autentifică-te din nou pentru a continua.';
+    return t.communitySessionInvalid;
   }
   if (operation === 'submit') {
     if (error instanceof ApiHttpError && error.status === 400) {
-      return 'Serverul a respins datele. Verifică formularul și încearcă din nou.';
+      return t.communityServerRejected;
     }
     // A timeout or malformed response does not prove that the POST was rejected.
-    return 'Nu am putut confirma trimiterea. Cererea poate să fi ajuns la server; retrimiterea poate crea un duplicat. Datele formularului au fost păstrate.';
+    return t.communitySubmitUnconfirmed;
   }
-  return 'Nu am putut încărca provocările. Verifică conexiunea și încearcă din nou.';
+  return t.communityLoadError;
 }
 
 export const communityService = {
@@ -93,7 +95,7 @@ export const communityService = {
       throw new Error('Invalid report fields.');
     }
     if (reportPending) {
-      throw new CommunityBusyError('O raportare este deja în curs de trimitere. Așteaptă confirmarea înainte de a încerca din nou.');
+      throw new CommunityBusyError(getTranslations().communityReportPending);
     }
     reportPending = true;
     try {

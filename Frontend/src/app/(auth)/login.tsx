@@ -15,7 +15,6 @@ import { useTranslation } from '../../hooks/useTranslation';
 export default function LoginScreen() {
   const router = useRouter();
   const { language, toggleLanguage, t } = useTranslation();
-  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const { setUser, setToken } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,13 +32,35 @@ export default function LoginScreen() {
       router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
-        setErrorMsg(err.message || localize('Email sau parolă incorectă.', 'Incorrect email or password.'));
+        setErrorMsg(err.message || t.loginFailed);
       } else {
-        setErrorMsg(localize('Nu am putut contacta serverul sau confirma autentificarea. Verifică conexiunea și încearcă din nou.', 'Could not connect to the server or confirm sign-in. Check your connection and try again.'));
+        setErrorMsg(t.loginServerError);
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDemoBypass = () => {
+    setToken('demo-bypass-token');
+    setUser({
+      id: 'demo-user-1',
+      email: 'demo@begreen.tm',
+      fullName: 'Demo User',
+      birthDate: '2000-01-01',
+      age: 26,
+      preferences: {
+        hasDisability: false,
+        hasOwnBicycle: true,
+        hasOwnScooter: false,
+        hasOwnCar: false,
+        preferredModes: ['Walk', 'Bike', 'Bus', 'Tram'],
+      },
+      totalEcoPoints: 340,
+      totalCo2SavedKg: 18.4,
+      completedTripsCount: 12,
+    });
+    router.replace('/(tabs)/home');
   };
 
   return (
@@ -56,8 +77,8 @@ export default function LoginScreen() {
           accessibilityRole="button"
           accessibilityLabel={
             language === 'ro'
-              ? 'Schimbă limba în engleză'
-              : 'Switch language to Romanian'
+              ? t.switchToEnA11y
+              : t.switchToRoA11y
           }
         >
           <Text style={styles.langToggleText}>
@@ -77,9 +98,9 @@ export default function LoginScreen() {
       </View>
 
       <AppCard style={styles.formCard}>
-        <Text style={styles.formTitle}>{localize('Autentificare în BeGreen', 'Sign in to BeGreen')}</Text>
+        <Text style={styles.formTitle}>{t.loginTitle}</Text>
         <Text style={styles.demoNotice}>
-          {localize('Introdu emailul și parola. Autentificarea necesită o conexiune la server.', 'Enter your email and password. Sign-in requires a server connection.')}
+          {t.loginSubtitle}
         </Text>
         {errorMsg && (
           <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
@@ -119,10 +140,17 @@ export default function LoginScreen() {
         />
 
         <AppButton
-          title={localize('Autentifică-te', 'Sign in')}
+          title={t.loginButton}
           loading={loading}
           onPress={handleLogin}
           style={styles.submitBtn}
+        />
+
+        <AppButton
+          title={t.demoBypassButton}
+          onPress={handleDemoBypass}
+          variant="outline"
+          style={{ marginTop: spacing.sm }}
         />
 
         <TouchableOpacity
@@ -130,7 +158,7 @@ export default function LoginScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            {localize('Nu ai cont? ', 'No account? ')}<Text style={styles.linkText}>{localize('Creează un cont', 'Create an account')}</Text>
+            {t.noAccountPrompt}<Text style={styles.linkText}>{t.createAccountLink}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>

@@ -7,20 +7,13 @@ import { AppCard } from '../components/common/AppCard';
 import { AppInput } from '../components/common/AppInput';
 import { Badge } from '../components/common/Badge';
 import { useAuth } from '../hooks/useAuth';
+import { getTranslations, useTranslation } from '../hooks/useTranslation';
 import { communityErrorMessage, communityService } from '../services/communityService';
 import { useUserStore } from '../store/userStore';
 import { colors } from '../theme/colors';
 import { borderRadius, spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 import { IssueCategory, IssueReportReceipt } from '../types/community';
-
-const categories: { value: IssueCategory; label: string; description: string }[] = [
-  { value: 'RoadBlockade', label: 'Drum blocat', description: 'Lucrări sau obstacole pe carosabil.' },
-  { value: 'BlockedBikeLane', label: 'Pistă de biciclete blocată', description: 'Acces împiedicat pe o pistă existentă.' },
-  { value: 'InaccessibleArea', label: 'Zonă inaccesibilă', description: 'Bariere pentru deplasarea în siguranță.' },
-  { value: 'MissingBikeLane', label: 'Lipsă pistă de biciclete', description: 'Un loc unde este necesară o pistă.' },
-  { value: 'TransitDisruption', label: 'Transport public perturbat', description: 'O problemă care afectează transportul public.' },
-];
 
 interface ReportForm {
   category: IssueCategory | '';
@@ -40,6 +33,16 @@ function coordinate(input: string): number {
 export default function ReportIssueScreen() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { t } = useTranslation();
+
+  const categories: { value: IssueCategory; label: string; description: string }[] = [
+    { value: 'RoadBlockade', label: t.reportCatRoadBlockade, description: t.reportCatRoadBlockadeDesc },
+    { value: 'BlockedBikeLane', label: t.reportCatBlockedBike, description: t.reportCatBlockedBikeDesc },
+    { value: 'InaccessibleArea', label: t.reportCatInaccessible, description: t.reportCatInaccessibleDesc },
+    { value: 'MissingBikeLane', label: t.reportCatMissingBike, description: t.reportCatMissingBikeDesc },
+    { value: 'TransitDisruption', label: t.reportCatTransitDisruption, description: t.reportCatTransitDisruptionDesc },
+  ];
+
   const [form, setForm] = useState<ReportForm>(emptyForm);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
@@ -57,7 +60,7 @@ export default function ReportIssueScreen() {
         sessionVersion.current += 1;
         confirmed.current = null;
         setReceipt(null);
-        setSubmissionError('Sesiunea s-a schimbat. Verifică autentificarea înainte de a continua.');
+        setSubmissionError(getTranslations().reportSessionChanged);
       }
     });
     return () => {
@@ -78,12 +81,12 @@ export default function ReportIssueScreen() {
     const nextErrors: FieldErrors = {};
     const latitude = coordinate(form.latitude);
     const longitude = coordinate(form.longitude);
-    if (!form.category) nextErrors.category = 'Alege o categorie.';
-    if (!form.description.trim()) nextErrors.description = 'Descrie problema observată.';
-    else if (form.description.trim().length > 600) nextErrors.description = 'Descrierea poate avea cel mult 600 de caractere.';
-    if (form.streetOrZone.trim().length > 150) nextErrors.streetOrZone = 'Folosește cel mult 150 de caractere.';
-    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) nextErrors.latitude = 'Introdu o latitudine între -90 și 90.';
-    if (!Number.isFinite(longitude) || Math.abs(longitude) > 180) nextErrors.longitude = 'Introdu o longitudine între -180 și 180.';
+    if (!form.category) nextErrors.category = t.reportErrCategory;
+    if (!form.description.trim()) nextErrors.description = t.reportErrDescriptionRequired;
+    else if (form.description.trim().length > 600) nextErrors.description = t.reportErrDescriptionMax;
+    if (form.streetOrZone.trim().length > 150) nextErrors.streetOrZone = t.reportErrStreetMax;
+    if (!Number.isFinite(latitude) || Math.abs(latitude) > 90) nextErrors.latitude = t.reportErrLatitude;
+    if (!Number.isFinite(longitude) || Math.abs(longitude) > 180) nextErrors.longitude = t.reportErrLongitude;
     setErrors(nextErrors);
     setSubmissionError(null);
     if (Object.keys(nextErrors).length > 0 || !form.category) return;
@@ -128,32 +131,32 @@ export default function ReportIssueScreen() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>UN ORAȘ MAI UȘOR DE PARCURS</Text>
-            <Text style={styles.title} accessibilityRole="header">Raportează o problemă</Text>
-            <Text style={styles.description}>Spune-ne ce îngreunează deplasarea. Introdu locul și detaliile observate.</Text>
+            <Text style={styles.eyebrow}>{t.reportEyebrow}</Text>
+            <Text style={styles.title} accessibilityRole="header">{t.reportTitle}</Text>
+            <Text style={styles.description}>{t.reportSubtitle}</Text>
           </View>
 
           {receipt ? (
             <AppCard style={styles.card}>
               <View style={styles.receiptHeading} accessibilityLiveRegion="polite">
-                <Badge label="Primită de server" variant="success" />
-                <Text style={styles.sectionTitle} accessibilityRole="header">Raportarea #{receipt.id} a fost primită</Text>
+                <Badge label={t.reportReceiptBadge} variant="success" />
+                <Text style={styles.sectionTitle} accessibilityRole="header">{t.reportReceiptTitle(receipt.id)}</Text>
               </View>
               <Text style={styles.target}>{categories.find((category) => category.value === receipt.category)?.label}</Text>
               <Text style={styles.description}>{receipt.description}</Text>
               {receipt.streetOrZone !== '' && <Text style={styles.description}>{receipt.streetOrZone}</Text>}
-              <Text selectable style={styles.caption}>Latitudine: {receipt.latitude} · Longitudine: {receipt.longitude}</Text>
+              <Text selectable style={styles.caption}>{t.reportCoordsLabel(receipt.latitude, receipt.longitude)}</Text>
               <Text style={styles.description}>
-                Confirmarea atestă primirea de către serverul EcoMutare. Păstrarea după repornirea serverului și acordarea punctelor nu sunt garantate de serviciul actual. Raportarea nu este transmisă automat către primărie.
+                {t.reportReceiptDisclaimer}
               </Text>
-              <AppButton title="Raportează altă problemă" onPress={reset} textStyle={styles.buttonText} />
+              <AppButton title={t.reportAnotherBtn} onPress={reset} textStyle={styles.buttonText} />
             </AppCard>
           ) : (
             <View style={styles.form}>
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle} accessibilityRole="header">1. Ce ai observat?</Text>
-                <Text style={styles.caption}>Categoria și descrierea sunt obligatorii.</Text>
-                <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel="Categoria problemei">
+                <Text style={styles.sectionTitle} accessibilityRole="header">{t.reportStep1Title}</Text>
+                <Text style={styles.caption}>{t.reportStep1Hint}</Text>
+                <View style={styles.categories} accessibilityRole="radiogroup" accessibilityLabel={t.reportCategoryGroupA11y}>
                   {categories.map((category) => (
                     <Pressable
                       key={category.value}
@@ -172,30 +175,30 @@ export default function ReportIssueScreen() {
                 </View>
                 {errors.category && <Text style={styles.error} accessibilityRole="alert">{errors.category}</Text>}
                 <View accessibilityLiveRegion="polite">
-                  <AppInput label="Descriere *" accessibilityLabel="Descrierea problemei, obligatorie"
+                  <AppInput label={t.reportDescLabel} accessibilityLabel={t.reportDescA11y}
                     value={form.description} onChangeText={(value) => updateField('description', value)}
                     error={errors.description} accessibilityHint={errors.description}
                     multiline maxLength={600} style={styles.descriptionInput} editable={!submitting} />
-                  <Text style={styles.caption}>{form.description.length}/600 caractere</Text>
+                  <Text style={styles.caption}>{t.reportCharsCount(form.description.length)}</Text>
                 </View>
               </AppCard>
 
               <AppCard style={styles.card}>
-                <Text style={styles.sectionTitle} accessibilityRole="header">2. Unde se află problema?</Text>
-                <Text style={styles.description}>Introdu coordonate WGS84 în grade zecimale. Poți folosi punct sau virgulă. Nu este necesar accesul la GPS.</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">{t.reportStep2Title}</Text>
+                <Text style={styles.description}>{t.reportStep2Desc}</Text>
                 <View accessibilityLiveRegion="polite">
-                  <AppInput label="Stradă sau zonă (opțional)" accessibilityLabel="Stradă sau zonă, opțional"
+                  <AppInput label={t.reportStreetLabel} accessibilityLabel={t.reportStreetA11y}
                     value={form.streetOrZone} onChangeText={(value) => updateField('streetOrZone', value)}
                     error={errors.streetOrZone} maxLength={150} autoCapitalize="words" editable={!submitting} />
                   <View style={styles.coordinates}>
                     <View style={styles.coordinate}>
-                      <AppInput label="Latitudine *" accessibilityLabel="Latitudine, obligatorie, între -90 și 90"
+                      <AppInput label={t.reportLatLabel} accessibilityLabel={t.reportLatA11y}
                         value={form.latitude} onChangeText={(value) => updateField('latitude', value)}
                         error={errors.latitude} accessibilityHint={errors.latitude} inputMode="decimal" autoCorrect={false}
                         maxLength={24} editable={!submitting} returnKeyType="next" />
                     </View>
                     <View style={styles.coordinate}>
-                      <AppInput label="Longitudine *" accessibilityLabel="Longitudine, obligatorie, între -180 și 180"
+                      <AppInput label={t.reportLngLabel} accessibilityLabel={t.reportLngA11y}
                         value={form.longitude} onChangeText={(value) => updateField('longitude', value)}
                         error={errors.longitude} accessibilityHint={errors.longitude} inputMode="decimal" autoCorrect={false}
                         maxLength={24} editable={!submitting} returnKeyType="send" submitBehavior="submit" onSubmitEditing={handleSubmit} />
@@ -205,22 +208,22 @@ export default function ReportIssueScreen() {
               </AppCard>
 
               {Object.values(errors).some(Boolean) && (
-                <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">Verifică câmpurile marcate înainte de trimitere.</Text>
+                <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{t.reportFormCheckError}</Text>
               )}
               {submissionError && (
                 <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{submissionError}</Text>
               )}
               <View style={styles.actions}>
-                <Text style={styles.caption}>Raportarea ajunge la EcoMutare și nu înlocuiește o sesizare oficială către primărie.</Text>
-                <AppButton title={submissionError ? 'Reîncearcă trimiterea' : 'Trimite raportarea'} onPress={handleSubmit}
+                <Text style={styles.caption}>{t.reportSubmitDisclaimer}</Text>
+                <AppButton title={submissionError ? t.reportRetryBtn : t.reportSubmitBtn} onPress={handleSubmit}
                   loading={submitting} disabled={submitting || !isAuthenticated || !user} style={styles.submit} textStyle={styles.buttonText} />
                 {submitting && (
-                  <Text style={styles.caption} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>Se verifică sesiunea și se trimite raportarea…</Text>
+                  <Text style={styles.caption} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>{t.reportSubmitting}</Text>
                 )}
               </View>
             </View>
           )}
-          <AppButton title="Înapoi acasă" variant="outline" onPress={() => router.navigate('/(tabs)/home')} />
+          <AppButton title={t.backHomeBtn} variant="outline" onPress={() => router.navigate('/(tabs)/home')} />
         </View>
       </ScrollView>
     </SafeAreaView>

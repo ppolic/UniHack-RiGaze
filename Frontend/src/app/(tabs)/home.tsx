@@ -3,66 +3,68 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter, type Href } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../hooks/useTranslation';
 import { colors } from '../../theme/colors';
 import { borderRadius, shadows, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
-const shortcuts: { title: string; description: string; icon: string; href: Href; upcoming?: boolean }[] = [
-  { title: 'Favorite', description: 'Un loc pentru drumurile preferate.', icon: '♡', href: { pathname: '/(tabs)/history', params: { section: 'favorites' } } },
-  { title: 'Istoric', description: 'Revino la călătoriile tale.', icon: '↺', href: { pathname: '/(tabs)/history', params: { section: 'history' } } },
-  { title: 'Provocări', description: 'Pași mici pentru un oraș mai verde.', icon: '⚑', href: '/challenges' },
-  { title: 'Raportează o problemă', description: 'Ajută la îmbunătățirea traseelor.', icon: '⚐', href: '/report-issue' },
-  { title: 'Puncte', description: 'Vezi punctele și recompensele tale.', icon: '✧', href: '/(tabs)/rewards' },
-  { title: 'Cupoane', description: 'Explorează catalogul de recompense.', icon: '🎟', href: '/(tabs)/rewards' },
-];
-
 export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
+  const { t } = useTranslation();
   const { width, fontScale } = useWindowDimensions();
   const firstName = user?.fullName.trim().split(/\s+/)[0];
+
+  const shortcuts: { title: string; description: string; icon: string; href: Href; upcoming?: boolean }[] = [
+    { title: t.homeShortcutFavoritesTitle, description: t.homeShortcutFavoritesDesc, icon: '♡', href: { pathname: '/(tabs)/history', params: { section: 'favorites' } } },
+    { title: t.homeShortcutHistoryTitle, description: t.homeShortcutHistoryDesc, icon: '↺', href: { pathname: '/(tabs)/history', params: { section: 'history' } } },
+    { title: t.homeShortcutChallengesTitle, description: t.homeShortcutChallengesDesc, icon: '⚑', href: '/challenges' },
+    { title: t.homeShortcutReportTitle, description: t.homeShortcutReportDesc, icon: '⚐', href: '/report-issue' },
+    { title: t.homeShortcutPointsTitle, description: t.homeShortcutPointsDesc, icon: '✧', href: '/(tabs)/rewards' },
+    { title: t.homeShortcutCouponsTitle, description: t.homeShortcutCouponsDesc, icon: '🎟', href: '/(tabs)/rewards' },
+  ];
 
   return (
     <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.welcome}>
-            <Text style={styles.brand}>BEGREEN · TIMIȘOARA</Text>
+            <Text style={styles.brand}>{t.homeBrand}</Text>
             <Text style={styles.heading} accessibilityRole="header">
-              {firstName ? `Bună, ${firstName}!` : 'Bine ai venit!'}
+              {firstName ? t.homeGreetingNamed(firstName) : t.homeGreetingDefault}
             </Text>
-            <Text style={styles.intro}>Un drum mai bun începe cu o alegere verde.</Text>
+            <Text style={styles.intro}>{t.homeIntro}</Text>
           </View>
 
           <View style={styles.hero}>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>MAI BINE PENTRU ORAȘ</Text>
+              <Text style={styles.heroBadgeText}>{t.homeHeroBadge}</Text>
             </View>
-            <Text style={styles.heroTitle} accessibilityRole="header">Unde mergem?</Text>
+            <Text style={styles.heroTitle} accessibilityRole="header">{t.homeHeroTitle}</Text>
             <Text style={styles.heroDescription}>
-              Pe jos, cu bicicleta sau cu transportul public: găsește o variantă mai sustenabilă pentru următoarea călătorie.
+              {t.homeHeroDescription}
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Deschide harta și planifică o călătorie"
+              accessibilityLabel={t.homeOpenMapA11y}
               onPress={() => router.navigate('/(tabs)')}
               style={({ pressed }) => [styles.mapButton, pressed && styles.mapButtonPressed]}
             >
-              <Text style={styles.mapButtonText}>Deschide harta</Text>
+              <Text style={styles.mapButtonText}>{t.homeOpenMapBtn}</Text>
               <Text style={styles.mapButtonText} accessible={false}>↗</Text>
             </Pressable>
           </View>
 
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">La un pas distanță</Text>
-            <Text style={styles.intro}>Tot ce ai nevoie pentru a merge mai departe.</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">{t.homeSectionTitle}</Text>
+            <Text style={styles.intro}>{t.homeSectionSubtitle}</Text>
           </View>
           <View style={styles.grid}>
             {shortcuts.map((shortcut) => (
               <Pressable
                 key={shortcut.title}
                 accessibilityRole="button"
-                accessibilityLabel={`${shortcut.title}${shortcut.upcoming ? ', în curând' : ''}`}
+                accessibilityLabel={`${shortcut.title}${shortcut.upcoming ? `, ${t.comingSoonLabel}` : ''}`}
                 accessibilityHint={shortcut.description}
                 onPress={() => router.navigate(shortcut.href)}
                 style={({ pressed }) => [
@@ -74,7 +76,7 @@ export default function HomeScreen() {
               >
                 <View style={styles.shortcutTop}>
                   <Text style={styles.shortcutIcon} accessible={false}>{shortcut.icon}</Text>
-                  {shortcut.upcoming && <Text style={styles.upcoming}>În curând</Text>}
+                  {shortcut.upcoming && <Text style={styles.upcoming}>{t.comingSoonLabel}</Text>}
                 </View>
                 <Text style={styles.shortcutTitle}>{shortcut.title}</Text>
                 <Text style={styles.shortcutDescription}>{shortcut.description}</Text>

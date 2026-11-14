@@ -1,4 +1,5 @@
 import { apiFetch, ApiHttpError, isRealJwtToken } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import { useUserStore } from '../store/userStore';
 
 let generation = 0;
@@ -16,7 +17,7 @@ export const positiveId = (value: unknown): value is number => nonnegativeIntege
 export function captureSession() {
   const { user, token, isAuthenticated } = useUserStore.getState();
   if (!isAuthenticated || !user || !isRealJwtToken(token) || !/^[1-9]\d*$/.test(user.id) || !Number.isSafeInteger(Number(user.id))) {
-    throw new Error('Autentifică-te din nou pentru a continua.');
+    throw new Error(getTranslations().sessionSignInAgain);
   }
   return { userId: Number(user.id), token, generation };
 }
@@ -24,7 +25,7 @@ export function captureSession() {
 export function assertSession(session: ReturnType<typeof captureSession>) {
   const current = captureSession();
   if (current.userId !== session.userId || current.token !== session.token || current.generation !== session.generation) {
-    throw new Error('Sesiunea s-a schimbat. Reîncarcă datele după autentificare.');
+    throw new Error(getTranslations().sessionChangedReload);
   }
 }
 
@@ -47,16 +48,17 @@ export async function verifyAccount(session: ReturnType<typeof captureSession>) 
   const response = await apiFetch<unknown>('/auth/me', {}, session.token);
   assertSession(session);
   if (!isRecord(response) || response.userId !== session.userId || !nonnegativeInteger(response.pointsBalance)) {
-    throw new Error('Serverul nu a confirmat datele contului.');
+    throw new Error(getTranslations().sessionAccountUnconfirmed);
   }
   return { balance: response.pointsBalance, age: verifiedAge(response.birthDate) };
 }
 
 export function fe2ErrorMessage(error: unknown, fallback: string): string {
+  const t = getTranslations();
   if (error instanceof ApiHttpError) {
-    if (error.status === 401 || error.status === 403) return 'Sesiunea a expirat sau accesul a fost refuzat. Autentifică-te din nou.';
-    if (error.status === 409) return 'Serverul a refuzat o activare repetată sau o recompensă inactivă. Reîncarcă datele înainte de a continua.';
-    if (error.status === 400) return 'Serverul a respins operația. Verifică soldul și datele înainte de a încerca din nou.';
+    if (error.status === 401 || error.status === 403) return t.sessionExpiredError;
+    if (error.status === 409) return t.sessionDuplicateRewardError;
+    if (error.status === 400) return t.sessionBadRequestError;
     return fallback;
   }
   return error instanceof Error && error.name !== 'AbortError' && !(error instanceof TypeError) && !(error instanceof SyntaxError) ? error.message : fallback;

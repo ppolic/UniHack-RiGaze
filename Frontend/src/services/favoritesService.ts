@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import { assertSession, captureSession, isRecord, positiveId, verifyAccount } from './fe2Session';
 import { FavoriteRoute } from '../types/favorites';
 import { TransportMode } from '../types/route';
@@ -11,15 +12,16 @@ function point(value: unknown): value is { lat: number; lng: number } {
 
 export const favoritesService = {
   async getFavorites(): Promise<FavoriteRoute[]> {
+    const t = getTranslations();
     const session = captureSession();
     // The favorites controller is public and trusts its query userId.
     await verifyAccount(session);
     const response = await apiFetch<unknown>('/favorites?userId=' + session.userId, {}, session.token);
     assertSession(session);
-    if (!Array.isArray(response)) throw new Error('Serverul a returnat o listă de favorite nevalidă.');
+    if (!Array.isArray(response)) throw new Error(t.favoritesListInvalidError);
     const ids = new Set<number>();
     return response.flatMap((item: unknown) => {
-      if (!isRecord(item)) throw new Error('Serverul a returnat o favorită nevalidă.');
+      if (!isRecord(item)) throw new Error(t.favoritesItemInvalidError);
       // Backend deliberately includes userId:null shared examples. Never present
       // those, foreign records or missing ownership as this user's favorites.
       if (item.userId !== session.userId) return [];
@@ -27,7 +29,7 @@ export const favoritesService = {
           typeof item.originName !== 'string' || typeof item.destinationName !== 'string' ||
           !point(item.origin) || !point(item.destination) || typeof item.preferredMode !== 'string' ||
           !modes.has(item.preferredMode) || typeof item.requiresStepFreeAccess !== 'boolean') {
-        throw new Error('Datele unei rute favorite nu pot fi verificate.');
+        throw new Error(t.favoritesRecordUnverifiedError);
       }
       ids.add(item.id);
       return [{

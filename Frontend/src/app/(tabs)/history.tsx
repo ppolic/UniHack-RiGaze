@@ -23,7 +23,6 @@ type HistoryState =
 export default function HistoryScreen() {
   const router = useRouter();
   const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const modeLabels: Record<string, string> = {
     Walk: t.modeWalk, Walking: t.modeWalk, Bicycle: t.modeBike, Bike: t.modeBike, Scooter: t.modeScooter,
     Bus: t.svcVehicleBus, Tram: t.svcVehicleTram, Trolleybus: t.svcVehicleTrolleybus,
@@ -69,9 +68,9 @@ export default function HistoryScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>{localize('DRUMURILE TALE', 'YOUR JOURNEYS')}</Text>
-            <Text style={styles.title} accessibilityRole="header">{localize('Favorite și istoric', 'Favorites & History')}</Text>
-            <Text style={styles.description}>{localize('Alegerile de azi, într-un oraș mai verde mâine.', 'Today’s choices, a greener city tomorrow.')}</Text>
+            <Text style={styles.eyebrow}>{t.historyEyebrow}</Text>
+            <Text style={styles.title} accessibilityRole="header">{t.historyScreenTitle}</Text>
+            <Text style={styles.description}>{t.historyScreenSubtitle}</Text>
           </View>
 
           <View style={styles.sections} accessibilityRole="tablist">
@@ -86,7 +85,7 @@ export default function HistoryScreen() {
                   style={({ pressed }) => [styles.sectionButton, selected && styles.activeSection, pressed && styles.pressedSection]}
                 >
                   <Text style={[styles.sectionLabel, selected && styles.activeLabel]}>
-                    {value === 'favorites' ? localize('♡  Favorite', '♡  Favorites') : '↺  ' + t.tabHistory}
+                    {value === 'favorites' ? t.historyTabFavorites : '↺  ' + t.tabHistory}
                   </Text>
                 </Pressable>
               );
@@ -99,9 +98,9 @@ export default function HistoryScreen() {
             <View style={styles.list}>
               <View style={styles.listHeading}>
                 <Text style={styles.sectionTitle} accessibilityRole="header">{t.historyTitle}</Text>
-                {state.status === 'success' && <Badge label={state.trips.length + localize(' în listă', ' in list')} />}
+                {state.status === 'success' && <Badge label={state.trips.length + t.historyInListSuffix} />}
               </View>
-              <Text style={styles.description}>{localize('Serviciul poate returna date inițializate și nu confirmă păstrarea lor după repornirea serverului.', 'The service may return seeded data and does not confirm retention after a server restart.')}</Text>
+              <Text style={styles.description}>{t.historyRetentionNote}</Text>
               {state.status === 'loading' && (
                 <View style={styles.statusCard} accessible accessibilityRole="progressbar"
                   accessibilityLabel={t.historyLoading} accessibilityState={{ busy: true }}>
@@ -111,7 +110,7 @@ export default function HistoryScreen() {
               )}
               {state.status === 'error' && (
                 <AppCard style={styles.statusCard}>
-                  <Text style={styles.sectionTitle}>{localize('Istoricul nu este disponibil', 'History is unavailable')}</Text>
+                  <Text style={styles.sectionTitle}>{t.historyUnavailableTitle}</Text>
                   <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                     {state.message}
                   </Text>

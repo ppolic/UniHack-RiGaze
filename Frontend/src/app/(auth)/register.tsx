@@ -33,8 +33,7 @@ function getBirthDateError(value: string, now = new Date()): string | undefined 
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
+  const { t } = useTranslation();
   const { setUser, setToken } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -59,7 +58,7 @@ export default function RegisterScreen() {
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
         ? undefined : t.regEmailError,
       password: trimmedPassword.length >= 8
-        ? undefined : localize('Parola trebuie să aibă cel puțin 8 caractere.', 'Password must contain at least 8 characters.'),
+        ? undefined : t.registerPasswordError,
       birthDate: getBirthDateError(trimmedBirthDate, today),
     };
     setErrors(nextErrors);
@@ -83,9 +82,9 @@ export default function RegisterScreen() {
       router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
-        setErrors({ server: err.message || localize('Înregistrarea a eșuat.', 'Registration failed.') });
+        setErrors({ server: err.message || t.registerFailed });
       } else {
-        setErrors({ server: localize('Nu am putut contacta serverul sau confirma înregistrarea. Verifică conexiunea și încearcă din nou.', 'Could not connect to the server or confirm registration. Check your connection and try again.') });
+        setErrors({ server: t.registerServerError });
       }
     } finally {
       setLoading(false);
@@ -99,9 +98,9 @@ export default function RegisterScreen() {
       automaticallyAdjustKeyboardInsets
     >
       <View style={styles.header}>
-        <Text style={styles.title}>{localize('Creează un cont', 'Create an account')}</Text>
+        <Text style={styles.title}>{t.registerTitle}</Text>
         <Text style={styles.subtitle}>
-          {localize('Creează un cont BeGreen pentru călătorii, economii de CO₂ și eco-puncte. Înregistrarea este confirmată de server.', 'Create a BeGreen account for trips, CO₂ savings and eco-points. Registration is confirmed by the server.')}
+          {t.registerSubtitle}
         </Text>
       </View>
 
@@ -144,7 +143,7 @@ export default function RegisterScreen() {
           returnKeyType="next"
         />
         <AppInput
-          label={localize('Parolă (minim 8 caractere)', 'Password (at least 8 characters)')}
+          label={t.registerPasswordLabel}
           accessibilityLabel={t.passwordLabel}
           accessibilityHint={errors.password}
           error={errors.password}
@@ -153,7 +152,7 @@ export default function RegisterScreen() {
             setPassword(value);
             setErrors((previous) => ({ ...previous, password: undefined, server: undefined }));
           }}
-          placeholder={localize('Cel puțin 8 caractere', 'At least 8 characters')}
+          placeholder={t.registerPasswordPlaceholder}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
@@ -209,7 +208,7 @@ export default function RegisterScreen() {
         </View>
 
         <AppButton
-          title={localize('Creează cont', 'Create account')}
+          title={t.createAccountButton}
           loading={loading}
           onPress={handleRegister}
           style={styles.submitBtn}
@@ -220,7 +219,7 @@ export default function RegisterScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            <Text style={styles.linkText}>{localize('Înapoi la autentificare', 'Back to sign in')}</Text>
+            <Text style={styles.linkText}>{t.backToSignIn}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>

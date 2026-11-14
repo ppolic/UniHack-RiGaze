@@ -19,8 +19,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export default function ProfileScreen() {
   const { user, token, setUser, logout } = useAuth();
   const router = useRouter();
-  const { language, t } = useTranslation();
-  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
+  const { t } = useTranslation();
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
   const [verifiedAge, setVerifiedAge] = useState<number | null>(null);
@@ -91,9 +90,9 @@ export default function ProfileScreen() {
       >
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>{localize('CONTUL TĂU', 'YOUR ACCOUNT')}</Text>
+            <Text style={styles.eyebrow}>{t.profileEyebrow}</Text>
             <Text style={styles.title} accessibilityRole="header">{t.tabProfile}</Text>
-            <Text style={styles.description}>{localize('Preferințele tale, pentru călătorii care ți se potrivesc.', 'Your preferences, for journeys that suit you.')}</Text>
+            <Text style={styles.description}>{t.profileSubtitle}</Text>
           </View>
 
           <ProfileDetails verifiedAge={verifiedAge}>
@@ -122,7 +121,7 @@ export default function ProfileScreen() {
                   />
                 </View>
                 <Text style={styles.caption}>
-                  {localize('Numele se actualizează imediat în aplicație. Dacă serverul nu este disponibil, modificarea poate să nu se păstreze la următoarea autentificare.', 'Your name updates immediately in the app. If the server is unavailable, the change may not be retained the next time you sign in.')}
+                  {t.profileNameSyncNote}
                 </Text>
                 <View style={styles.editActions}>
                   <AppButton title={t.save} onPress={handleSave} style={styles.editButton} />
@@ -135,8 +134,8 @@ export default function ProfileScreen() {
           </ProfileDetails>
 
           <AppCard style={styles.sessionCard}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">{localize('Sesiunea ta', 'Your session')}</Text>
-            <Text style={styles.description}>{localize('Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.', 'Signing out ends your current session. You will need to sign in again to return to your account.')}</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">{t.profileSessionTitle}</Text>
+            <Text style={styles.description}>{t.profileSessionDesc}</Text>
             <AppButton title={t.logoutBtn} variant="outline" onPress={handleLogout} style={styles.actionButton} />
           </AppCard>
         </View>

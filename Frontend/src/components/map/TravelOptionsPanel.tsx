@@ -84,6 +84,7 @@ export function TravelOptionsPanel({
   const maxHRef = useRef(openHeight);
   const expandedRef = useRef(expanded);
   const setExpandedRef = useRef(setExpanded);
+  const scrollOffsetRef = useRef(0);
 
   minHRef.current = minimizedHeight;
   maxHRef.current = openHeight;
@@ -109,12 +110,20 @@ export function TravelOptionsPanel({
     }).start();
   }, [sheetHeight, ready, animatedHeight]);
 
+  const shouldCaptureSheetDrag = (dx: number, dy: number) => {
+    if (Math.abs(dy) <= 6 || Math.abs(dy) <= Math.abs(dx)) return false;
+    if (!expandedRef.current) return true;
+    // When expanded, allow pulling down from anywhere on the sheet once list is at top
+    return dy > 0 && scrollOffsetRef.current <= 2;
+  };
+
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gestureState) =>
-        Math.abs(gestureState.dy) > 6 &&
-        Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+        shouldCaptureSheetDrag(gestureState.dx, gestureState.dy),
+      onMoveShouldSetPanResponderCapture: (_, gestureState) =>
+        shouldCaptureSheetDrag(gestureState.dx, gestureState.dy),
       onPanResponderGrant: () => {
         isDraggingRef.current = true;
         dragStartHeightRef.current = currentHeightRef.current;
@@ -185,7 +194,7 @@ export function TravelOptionsPanel({
       />
       <Animated.View
         pointerEvents="auto"
-        onStartShouldSetResponder={() => true}
+        {...panResponder.panHandlers}
         style={[
           styles.sheet,
           styles.overlaySheet,
@@ -200,7 +209,6 @@ export function TravelOptionsPanel({
       >
         <View
           style={[styles.header, desktop && styles.desktopContent]}
-          {...panResponder.panHandlers}
         >
           <Pressable
             accessibilityRole="button"
@@ -259,13 +267,16 @@ export function TravelOptionsPanel({
             style={styles.optionsList}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{ paddingBottom: spacing.md }}
+            scrollEventThrottle={16}
+            onScroll={(event) => {
+              scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
+            }}
           >
             {children}
           </ScrollView>
           {footer ? (
             <View
               style={[styles.footer, desktop && styles.desktopContent]}
-              {...panResponder.panHandlers}
             >
               {footer}
             </View>

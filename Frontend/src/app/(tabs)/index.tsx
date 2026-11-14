@@ -400,7 +400,7 @@ export default function MapScreen() {
         distanceMeters: Math.round(selectedOption.distanceKm * 1000),
         durationSeconds: Math.round(selectedOption.durationMinutes * 60),
         originName: endpoints.originName,
-        destinationName: endpoints.destinationName || 'Odredište',
+        destinationName: endpoints.destinationName || t.destination,
         originLatitude: endpoints.origin.lat,
         originLongitude: endpoints.origin.lng,
         destinationLatitude: endpoints.destination?.lat,

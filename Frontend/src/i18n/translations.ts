@@ -444,6 +444,332 @@ export const translations = {
       `Timeout (${ms} ms) — folosiți modul Demo Offline`,
     svcApiUnreachable: (url: string) =>
       `Indisponibil (${url}) — Demo Offline este pregătit`,
+    svcOriginFallback: 'Plecare',
+
+    // Stack Headers & Language Toggle
+    challengesHeaderTitle: 'Provocări',
+    reportIssueHeaderTitle: 'Raportează o problemă',
+    switchToEnA11y: 'Schimbă limba în engleză',
+    switchToRoA11y: 'Schimbă limba în română',
+
+    // Auth (Login & Register)
+    loginTitle: 'Autentificare în BeGreen',
+    loginSubtitle: 'Introdu emailul și parola. Autentificarea necesită o conexiune la server.',
+    loginButton: 'Autentifică-te',
+    demoBypassButton: 'Demo Bypass (Intră fără cont)',
+    noAccountPrompt: 'Nu ai cont? ',
+    createAccountLink: 'Creează un cont',
+    loginFailed: 'Email sau parolă incorectă.',
+    loginServerError:
+      'Nu am putut contacta serverul sau confirma autentificarea. Verifică conexiunea și încearcă din nou.',
+    registerTitle: 'Creează un cont',
+    registerSubtitle:
+      'Creează un cont BeGreen pentru călătorii, economii de CO₂ și eco-puncte. Înregistrarea este confirmată de server.',
+    registerPasswordLabel: 'Parolă (minim 8 caractere)',
+    registerPasswordPlaceholder: 'Cel puțin 8 caractere',
+    registerPasswordError: 'Parola trebuie să aibă cel puțin 8 caractere.',
+    registerFailed: 'Înregistrarea a eșuat.',
+    registerServerError:
+      'Nu am putut contacta serverul sau confirma înregistrarea. Verifică conexiunea și încearcă din nou.',
+    createAccountButton: 'Creează cont',
+    backToSignIn: 'Înapoi la autentificare',
+    authUnconfirmedError: 'Serverul nu a confirmat autentificarea. Încearcă din nou.',
+
+    // Home & Coming Soon
+    homeBrand: 'BEGREEN · TIMIȘOARA',
+    homeGreetingNamed: (firstName: string) => `Bună, ${firstName}!`,
+    homeGreetingDefault: 'Bine ai venit!',
+    homeIntro: 'Un drum mai bun începe cu o alegere verde.',
+    homeHeroBadge: 'MAI BINE PENTRU ORAȘ',
+    homeHeroTitle: 'Unde mergem?',
+    homeHeroDescription:
+      'Pe jos, cu bicicleta sau cu transportul public: găsește o variantă mai sustenabilă pentru următoarea călătorie.',
+    homeOpenMapBtn: 'Deschide harta',
+    homeOpenMapA11y: 'Deschide harta și planifică o călătorie',
+    homeSectionTitle: 'La un pas distanță',
+    homeSectionSubtitle: 'Tot ce ai nevoie pentru a merge mai departe.',
+    homeShortcutFavoritesTitle: 'Favorite',
+    homeShortcutFavoritesDesc: 'Un loc pentru drumurile preferate.',
+    homeShortcutHistoryTitle: 'Istoric',
+    homeShortcutHistoryDesc: 'Revino la călătoriile tale.',
+    homeShortcutChallengesTitle: 'Provocări',
+    homeShortcutChallengesDesc: 'Pași mici pentru un oraș mai verde.',
+    homeShortcutReportTitle: 'Raportează o problemă',
+    homeShortcutReportDesc: 'Ajută la îmbunătățirea traseelor.',
+    homeShortcutPointsTitle: 'Puncte',
+    homeShortcutPointsDesc: 'Vezi punctele și recompensele tale.',
+    homeShortcutCouponsTitle: 'Cupoane',
+    homeShortcutCouponsDesc: 'Explorează catalogul de recompense.',
+    comingSoonLabel: 'În curând',
+    comingSoonBody: 'Această funcție nu este încă disponibilă.',
+    backHomeBtn: 'Înapoi acasă',
+
+    // History & Favorites
+    historyEyebrow: 'DRUMURILE TALE',
+    historyScreenTitle: 'Favorite și istoric',
+    historyScreenSubtitle: 'Alegerile de azi, într-un oraș mai verde mâine.',
+    historyTabFavorites: '♡  Favorite',
+    historyInListSuffix: ' în listă',
+    historyRetentionNote:
+      'Serviciul poate returna date inițializate și nu confirmă păstrarea lor după repornirea serverului.',
+    historyUnavailableTitle: 'Istoricul nu este disponibil',
+    favoritesLoadError: 'Nu am putut încărca favoritele. Verifică conexiunea și încearcă din nou.',
+    favoritesNoticeTitle: 'Favorite din serviciul BeGreen',
+    favoritesNoticeBody1:
+      'Sunt afișate doar rutele pe care serverul le asociază contului tău. Lista poate include exemple inițializate de server; proveniența și păstrarea după repornire nu sunt confirmate de API.',
+    favoritesNoticeBody2:
+      'Adăugarea și ștergerea sunt indisponibile până când serverul confirmă salvarea durabilă și dreptul de modificare a rutelor.',
+    favoritesAddDisabledBtn: 'Adăugare indisponibilă',
+    favoritesAccountRoutesTitle: 'Rute asociate contului',
+    reloadBtn: 'Reîncarcă',
+    favoritesLoading: 'Se încarcă favoritele…',
+    favoritesLoadingA11y: 'Se încarcă favoritele',
+    favoritesEmptyTitle: 'Nicio rută asociată contului',
+    favoritesEmptyDesc:
+      'Serverul nu a returnat rute favorite care aparțin acestui cont. Exemplele comune nu sunt incluse.',
+    favoritesStepFreePref: 'Preferință salvată: acces fără trepte',
+    favoritesDeleteDisabledBtn: 'Ștergere indisponibilă',
+    favoritesListInvalidError: 'Serverul a returnat o listă de favorite nevalidă.',
+    favoritesItemInvalidError: 'Serverul a returnat o favorită nevalidă.',
+    favoritesRecordUnverifiedError: 'Datele unei rute favorite nu pot fi verificate.',
+
+    // Profile
+    profileEyebrow: 'CONTUL TĂU',
+    profileSubtitle: 'Preferințele tale, pentru călătorii care ți se potrivesc.',
+    profileNameSyncNote:
+      'Numele se actualizează imediat în aplicație. Dacă serverul nu este disponibil, modificarea poate să nu se păstreze la următoarea autentificare.',
+    profileSessionTitle: 'Sesiunea ta',
+    profileSessionDesc:
+      'Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.',
+    profileAgeUnconfirmed: 'Vârstă neconfirmată',
+    profileVisualOptionsActive: 'Opțiuni vizuale active',
+    profileAccessibilityHint:
+      'Ține cont de accesibilitate când sunt propuse opțiunile de transport.',
+    profileOwnBikeHint: 'Folosește bicicleta proprie la planificarea călătoriilor.',
+    profileOwnCarHint: 'Include opțiunile de călătorie cu mașina proprie.',
+
+    // Rewards
+    rewardsEyebrow: 'ALEGERILE VERZI CONTEAZĂ',
+    rewardsTitle: 'Puncte și cupoane',
+    rewardsSubtitle: 'Soldul și activările sunt încărcate din contul tău de pe server.',
+    rewardsReloadDataBtn: 'Reîncarcă datele',
+    rewardsLoadingBalance: 'Se încarcă soldul…',
+    rewardsLoadingBalanceA11y: 'Se încarcă soldul',
+    rewardsReloadBalanceBtn: 'Reîncarcă soldul',
+    rewardsMemoryWarning:
+      'Serverul poate funcționa temporar în memorie. Un răspuns confirmat nu garantează păstrarea datelor după repornirea serverului.',
+    rewardsAvailableTitle: 'Recompense disponibile',
+    rewardsAvailableDesc:
+      'Activarea folosește punctele contului. Soldul și istoricul trebuie încărcate înainte de activare.',
+    rewardsLoadingRewards: 'Se încarcă recompensele…',
+    rewardsLoadingRewardsA11y: 'Se încarcă recompensele',
+    rewardsCatalogUnavailable: 'Catalog indisponibil',
+    rewardsReloadRewardsBtn: 'Reîncarcă recompensele',
+    rewardsEmptyTitle: 'Nicio recompensă disponibilă acum',
+    rewardsEmptyDesc: 'Serverul a returnat un catalog fără recompense active.',
+    rewardsBadgeLabel: 'RECOMPENSĂ',
+    rewardsRedeemedBtn: 'Activată',
+    rewardsRedeemBtn: 'Activează recompensa',
+    rewardsRedeeming: 'Se activează recompensa…',
+    rewardsRecordedBadge: 'Activare înregistrată',
+    rewardsCodePrefix: 'Cod:',
+    rewardsLedgerTitle: 'Activări și cupoane',
+    rewardsLedgerDesc:
+      'Activările sunt reîncărcate din tranzacțiile contului. API-ul nu oferă recuperarea codurilor anterioare. Codurile primite aici rămân temporar în acest ecran; copiază-le înainte de a-l închide.',
+    rewardsLoadingLedger: 'Se încarcă activările…',
+    rewardsLoadingLedgerA11y: 'Se încarcă activările',
+    rewardsReloadLedgerBtn: 'Reîncarcă activările',
+    rewardsNoRedemptionsTitle: 'Nicio activare înregistrată',
+    rewardsNoRedemptionsDesc:
+      'Serverul nu a returnat tranzacții de activare pentru contul tău.',
+    rewardsSpentSuffix: ' utilizate',
+    rewardsCodeUnavailable: 'Codul acestei activări nu este disponibil prin API.',
+    rewardsRedemptionPrefix: 'Activare #',
+    rewardsDataLoadError:
+      'Nu am putut încărca datele. Verifică conexiunea și încearcă din nou.',
+    rewardsExpiredError: 'Această recompensă a expirat.',
+    rewardsSignInRequired: 'Autentifică-te din nou pentru a activa recompense.',
+    rewardsLoadPrerequisites:
+      'Încarcă soldul și istoricul activărilor înainte de a continua.',
+    rewardsRedeemUnconfirmed:
+      'Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul.',
+    rewardsRedeemConfirmFailed:
+      'Nu am putut confirma activarea. Cererea poate să fi ajuns la server. Reîncarcă soldul și istoricul înainte de a reîncerca.',
+    rewardsCatalogInvalid: 'Catalogul returnat de server nu este valid.',
+    rewardsCatalogItemInvalid: 'O recompensă din catalog nu poate fi verificată.',
+    rewardsInvalidId: 'Identificatorul recompensei nu este valid.',
+    rewardsRedeemPending:
+      'O activare este deja în curs. Așteaptă confirmarea serverului.',
+    rewardsRedeemConfirmReload:
+      'Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul înainte de a reîncerca.',
+    rewardsHistoryChanged:
+      'Istoricul activărilor s-a schimbat sau nu este valid. Reîncarcă datele.',
+    rewardsHistoryIncomplete: 'Istoricul activărilor este incomplet. Încearcă din nou.',
+    rewardsTxUnverified: 'O tranzacție nu poate fi verificată. Reîncarcă istoricul.',
+    rewardsRecordInvalid: 'Datele unei activări nu sunt valide.',
+    rewardsHistoryInconsistent:
+      'Istoricul activărilor este inconsistent. Reîncarcă datele.',
+    rewardsHistoryTooLarge:
+      'Istoricul contului este prea mare pentru încărcarea completă. Este necesară filtrarea activărilor pe server.',
+    rewardsTripsInvalid: 'Istoricul călătoriilor returnat de server nu este valid.',
+    rewardsTripUnverified: 'Datele unei călătorii nu pot fi verificate.',
+
+    // Session & Common Service Errors
+    sessionSignInAgain: 'Autentifică-te din nou pentru a continua.',
+    sessionChangedReload:
+      'Sesiunea s-a schimbat. Reîncarcă datele după autentificare.',
+    sessionChangedRetry:
+      'Sesiunea s-a schimbat. Revino în ecran și încearcă din nou.',
+    sessionAccountUnconfirmed: 'Serverul nu a confirmat datele contului.',
+    sessionIdentityUnconfirmed:
+      'Serverul nu a confirmat sesiunea contului tău. Autentifică-te din nou.',
+    sessionExpiredError:
+      'Sesiunea a expirat sau accesul a fost refuzat. Autentifică-te din nou.',
+    sessionDuplicateRewardError:
+      'Serverul a refuzat o activare repetată sau o recompensă inactivă. Reîncarcă datele înainte de a continua.',
+    sessionBadRequestError:
+      'Serverul a respins operația. Verifică soldul și datele înainte de a încerca din nou.',
+
+    // Challenges
+    challengesEyebrow: 'PAȘI MICI, SCHIMBĂRI MARI',
+    challengesTitle: 'Provocări',
+    challengesSubtitle: 'Descoperă obiectivele de mobilitate sustenabilă din catalog.',
+    challengesNoticeTitle: 'Ce este disponibil acum',
+    challengesNoticeBody1:
+      'Poți consulta și reîncărca provocările. Înscrierea separată nu este disponibilă. Progresul, finalizarea și colectarea bonusurilor nu pot fi confirmate în siguranță de serviciul actual.',
+    challengesNoticeBody2:
+      'De aceea nu afișăm un progres presupus și nu acordăm puncte din acest ecran.',
+    challengesJoinDisabledBtn: 'Înscriere separată indisponibilă',
+    challengesCatalogTitle: 'Catalog de provocări',
+    challengesLoading: 'Se încarcă provocările…',
+    challengesLoadingA11y: 'Se încarcă provocările',
+    challengesUnavailableTitle: 'Provocările nu sunt disponibile',
+    challengesEmptyTitle: 'Nicio provocare disponibilă acum',
+    challengesEmptyDesc:
+      'Catalogul returnat de server este gol. Poți reveni mai târziu sau reîncărca lista.',
+    challengesDefaultCategory: 'Provocare',
+    challengesBonusPointsSuffix: ' puncte bonus posibile',
+    challengesGoalPrefix: 'Obiectiv:',
+    challengesAccessibleLabel: 'Adaptată pentru accesibilitate',
+    challengesProgressUnavailable:
+      'Progres și status de finalizare: indisponibile pentru verificare.',
+    challengesCollectDisabledBtn: 'Colectare puncte indisponibilă',
+    challengeCatBike: 'Bicicletă',
+    challengeCatWalk: 'Pe jos',
+    challengeCatTransit: 'Transport public',
+    challengeCatCarbon: 'Impact climatic',
+    challengeCatCarFree: 'Fără mașină',
+    challengeCatCommunity: 'Comunitate',
+    challengeCatAccessibility: 'Accesibilitate',
+    challengeUnitTrips: 'călătorii',
+    challengeUnitTrip: 'călătorie',
+    challengeUnitDay: 'zi',
+    challengeUnitDays: 'zile',
+    challengeUnitReport: 'raportare',
+    challengesCopy: {
+      'bike-3x': {
+        title: 'Săptămâna pe bicicletă',
+        description:
+          'Alege bicicleta proprie sau una închiriată pentru drumurile către facultate sau serviciu.',
+      },
+      'accessible-transit-3x': {
+        title: 'Transport public accesibil',
+        description:
+          'Călătorește fără bariere, cu tramvaie și autobuze cu podea joasă.',
+      },
+      'car-free-day': {
+        title: 'O alegere fără mașina proprie',
+        description:
+          'Alege mersul pe jos, bicicleta, transportul public sau o călătorie partajată pentru deplasările zilnice.',
+      },
+      'walk-10km': {
+        title: 'Mai mult mers pe jos',
+        description:
+          'Adună kilometri pe jos, prin coridoarele verzi de pe Bega și zonele pietonale ale orașului.',
+      },
+      'accessible-10km': {
+        title: 'Mobilitate fără bariere',
+        description:
+          'Alege trasee fără trepte, transport public cu podea joasă sau călătorii partajate accesibile.',
+      },
+      'try-transit': {
+        title: 'Descoperă transportul public',
+        description:
+          'Folosește transportul public STPT sau împarte o călătorie cu alți pasageri.',
+      },
+      'save-5kg-co2': {
+        title: 'Mai puține emisii CO₂',
+        description:
+          'Înlocuiește drumurile cu mașina cu opțiuni sustenabile și economisește emisii de CO₂.',
+      },
+      'waze-guardian': {
+        title: 'Ajută comunitatea în mișcare',
+        description:
+          'Raportează sau confirmă obstacole, lucrări și căi de acces blocate pentru persoanele cu mobilitate redusă.',
+      },
+    } as Record<string, { title: string; description: string }>,
+    communitySessionInvalid:
+      'Sesiunea nu mai este validă. Autentifică-te din nou pentru a continua.',
+    communityServerRejected:
+      'Serverul a respins datele. Verifică formularul și încearcă din nou.',
+    communitySubmitUnconfirmed:
+      'Nu am putut confirma trimiterea. Cererea poate să fi ajuns la server; retrimiterea poate crea un duplicat. Datele formularului au fost păstrate.',
+    communityLoadError:
+      'Nu am putut încărca provocările. Verifică conexiunea și încearcă din nou.',
+    communityReportPending:
+      'O raportare este deja în curs de trimitere. Așteaptă confirmarea înainte de a încerca din nou.',
+
+    // Report Issue
+    reportEyebrow: 'UN ORAȘ MAI UȘOR DE PARCURS',
+    reportTitle: 'Raportează o problemă',
+    reportSubtitle:
+      'Spune-ne ce îngreunează deplasarea. Introdu locul și detaliile observate.',
+    reportSessionChanged:
+      'Sesiunea s-a schimbat. Verifică autentificarea înainte de a continua.',
+    reportErrCategory: 'Alege o categorie.',
+    reportErrDescriptionRequired: 'Descrie problema observată.',
+    reportErrDescriptionMax: 'Descrierea poate avea cel mult 600 de caractere.',
+    reportErrStreetMax: 'Folosește cel mult 150 de caractere.',
+    reportErrLatitude: 'Introdu o latitudine între -90 și 90.',
+    reportErrLongitude: 'Introdu o longitudine între -180 și 180.',
+    reportReceiptBadge: 'Primită de server',
+    reportReceiptTitle: (id: number) => `Raportarea #${id} a fost primită`,
+    reportCoordsLabel: (lat: number, lng: number) =>
+      `Latitudine: ${lat} · Longitudine: ${lng}`,
+    reportReceiptDisclaimer:
+      'Confirmarea atestă primirea de către serverul BeGreen. Păstrarea după repornirea serverului și acordarea punctelor nu sunt garantate de serviciul actual. Raportarea nu este transmisă automat către primărie.',
+    reportAnotherBtn: 'Raportează altă problemă',
+    reportStep1Title: '1. Ce ai observat?',
+    reportStep1Hint: 'Categoria și descrierea sunt obligatorii.',
+    reportCategoryGroupA11y: 'Categoria problemei',
+    reportDescLabel: 'Descriere *',
+    reportDescA11y: 'Descrierea problemei, obligatorie',
+    reportCharsCount: (count: number) => `${count}/600 caractere`,
+    reportStep2Title: '2. Unde se află problema?',
+    reportStep2Desc:
+      'Introdu coordonate WGS84 în grade zecimale. Poți folosi punct sau virgulă. Nu este necesar accesul la GPS.',
+    reportStreetLabel: 'Stradă sau zonă (opțional)',
+    reportStreetA11y: 'Stradă sau zonă, opțional',
+    reportLatLabel: 'Latitudine *',
+    reportLatA11y: 'Latitudine, obligatorie, între -90 și 90',
+    reportLngLabel: 'Longitudine *',
+    reportLngA11y: 'Longitudine, obligatorie, între -180 și 180',
+    reportFormCheckError: 'Verifică câmpurile marcate înainte de trimitere.',
+    reportSubmitDisclaimer:
+      'Raportarea ajunge la BeGreen și nu înlocuiește o sesizare oficială către primărie.',
+    reportRetryBtn: 'Reîncearcă trimiterea',
+    reportSubmitBtn: 'Trimite raportarea',
+    reportSubmitting: 'Se verifică sesiunea și se trimite raportarea…',
+    reportCatRoadBlockade: 'Drum blocat',
+    reportCatRoadBlockadeDesc: 'Lucrări sau obstacole pe carosabil.',
+    reportCatBlockedBike: 'Pistă de biciclete blocată',
+    reportCatBlockedBikeDesc: 'Acces împiedicat pe o pistă existentă.',
+    reportCatInaccessible: 'Zonă inaccesibilă',
+    reportCatInaccessibleDesc: 'Bariere pentru deplasarea în siguranță.',
+    reportCatMissingBike: 'Lipsă pistă de biciclete',
+    reportCatMissingBikeDesc: 'Un loc unde este necesară o pistă.',
+    reportCatTransitDisruption: 'Transport public perturbat',
+    reportCatTransitDisruptionDesc: 'O problemă care afectează transportul public.',
   },
   en: {
     // Navigation / Tabs
@@ -881,6 +1207,332 @@ export const translations = {
       `Timeout (${ms} ms) — use Offline Demo mode`,
     svcApiUnreachable: (url: string) =>
       `Unreachable (${url}) — Offline Demo is ready`,
+    svcOriginFallback: 'Origin',
+
+    // Stack Headers & Language Toggle
+    challengesHeaderTitle: 'Challenges',
+    reportIssueHeaderTitle: 'Report an issue',
+    switchToEnA11y: 'Switch language to English',
+    switchToRoA11y: 'Switch language to Romanian',
+
+    // Auth (Login & Register)
+    loginTitle: 'Sign in to BeGreen',
+    loginSubtitle: 'Enter your email and password. Sign-in requires a server connection.',
+    loginButton: 'Sign in',
+    demoBypassButton: 'Demo Bypass (Skip Login)',
+    noAccountPrompt: 'No account? ',
+    createAccountLink: 'Create an account',
+    loginFailed: 'Incorrect email or password.',
+    loginServerError:
+      'Could not connect to the server or confirm sign-in. Check your connection and try again.',
+    registerTitle: 'Create an account',
+    registerSubtitle:
+      'Create a BeGreen account for trips, CO₂ savings and eco-points. Registration is confirmed by the server.',
+    registerPasswordLabel: 'Password (at least 8 characters)',
+    registerPasswordPlaceholder: 'At least 8 characters',
+    registerPasswordError: 'Password must contain at least 8 characters.',
+    registerFailed: 'Registration failed.',
+    registerServerError:
+      'Could not connect to the server or confirm registration. Check your connection and try again.',
+    createAccountButton: 'Create account',
+    backToSignIn: 'Back to sign in',
+    authUnconfirmedError: 'The server did not confirm authentication. Please try again.',
+
+    // Home & Coming Soon
+    homeBrand: 'BEGREEN · TIMIȘOARA',
+    homeGreetingNamed: (firstName: string) => `Hello, ${firstName}!`,
+    homeGreetingDefault: 'Welcome!',
+    homeIntro: 'A better journey begins with a green choice.',
+    homeHeroBadge: 'BETTER FOR THE CITY',
+    homeHeroTitle: 'Where are we going?',
+    homeHeroDescription:
+      'On foot, by bike, or by public transit: find a more sustainable option for your next trip.',
+    homeOpenMapBtn: 'Open the map',
+    homeOpenMapA11y: 'Open the map and plan a trip',
+    homeSectionTitle: 'One step away',
+    homeSectionSubtitle: 'Everything you need to keep moving forward.',
+    homeShortcutFavoritesTitle: 'Favorites',
+    homeShortcutFavoritesDesc: 'A place for your favorite routes.',
+    homeShortcutHistoryTitle: 'History',
+    homeShortcutHistoryDesc: 'Revisit your past journeys.',
+    homeShortcutChallengesTitle: 'Challenges',
+    homeShortcutChallengesDesc: 'Small steps for a greener city.',
+    homeShortcutReportTitle: 'Report an issue',
+    homeShortcutReportDesc: 'Help improve city routes.',
+    homeShortcutPointsTitle: 'Points',
+    homeShortcutPointsDesc: 'See your points and rewards.',
+    homeShortcutCouponsTitle: 'Coupons',
+    homeShortcutCouponsDesc: 'Explore the reward catalog.',
+    comingSoonLabel: 'Coming soon',
+    comingSoonBody: 'This feature is not available yet.',
+    backHomeBtn: 'Back to Home',
+
+    // History & Favorites
+    historyEyebrow: 'YOUR JOURNEYS',
+    historyScreenTitle: 'Favorites & History',
+    historyScreenSubtitle: 'Today’s choices, a greener city tomorrow.',
+    historyTabFavorites: '♡  Favorites',
+    historyInListSuffix: ' in list',
+    historyRetentionNote:
+      'The service may return seeded data and does not confirm retention after a server restart.',
+    historyUnavailableTitle: 'History is unavailable',
+    favoritesLoadError: 'Could not load favorites. Check your connection and try again.',
+    favoritesNoticeTitle: 'Favorites from BeGreen service',
+    favoritesNoticeBody1:
+      'Only routes associated with your account by the server are shown. The list may include server-seeded examples; origin and retention after restart are not confirmed by the API.',
+    favoritesNoticeBody2:
+      'Adding and deleting are unavailable until the server confirms durable storage and route modification rights.',
+    favoritesAddDisabledBtn: 'Adding unavailable',
+    favoritesAccountRoutesTitle: 'Account routes',
+    reloadBtn: 'Reload',
+    favoritesLoading: 'Loading favorites…',
+    favoritesLoadingA11y: 'Loading favorites',
+    favoritesEmptyTitle: 'No routes associated with this account',
+    favoritesEmptyDesc:
+      'The server returned no favorite routes belonging to this account. Shared examples are excluded.',
+    favoritesStepFreePref: 'Saved preference: step-free access',
+    favoritesDeleteDisabledBtn: 'Deleting unavailable',
+    favoritesListInvalidError: 'The server returned an invalid favorites list.',
+    favoritesItemInvalidError: 'The server returned an invalid favorite route.',
+    favoritesRecordUnverifiedError: 'A favorite route record could not be verified.',
+
+    // Profile
+    profileEyebrow: 'YOUR ACCOUNT',
+    profileSubtitle: 'Your preferences, for journeys that suit you.',
+    profileNameSyncNote:
+      'Your name updates immediately in the app. If the server is unavailable, the change may not be retained the next time you sign in.',
+    profileSessionTitle: 'Your session',
+    profileSessionDesc:
+      'Signing out ends your current session. You will need to sign in again to return to your account.',
+    profileAgeUnconfirmed: 'Age unconfirmed',
+    profileVisualOptionsActive: 'Visual options enabled',
+    profileAccessibilityHint:
+      'Consider accessibility when suggesting transport options.',
+    profileOwnBikeHint: 'Use your own bicycle when planning journeys.',
+    profileOwnCarHint: 'Include travel options using your own car.',
+
+    // Rewards
+    rewardsEyebrow: 'GREEN CHOICES MATTER',
+    rewardsTitle: 'Points & Coupons',
+    rewardsSubtitle: 'Your balance and redemptions are loaded from your account on the server.',
+    rewardsReloadDataBtn: 'Reload data',
+    rewardsLoadingBalance: 'Loading balance…',
+    rewardsLoadingBalanceA11y: 'Loading balance',
+    rewardsReloadBalanceBtn: 'Reload balance',
+    rewardsMemoryWarning:
+      'The server may temporarily use memory storage. A confirmed response does not guarantee data retention after a server restart.',
+    rewardsAvailableTitle: 'Available rewards',
+    rewardsAvailableDesc:
+      'Redemption spends account points. Load your balance and history before redeeming.',
+    rewardsLoadingRewards: 'Loading rewards…',
+    rewardsLoadingRewardsA11y: 'Loading rewards',
+    rewardsCatalogUnavailable: 'Catalog unavailable',
+    rewardsReloadRewardsBtn: 'Reload rewards',
+    rewardsEmptyTitle: 'No rewards available right now',
+    rewardsEmptyDesc: 'The server returned a catalog with no active rewards.',
+    rewardsBadgeLabel: 'REWARD',
+    rewardsRedeemedBtn: 'Redeemed',
+    rewardsRedeemBtn: 'Redeem reward',
+    rewardsRedeeming: 'Redeeming reward…',
+    rewardsRecordedBadge: 'Redemption recorded',
+    rewardsCodePrefix: 'Code:',
+    rewardsLedgerTitle: 'Redemptions & Coupons',
+    rewardsLedgerDesc:
+      'Redemptions are reloaded from account transactions. The API cannot retrieve previous codes. Codes received here remain temporarily in this screen; copy them before closing it.',
+    rewardsLoadingLedger: 'Loading redemptions…',
+    rewardsLoadingLedgerA11y: 'Loading redemptions',
+    rewardsReloadLedgerBtn: 'Reload redemptions',
+    rewardsNoRedemptionsTitle: 'No recorded redemptions',
+    rewardsNoRedemptionsDesc:
+      'The server returned no redemption transactions for your account.',
+    rewardsSpentSuffix: ' spent',
+    rewardsCodeUnavailable: 'The code for this redemption is not available through the API.',
+    rewardsRedemptionPrefix: 'Redemption #',
+    rewardsDataLoadError:
+      'Could not load the data. Check your connection and try again.',
+    rewardsExpiredError: 'This reward has expired.',
+    rewardsSignInRequired: 'Sign in again to redeem rewards.',
+    rewardsLoadPrerequisites:
+      'Load your balance and redemption history before continuing.',
+    rewardsRedeemUnconfirmed:
+      'Redemption could not be confirmed. Reload your balance and history.',
+    rewardsRedeemConfirmFailed:
+      'Redemption could not be confirmed. The request may have reached the server. Reload your balance and history before retrying.',
+    rewardsCatalogInvalid: 'The server returned an invalid reward catalog.',
+    rewardsCatalogItemInvalid: 'A reward in the catalog could not be verified.',
+    rewardsInvalidId: 'The reward identifier is invalid.',
+    rewardsRedeemPending:
+      'A redemption is already pending. Wait for the server confirmation.',
+    rewardsRedeemConfirmReload:
+      'Redemption could not be confirmed. Reload your balance and history before retrying.',
+    rewardsHistoryChanged:
+      'Redemption history changed or is invalid. Reload the data.',
+    rewardsHistoryIncomplete: 'Redemption history is incomplete. Please retry.',
+    rewardsTxUnverified: 'A transaction could not be verified. Reload the history.',
+    rewardsRecordInvalid: 'A redemption record is invalid.',
+    rewardsHistoryInconsistent:
+      'Redemption history is inconsistent. Reload the data.',
+    rewardsHistoryTooLarge:
+      'The account history is too large to load completely. Redemption filtering is required on the server.',
+    rewardsTripsInvalid: 'The server returned invalid trip history.',
+    rewardsTripUnverified: 'A trip record could not be verified.',
+
+    // Session & Common Service Errors
+    sessionSignInAgain: 'Sign in again to continue.',
+    sessionChangedReload:
+      'Your session changed. Reload data after signing in.',
+    sessionChangedRetry:
+      'Your session changed. Return to this screen and try again.',
+    sessionAccountUnconfirmed: 'The server did not confirm your account details.',
+    sessionIdentityUnconfirmed:
+      'The server could not confirm your account session. Please sign in again.',
+    sessionExpiredError:
+      'Your session expired or access was denied. Please sign in again.',
+    sessionDuplicateRewardError:
+      'The server rejected a duplicate redemption or inactive reward. Reload data before continuing.',
+    sessionBadRequestError:
+      'The server rejected the operation. Check your balance and details before trying again.',
+
+    // Challenges
+    challengesEyebrow: 'SMALL STEPS, BIG CHANGES',
+    challengesTitle: 'Challenges',
+    challengesSubtitle: 'Discover sustainable mobility goals from the catalog.',
+    challengesNoticeTitle: 'What is available right now',
+    challengesNoticeBody1:
+      'You can browse and reload challenges. Separate enrollment is unavailable. Progress, completion, and bonus collection cannot be reliably confirmed by the current service.',
+    challengesNoticeBody2:
+      'Therefore we do not display estimated progress or award points from this screen.',
+    challengesJoinDisabledBtn: 'Separate enrollment unavailable',
+    challengesCatalogTitle: 'Challenge catalog',
+    challengesLoading: 'Loading challenges…',
+    challengesLoadingA11y: 'Loading challenges',
+    challengesUnavailableTitle: 'Challenges are unavailable',
+    challengesEmptyTitle: 'No challenges available right now',
+    challengesEmptyDesc:
+      'The catalog returned by the server is empty. You can check back later or reload the list.',
+    challengesDefaultCategory: 'Challenge',
+    challengesBonusPointsSuffix: ' possible bonus points',
+    challengesGoalPrefix: 'Goal:',
+    challengesAccessibleLabel: 'Adapted for accessibility',
+    challengesProgressUnavailable:
+      'Progress and completion status: unavailable for verification.',
+    challengesCollectDisabledBtn: 'Point collection unavailable',
+    challengeCatBike: 'Bike',
+    challengeCatWalk: 'Walk',
+    challengeCatTransit: 'Public transit',
+    challengeCatCarbon: 'Climate impact',
+    challengeCatCarFree: 'Car-free',
+    challengeCatCommunity: 'Community',
+    challengeCatAccessibility: 'Accessibility',
+    challengeUnitTrips: 'trips',
+    challengeUnitTrip: 'trip',
+    challengeUnitDay: 'day',
+    challengeUnitDays: 'days',
+    challengeUnitReport: 'report',
+    challengesCopy: {
+      'bike-3x': {
+        title: 'Bike to Work & Campus Week',
+        description:
+          'Choose your own or a rented bicycle for trips to university or work.',
+      },
+      'accessible-transit-3x': {
+        title: 'Accessible Public Transit',
+        description:
+          'Travel barrier-free with low-floor trams and buses.',
+      },
+      'car-free-day': {
+        title: 'A Choice Without Your Car',
+        description:
+          'Choose walking, cycling, public transit, or carpooling for your daily commute.',
+      },
+      'walk-10km': {
+        title: 'More Walking',
+        description:
+          'Collect kilometers on foot along the Bega green corridors and pedestrian zones.',
+      },
+      'accessible-10km': {
+        title: 'Barrier-Free Mobility',
+        description:
+          'Choose step-free routes, low-floor public transit, or accessible carpool rides.',
+      },
+      'try-transit': {
+        title: 'Discover Public Transit',
+        description:
+          'Use STPT public transit or share a ride with other passengers.',
+      },
+      'save-5kg-co2': {
+        title: 'Lower CO₂ Emissions',
+        description:
+          'Replace car trips with sustainable options and save CO₂ emissions.',
+      },
+      'waze-guardian': {
+        title: 'Help the Community Move',
+        description:
+          'Report or confirm obstacles, roadworks, and blocked access paths for people with reduced mobility.',
+      },
+    } as Record<string, { title: string; description: string }>,
+    communitySessionInvalid:
+      'Your session is no longer valid. Sign in again to continue.',
+    communityServerRejected:
+      'The server rejected the data. Check the form and try again.',
+    communitySubmitUnconfirmed:
+      'Could not confirm submission. The request may have reached the server; resubmitting may create a duplicate. Form data has been kept.',
+    communityLoadError:
+      'Could not load challenges. Check your connection and try again.',
+    communityReportPending:
+      'A report submission is already in progress. Wait for confirmation before trying again.',
+
+    // Report Issue
+    reportEyebrow: 'AN EASIER CITY TO NAVIGATE',
+    reportTitle: 'Report an issue',
+    reportSubtitle:
+      'Tell us what makes travel difficult. Enter the location and observed details.',
+    reportSessionChanged:
+      'Your session changed. Verify authentication before continuing.',
+    reportErrCategory: 'Choose a category.',
+    reportErrDescriptionRequired: 'Describe the observed issue.',
+    reportErrDescriptionMax: 'Description can have at most 600 characters.',
+    reportErrStreetMax: 'Use at most 150 characters.',
+    reportErrLatitude: 'Enter a latitude between -90 and 90.',
+    reportErrLongitude: 'Enter a longitude between -180 and 180.',
+    reportReceiptBadge: 'Received by server',
+    reportReceiptTitle: (id: number) => `Report #${id} has been received`,
+    reportCoordsLabel: (lat: number, lng: number) =>
+      `Latitude: ${lat} · Longitude: ${lng}`,
+    reportReceiptDisclaimer:
+      'This confirmation verifies receipt by the BeGreen server. Retention after server restart and point awards are not guaranteed by the current service. The report is not automatically forwarded to City Hall.',
+    reportAnotherBtn: 'Report another issue',
+    reportStep1Title: '1. What did you observe?',
+    reportStep1Hint: 'Category and description are required.',
+    reportCategoryGroupA11y: 'Issue category',
+    reportDescLabel: 'Description *',
+    reportDescA11y: 'Issue description, required',
+    reportCharsCount: (count: number) => `${count}/600 characters`,
+    reportStep2Title: '2. Where is the issue?',
+    reportStep2Desc:
+      'Enter WGS84 coordinates in decimal degrees. You can use a dot or comma. GPS access is not required.',
+    reportStreetLabel: 'Street or zone (optional)',
+    reportStreetA11y: 'Street or zone, optional',
+    reportLatLabel: 'Latitude *',
+    reportLatA11y: 'Latitude, required, between -90 and 90',
+    reportLngLabel: 'Longitude *',
+    reportLngA11y: 'Longitude, required, between -180 and 180',
+    reportFormCheckError: 'Check the highlighted fields before submitting.',
+    reportSubmitDisclaimer:
+      'The report goes to BeGreen and does not replace an official City Hall complaint.',
+    reportRetryBtn: 'Retry submission',
+    reportSubmitBtn: 'Submit report',
+    reportSubmitting: 'Verifying session and submitting report…',
+    reportCatRoadBlockade: 'Blocked road',
+    reportCatRoadBlockadeDesc: 'Roadworks or obstacles on the carriageway.',
+    reportCatBlockedBike: 'Blocked bike lane',
+    reportCatBlockedBikeDesc: 'Obstructed access on an existing bike lane.',
+    reportCatInaccessible: 'Inaccessible area',
+    reportCatInaccessibleDesc: 'Barriers preventing safe movement.',
+    reportCatMissingBike: 'Missing bike lane',
+    reportCatMissingBikeDesc: 'A location where a bike lane is needed.',
+    reportCatTransitDisruption: 'Public transit disruption',
+    reportCatTransitDisruptionDesc: 'An issue affecting public transport.',
   },
 } as const;
 

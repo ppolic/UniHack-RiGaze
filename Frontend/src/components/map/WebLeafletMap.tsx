@@ -1,6 +1,18 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import { colors } from '../../theme/colors';
+
+let NativeWebView: React.ComponentType<any> | null = null;
+if (Platform.OS !== 'web') {
+  try {
+    // Loaded dynamically so web bundles never pull in native-only WebView internals
+    NativeWebView = require('react-native-webview').WebView;
+  } catch {
+    NativeWebView = null;
+  }
+}
+
+export const isLeafletAvailable = Platform.OS === 'web' || NativeWebView !== null;
 import {
   GeoPoint,
   StationLocation,
@@ -36,8 +48,9 @@ interface WebLeafletMapProps {
 }
 
 /**
- * Real interactive Leaflet + OpenStreetMap view for Web (`Platform.OS === 'web'`).
- * Uses Aubergine-tinted CartoDB DarkMatter for Dark Mode and standard OSM/Voyager for Light Mode.
+ * Real interactive Leaflet view for Web (`Platform.OS === 'web'`).
+ * Default Dark Mode uses CSS dark-inverted Google Maps tiles (with OpenStreetMap fallback);
+ * Light Mode uses clean Google Maps street tiles (with OpenStreetMap fallback).
  */
 export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
   origin,
@@ -65,9 +78,11 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
   onSelectLandmark,
 }) => {
   const iframeRef = useRef<any>(null);
+  const webViewRef = useRef<any>(null);
+  const latestSyncMsgRef = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
 
-  // Build self-contained Leaflet HTML once (updates flow via postMessage)
+  // Build self-contained Leaflet HTML once (updates flow via postMessage / injectJavaScript)
   const leafletHtml = useMemo(
     () => `<!DOCTYPE html>
 <html>
@@ -85,8 +100,8 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       background: ${colors.mapDarkLand};
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    .aubergine-tiles {
-      filter: hue-rotate(212deg) saturate(1.45) brightness(0.95) contrast(1.06);
+    .dark-map-tiles {
+      filter: invert(92%) hue-rotate(185deg) brightness(90%) contrast(108%) saturate(115%);
     }
     .ab-pin {
       display: flex;
@@ -168,16 +183,45 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       attributionControl: false
     }).setView([45.7537, 21.2257], 14);
 
-    var lightTiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19
-    });
-    var darkTiles = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 19,
-      className: 'aubergine-tiles'
-    });
+    var GOOGLE_TILE_URL = 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+    var OSM_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-    var currentTileLayer = darkTiles.addTo(map);
+    function emitToHost(payload) {
+      var raw = JSON.stringify(payload);
+      if (window.ReactNativeWebView && typeof window.ReactNativeWebView.postMessage === 'function') {
+        window.ReactNativeWebView.postMessage(raw);
+      } else if (window.parent) {
+        window.parent.postMessage(raw, '*');
+      }
+    }
+
+    function makeTileSource(isDark) {
+      var layerOpts = isDark ? { className: 'dark-map-tiles' } : {};
+      var primary = L.tileLayer(GOOGLE_TILE_URL, Object.assign({
+        maxZoom: 20,
+        subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+      }, layerOpts));
+      var fallback = L.tileLayer(OSM_TILE_URL, Object.assign({
+        maxZoom: 19
+      }, layerOpts));
+      var source = { layer: primary, errCount: 0 };
+      primary.on('tileerror', function() {
+        source.errCount++;
+        if (source.errCount >= 4 && source.layer !== fallback) {
+          source.layer = fallback;
+          if (currentIsDark === isDark) {
+            if (currentTileLayer) map.removeLayer(currentTileLayer);
+            currentTileLayer = fallback.addTo(map);
+          }
+        }
+      });
+      return source;
+    }
+
+    var lightSource = makeTileSource(false);
+    var darkSource = makeTileSource(true);
     var currentIsDark = true;
+    var currentTileLayer = darkSource.layer.addTo(map);
 
     var routeLayer = L.layerGroup().addTo(map);
     var poiLayer = L.layerGroup().addTo(map);
@@ -185,11 +229,11 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
     var lastFitSignature = '';
 
     map.on('click', function(e) {
-      window.parent.postMessage(JSON.stringify({
+      emitToHost({
         type: 'MAP_CLICK',
         lat: Number(e.latlng.lat.toFixed(6)),
         lng: Number(e.latlng.lng.toFixed(6))
-      }), '*');
+      });
     });
 
     function escapeHtml(str) {
@@ -199,10 +243,14 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
     }
 
     function syncState(payload) {
-      // 1. Toggle Dark (Aubergine) vs Light (Standard) tiles
+      // 1. Toggle Dark (inverted dark mode) vs Light (Google Maps style) tiles & canvas background
+      var mapEl = document.getElementById('map');
+      if (mapEl) {
+        mapEl.style.background = payload.isDarkMap ? '${colors.mapDarkLand}' : '${colors.mapLightLand}';
+      }
       if (payload.isDarkMap !== currentIsDark) {
         if (currentTileLayer) map.removeLayer(currentTileLayer);
-        currentTileLayer = payload.isDarkMap ? darkTiles : lightTiles;
+        currentTileLayer = (payload.isDarkMap ? darkSource : lightSource).layer;
         currentTileLayer.addTo(map);
         currentIsDark = payload.isDarkMap;
       }
@@ -289,11 +337,11 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         var markerB = L.marker([payload.destination.lat, payload.destination.lng], { icon: iconB, draggable: canDragPins }).addTo(abLayer);
         markerB.on('dragend', function(ev) {
           var p = ev.target.getLatLng();
-          window.parent.postMessage(JSON.stringify({
+          emitToHost({
             type: 'DRAG_DEST',
             lat: Number(p.lat.toFixed(6)),
             lng: Number(p.lng.toFixed(6))
-          }), '*');
+          });
         });
       }
 
@@ -325,7 +373,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         var m = L.marker([st.lat, st.lng], { icon: icon }).addTo(poiLayer);
         m.on('click', function(ev) {
           L.DomEvent.stopPropagation(ev);
-          window.parent.postMessage(JSON.stringify({ type: 'SELECT_POI', kind: 'station', id: st.id }), '*');
+          emitToHost({ type: 'SELECT_POI', kind: 'station', id: st.id });
         });
       });
 
@@ -340,7 +388,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         var m = L.marker([prk.lat, prk.lng], { icon: icon }).addTo(poiLayer);
         m.on('click', function(ev) {
           L.DomEvent.stopPropagation(ev);
-          window.parent.postMessage(JSON.stringify({ type: 'SELECT_POI', kind: 'parking', id: prk.id }), '*');
+          emitToHost({ type: 'SELECT_POI', kind: 'parking', id: prk.id });
         });
       });
 
@@ -355,7 +403,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         var m = L.marker([lm.lat, lm.lng], { icon: icon }).addTo(poiLayer);
         m.on('click', function(ev) {
           L.DomEvent.stopPropagation(ev);
-          window.parent.postMessage(JSON.stringify({ type: 'SELECT_POI', kind: 'landmark', id: lm.id }), '*');
+          emitToHost({ type: 'SELECT_POI', kind: 'landmark', id: lm.id });
         });
       });
 
@@ -371,9 +419,9 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       }
     }
 
-    window.addEventListener('message', function(event) {
+    window.__begreenHandleMessage = function(rawOrObj) {
       try {
-        var msg = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
+        var msg = typeof rawOrObj === 'string' ? JSON.parse(rawOrObj) : rawOrObj;
         if (!msg || !msg.type) return;
         if (msg.type === 'SYNC_STATE') {
           syncState(msg.payload);
@@ -381,68 +429,90 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
           map.setView([msg.lat, msg.lng], msg.zoom || 14, { animate: true });
         }
       } catch (e) {}
+    };
+
+    window.addEventListener('message', function(event) {
+      window.__begreenHandleMessage(event.data);
     });
 
-    window.parent.postMessage(JSON.stringify({ type: 'MAP_READY' }), '*');
+    emitToHost({ type: 'MAP_READY' });
   </script>
 </body>
 </html>`,
     []
   );
 
-  // Listen for events coming from the Leaflet iframe
+  const sendToLeaflet = useCallback((rawMessage: string) => {
+    if (Platform.OS === 'web') {
+      iframeRef.current?.contentWindow?.postMessage(rawMessage, '*');
+      return;
+    }
+    if (webViewRef.current?.injectJavaScript) {
+      // Escape Unicode line separators so WebView script evaluation stays valid JSON string syntax
+      const safeArg = JSON.stringify(rawMessage)
+        .replace(/\u2028/g, '\\u2028')
+        .replace(/\u2029/g, '\\u2029');
+      webViewRef.current.injectJavaScript(
+        `window.__begreenHandleMessage && window.__begreenHandleMessage(${safeArg}); true;`
+      );
+    }
+  }, []);
+
+  const processMapMessageRef = useRef<(rawOrObj: unknown) => void>(() => {});
+  processMapMessageRef.current = (rawOrObj: unknown) => {
+    try {
+      const msg =
+        typeof rawOrObj === 'string' ? JSON.parse(rawOrObj) : (rawOrObj as any);
+      if (!msg || !msg.type) return;
+
+      if (msg.type === 'MAP_READY') {
+        setMapReady(true);
+        if (latestSyncMsgRef.current) {
+          sendToLeaflet(latestSyncMsgRef.current);
+        }
+      } else if (msg.type === 'MAP_CLICK') {
+        onMapClick({ lat: msg.lat, lng: msg.lng });
+      } else if (msg.type === 'DRAG_ORIGIN') {
+        onDragOrigin({ lat: msg.lat, lng: msg.lng });
+      } else if (msg.type === 'DRAG_DEST') {
+        onDragDestination({ lat: msg.lat, lng: msg.lng });
+      } else if (msg.type === 'SELECT_POI') {
+        if (msg.kind === 'station') {
+          const found = stations.find((s) => String(s.id) === String(msg.id));
+          if (found) onSelectStation(found);
+        } else if (msg.kind === 'parking') {
+          const found = parkings.find((p) => String(p.id) === String(msg.id));
+          if (found) onSelectParking(found);
+        } else if (msg.kind === 'landmark') {
+          const found = landmarks.find((l) => String(l.id) === String(msg.id));
+          if (found) onSelectLandmark(found);
+        }
+      }
+    } catch {
+      // Ignore unrelated messages
+    }
+  };
+
+  // Listen for events coming from the Leaflet iframe on Web
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (
+      Platform.OS !== 'web' ||
+      typeof window === 'undefined' ||
+      typeof window.addEventListener !== 'function'
+    ) {
+      return;
+    }
 
     const handleMessage = (event: MessageEvent) => {
-      try {
-        const msg =
-          typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-        if (!msg || !msg.type) return;
-
-        if (msg.type === 'MAP_READY') {
-          setMapReady(true);
-        } else if (msg.type === 'MAP_CLICK') {
-          onMapClick({ lat: msg.lat, lng: msg.lng });
-        } else if (msg.type === 'DRAG_ORIGIN') {
-          onDragOrigin({ lat: msg.lat, lng: msg.lng });
-        } else if (msg.type === 'DRAG_DEST') {
-          onDragDestination({ lat: msg.lat, lng: msg.lng });
-        } else if (msg.type === 'SELECT_POI') {
-          if (msg.kind === 'station') {
-            const found = stations.find((s) => String(s.id) === String(msg.id));
-            if (found) onSelectStation(found);
-          } else if (msg.kind === 'parking') {
-            const found = parkings.find((p) => String(p.id) === String(msg.id));
-            if (found) onSelectParking(found);
-          } else if (msg.kind === 'landmark') {
-            const found = landmarks.find((l) => String(l.id) === String(msg.id));
-            if (found) onSelectLandmark(found);
-          }
-        }
-      } catch {
-        // Ignore unrelated window messages
-      }
+      processMapMessageRef.current(event.data);
     };
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [
-    stations,
-    parkings,
-    landmarks,
-    onMapClick,
-    onDragOrigin,
-    onDragDestination,
-    onSelectStation,
-    onSelectParking,
-    onSelectLandmark,
-  ]);
+  }, []);
 
   // Push latest React state into Leaflet whenever mapReady or state changes
   useEffect(() => {
-    if (!mapReady || !iframeRef.current?.contentWindow) return;
-
     const fitSignature = `${origin?.lat},${origin?.lng}-${destination?.lat},${destination?.lng}-${selectedOption?.id || ''}`;
 
     const serializedPayload = {
@@ -481,10 +551,14 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       })),
     };
 
-    iframeRef.current.contentWindow.postMessage(
-      JSON.stringify({ type: 'SYNC_STATE', payload: serializedPayload }),
-      '*'
-    );
+    const rawMessage = JSON.stringify({
+      type: 'SYNC_STATE',
+      payload: serializedPayload,
+    });
+    latestSyncMsgRef.current = rawMessage;
+
+    if (!mapReady) return;
+    sendToLeaflet(rawMessage);
   }, [
     mapReady,
     isDarkMap,
@@ -500,36 +574,65 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
     selectedParkingPolygon,
     userLocation,
     isNavigating,
+    getModeStrokeColor,
+    getModeStrokeWidth,
+    getStationEmoji,
+    sendToLeaflet,
   ]);
 
   // Center / pan Leaflet map on explicit button clicks
   useEffect(() => {
-    if (!mapReady || !focusTarget || !iframeRef.current?.contentWindow) return;
-    iframeRef.current.contentWindow.postMessage(
+    if (!mapReady || !focusTarget) return;
+    sendToLeaflet(
       JSON.stringify({
         type: 'FOCUS_REGION',
         lat: focusTarget.lat,
         lng: focusTarget.lng,
         zoom: focusTarget.zoom || 14,
-      }),
-      '*'
+      })
     );
-  }, [mapReady, focusTarget]);
+  }, [mapReady, focusTarget, sendToLeaflet]);
+
+  const canvasBackground = isDarkMap
+    ? colors.mapDarkLand
+    : colors.mapLightLand;
 
   return (
-    <View style={styles.container}>
-      {React.createElement('iframe', {
-        ref: iframeRef,
-        title: 'BeGreen Timișoara Map',
-        srcDoc: leafletHtml,
-        onLoad: () => setMapReady(true),
-        style: {
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          display: 'block',
-        },
-      })}
+    <View style={[styles.container, { backgroundColor: canvasBackground }]}>
+      {Platform.OS === 'web'
+        ? React.createElement('iframe', {
+            ref: iframeRef,
+            title: 'BeGreen Timișoara Map',
+            srcDoc: leafletHtml,
+            onLoad: () => setMapReady(true),
+            style: {
+              width: '100%',
+              height: '100%',
+              border: 'none',
+              display: 'block',
+            },
+          })
+        : NativeWebView && (
+            <NativeWebView
+              ref={webViewRef}
+              originWhitelist={['*']}
+              source={{ html: leafletHtml, baseUrl: 'https://begreen.tm/' }}
+              style={[styles.webview, { backgroundColor: canvasBackground }]}
+              javaScriptEnabled
+              domStorageEnabled
+              mixedContentMode="compatibility"
+              scrollEnabled={false}
+              bounces={false}
+              overScrollMode="never"
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled
+              onLoadEnd={() => setMapReady(true)}
+              onMessage={(event: { nativeEvent?: { data?: string } }) => {
+                processMapMessageRef.current(event?.nativeEvent?.data);
+              }}
+            />
+          )}
     </View>
   );
 };
@@ -540,5 +643,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
     backgroundColor: colors.mapDarkLand,
+  },
+  webview: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
 });

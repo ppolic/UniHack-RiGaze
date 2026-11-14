@@ -731,7 +731,7 @@ function mapBackendStation(s: BackendMobilityStationDto): StationLocation {
     availableBikes: s.availableVehicles,
     totalDocks: s.availableVehicles + 6,
     isWheelchairAccessible: false,
-    dataSource: 'EcoMutare Backend (VeloTM/Micromobility)',
+    dataSource: 'BeGreen Backend (VeloTM/Micromobility)',
   };
 }
 
