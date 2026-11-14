@@ -13,11 +13,13 @@ import { useUserStore } from '../../store/userStore';
 import { authService } from '../../services/authService';
 import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useAuth0 } from '@auth0/auth0-react';
 import { captureSession, verifyAccount } from '../../services/fe2Session';
 import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileScreen() {
   const { user, token, setUser, logout } = useAuth();
+  const { logout: auth0Logout, user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
   const router = useRouter();
   const { language, t } = useTranslation();
   const localize = (ro: string, en: string) => language === 'en' ? en : ro;
@@ -79,6 +81,16 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     logout();
+    if (isAuth0Authenticated) {
+      auth0Logout({
+        logoutParams: {
+          returnTo:
+            typeof window !== 'undefined'
+              ? window.location.origin
+              : 'http://localhost:5279',
+        },
+      });
+    }
     router.replace('/(auth)/login');
   };
 
@@ -139,6 +151,15 @@ export default function ProfileScreen() {
             <Text style={styles.description}>{localize('Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.', 'Signing out ends your current session. You will need to sign in again to return to your account.')}</Text>
             <AppButton title={t.logoutBtn} variant="outline" onPress={handleLogout} style={styles.actionButton} />
           </AppCard>
+
+          {isAuth0Authenticated && auth0User && (
+            <AppCard style={styles.sessionCard}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">User Profile (Auth0)</Text>
+              <Text style={{ fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary }}>
+                {JSON.stringify(auth0User, null, 2)}
+              </Text>
+            </AppCard>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
