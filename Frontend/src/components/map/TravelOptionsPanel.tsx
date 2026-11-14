@@ -13,6 +13,7 @@ import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
 interface TravelOptionsPanelProps {
+  topSlot?: React.ReactNode;
   children: React.ReactNode;
   footer?: React.ReactNode;
   summaryText?: string;
@@ -22,11 +23,13 @@ interface TravelOptionsPanelProps {
 }
 
 /**
- * Collapsible bottom sheet for route options:
- * - Minimized (default while exploring map): compact 78px bar at the very bottom so the map is full-screen.
- * - Open: expands to show multimodal route cards and the "Odaberi i završi" action button.
+ * Collapsible bottom sheet for route planning:
+ * - Always displays `topSlot` (Polazište A & Odredište B + Moja lokacija) at the top of the sheet.
+ * - Minimized state keeps A & B + summary bar visible (~138px) while leaving the rest of the screen open for the map.
+ * - Expanded state reveals all multimodal route cards and the trip completion button.
  */
 export function TravelOptionsPanel({
+  topSlot,
   children,
   footer,
   summaryText,
@@ -59,11 +62,11 @@ export function TravelOptionsPanel({
   const bottom = Math.max(insets.top, Math.min(bounds.height || height, height));
   const available = Math.max(0, bottom - insets.top);
 
-  // Minimized height leaves ~85% of the screen completely open for the full-screen map
-  const minimizedHeight = 76;
+  // Minimized height shows drag handle + A/B selector (topSlot) + compact summary row
+  const minimizedHeight = topSlot ? 142 : 76;
   const openHeight = desktop
-    ? Math.min(available * 0.72, 520)
-    : Math.min(available * 0.62, 430);
+    ? Math.min(available * 0.76, 560)
+    : Math.min(available * 0.68, 490);
 
   const sheetHeight = expanded ? openHeight : minimizedHeight;
   const ready = bounds.height > 0;
@@ -104,11 +107,27 @@ export function TravelOptionsPanel({
             accessibilityState={{ expanded }}
             onPress={() => setExpanded(!expanded)}
             style={({ pressed }) => [
-              styles.headerControl,
+              styles.handlePressArea,
               pressed && styles.headerPressed,
             ]}
           >
             <View style={styles.handle} accessible={false} />
+          </Pressable>
+
+          {/* Polazište (A) & Odredište (B) Bar at the very top of the bottom sheet */}
+          {topSlot ? <View style={styles.topSlotContainer}>{topSlot}</View> : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              expanded ? 'Spusti opcije putovanja' : 'Podigni opcije putovanja'
+            }
+            onPress={() => setExpanded(!expanded)}
+            style={({ pressed }) => [
+              styles.summaryControl,
+              pressed && styles.headerPressed,
+            ]}
+          >
             <View style={styles.headerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>
@@ -121,7 +140,7 @@ export function TravelOptionsPanel({
               </View>
               <View style={styles.togglePill}>
                 <Text style={styles.togglePillText}>
-                  {expanded ? 'Spusti ⌄' : 'Prikaži ⌃'}
+                  {expanded ? 'Spusti ⌄' : 'Opcije ⌃'}
                 </Text>
               </View>
             </View>
@@ -156,9 +175,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    paddingTop: spacing.xs + 2,
+    paddingTop: 6,
     paddingHorizontal: spacing.md,
-    borderTopWidth: 1,
+    borderTopWidth: 1.5,
     borderColor: colors.border,
     ...shadows.lg,
   },
@@ -168,7 +187,18 @@ const styles = StyleSheet.create({
     elevation: 16,
     overflow: 'hidden',
   },
-  header: { marginBottom: spacing.xs, flexShrink: 0 },
+  header: { marginBottom: 4, flexShrink: 0 },
+  handlePressArea: {
+    paddingVertical: 4,
+    alignItems: 'center',
+  },
+  topSlotContainer: {
+    marginBottom: 6,
+  },
+  summaryControl: {
+    paddingVertical: 4,
+    borderRadius: borderRadius.sm,
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -177,7 +207,7 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.bodyMedium,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: colors.textPrimary,
   },
@@ -200,12 +230,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.primaryDark,
   },
-  headerControl: {
-    minHeight: 54,
-    justifyContent: 'center',
-    paddingBottom: spacing.xs,
-    borderRadius: borderRadius.sm,
-  },
   headerPressed: { backgroundColor: colors.surfaceMuted },
   handle: {
     width: 42,
@@ -213,7 +237,6 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     backgroundColor: colors.controlBorder,
     alignSelf: 'center',
-    marginBottom: 6,
   },
   optionsList: { flex: 1, minHeight: 0 },
   footer: { flexShrink: 0 },

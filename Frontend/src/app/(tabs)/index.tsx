@@ -7,15 +7,18 @@ import {
   TouchableOpacity,
   Modal,
   TextInput,
+  ActivityIndicator,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { DemoUserRole } from '../../store/userStore';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { MapContainer } from '../../components/map/MapContainer';
+import { MapContainer, TIMISOARA_CENTER } from '../../components/map/MapContainer';
 import { RouteOptionCard } from '../../components/map/RouteOptionCard';
 import { TravelOptionsPanel } from '../../components/map/TravelOptionsPanel';
 import { TripCompletedModal } from '../../components/map/TripCompletedModal';
@@ -52,6 +55,15 @@ const INITIAL_ENDPOINTS: ActiveRouteEndpoints = {
   destinationName: 'UPT Politehnica',
 };
 
+interface SearchSuggestionItem {
+  id: string;
+  name: string;
+  subtitle: string;
+  icon: string;
+  lat: number;
+  lng: number;
+}
+
 export default function MapScreen() {
   const router = useRouter();
   const { user, addEcoPoints, hasDisability, loginAsDemoUser } = useAuth();
@@ -69,11 +81,18 @@ export default function MapScreen() {
   const [parkings, setParkings] = useState<ParkingDetail[]>([]);
   const [landmarks, setLandmarks] = useState<CityLandmarkPoi[]>([]);
 
-  // UI & Bottom Sheet State (Minimized by default while exploring map!)
+  // User GPS Location State
+  const [userGpsLocation, setUserGpsLocation] = useState<GeoPoint | null>(null);
+  const [isLocatingOrigin, setIsLocatingOrigin] = useState(false);
+
+  // UI, Search Bar & Bottom Sheet State
   const [panelOpen, setPanelOpen] = useState(false);
   const [mapTapTarget, setMapTapTarget] = useState<'origin' | 'destination'>('destination');
-  const [locationPickerTarget, setLocationPickerTarget] = useState<'origin' | 'destination' | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [externalResults, setExternalResults] = useState<SearchSuggestionItem[]>([]);
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false);
+  const searchInputRef = useRef<any>(null);
 
   // Modals
   const [tripModalVisible, setTripModalVisible] = useState(false);
@@ -97,10 +116,34 @@ export default function MapScreen() {
     transitService.getCityLandmarks().then(setLandmarks);
   };
 
-  // Load ALL Transit POIs (bus, tram, trolleybus, VeloTM, parkings, landmarks) once
   useEffect(() => {
     loadTransitPois();
   }, [useMockMode]);
+
+  // Debounced live OpenStreetMap address search for Timișoara when user types in Search Bar
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q.length < 2) {
+      setExternalResults([]);
+      setIsSearchingAddress(false);
+      return;
+    }
+
+    let cancelled = false;
+    setIsSearchingAddress(true);
+    const timer = setTimeout(async () => {
+      const results = await transitService.searchExternalAddresses(q);
+      if (!cancelled) {
+        setExternalResults(results);
+        setIsSearchingAddress(false);
+      }
+    }, 280);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [searchQuery]);
 
   // Re-plan route whenever Point A, Point B, or User Profile changes
   useLayoutEffect(() => {
@@ -189,6 +232,9 @@ export default function MapScreen() {
       origin: point,
       originName: name,
     }));
+    setSearchFocused(false);
+    setSearchQuery('');
+    Keyboard.dismiss();
   };
 
   const handleSelectPoiAsDestination = (point: GeoPoint, name: string) => {
@@ -197,7 +243,9 @@ export default function MapScreen() {
       destination: point,
       destinationName: name,
     }));
-    // Automatically raise the bottom sheet when user chooses Destination B!
+    setSearchFocused(false);
+    setSearchQuery('');
+    Keyboard.dismiss();
     setPanelOpen(true);
   };
 
@@ -209,6 +257,43 @@ export default function MapScreen() {
       destinationName: prev.originName,
     }));
     setPanelOpen(true);
+  };
+
+  /**
+   * One-tap "🎯 Moja lokacija" button: sets Point A (Polazište) to the user's current GPS coordinates.
+   */
+  const handleUseMyLocationAsOrigin = async () => {
+    if (userGpsLocation) {
+      handleSelectPoiAsOrigin(userGpsLocation, '🎯 Moja lokacija');
+      return;
+    }
+
+    setIsLocatingOrigin(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const loc = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        const pt: GeoPoint = {
+          lat: Number(loc.coords.latitude.toFixed(6)),
+          lng: Number(loc.coords.longitude.toFixed(6)),
+        };
+        setUserGpsLocation(pt);
+        handleSelectPoiAsOrigin(pt, '🎯 Moja lokacija');
+        return;
+      }
+    } catch {
+      // Fallback below if GPS is turned off on emulator/device
+    } finally {
+      setIsLocatingOrigin(false);
+    }
+
+    const fallbackPt: GeoPoint = {
+      lat: TIMISOARA_CENTER.latitude,
+      lng: TIMISOARA_CENTER.longitude,
+    };
+    handleSelectPoiAsOrigin(fallbackPt, '🎯 Moja lokacija (Centar TM)');
   };
 
   const selectedOption = options.find((o) => o.id === selectedOptionId);
@@ -259,44 +344,44 @@ export default function MapScreen() {
     return '🎓 Student';
   };
 
-  // Searchable list of Timișoara locations for the A / B Quick Picker Modal
-  const searchableLocations = useMemo(() => {
-    const items: {
-      id: string;
-      name: string;
-      subtitle: string;
-      icon: string;
-      lat: number;
-      lng: number;
-    }[] = [];
+  // Combined local + live OpenStreetMap address autocomplete suggestions
+  const autocompleteSuggestions = useMemo(() => {
+    const localItems: SearchSuggestionItem[] = [];
 
     for (const lm of landmarks) {
-      items.push({
+      localItems.push({
         id: `lm_${lm.id}`,
         name: lm.name,
-        subtitle: lm.address || 'Znamenitost • Grad Temišvar',
+        subtitle: lm.address || 'Znamenitost • Temišvar',
         icon: '🏛️',
         lat: lm.lat,
         lng: lm.lng,
       });
     }
 
-    for (const st of stations.slice(0, 80)) {
-      items.push({
+    for (const st of stations) {
+      localItems.push({
         id: `st_${st.id}`,
         name: st.name,
         subtitle:
           st.type === 'bike_station'
             ? `VeloTM stanica (${st.availableBikes ?? 6} bicikala)`
-            : `SMTT stanica • Linije: ${st.lines?.slice(0, 5).join(', ') || '-'}`,
-        icon: st.type === 'bike_station' ? '🚲' : st.type === 'tram' ? '🚊' : '🚌',
+            : `Stanica (${st.type === 'tram' ? 'Tramvaj' : st.type === 'trolleybus' ? 'Trolejbus' : 'Autobus'}) • Linije: ${st.lines?.slice(0, 5).join(', ') || '-'}`,
+        icon:
+          st.type === 'bike_station'
+            ? '🚲'
+            : st.type === 'tram'
+            ? '🚊'
+            : st.type === 'trolleybus'
+            ? '🚎'
+            : '🚌',
         lat: st.lat,
         lng: st.lng,
       });
     }
 
-    for (const prk of parkings.slice(0, 25)) {
-      items.push({
+    for (const prk of parkings) {
+      localItems.push({
         id: `prk_${prk.id}`,
         name: prk.name,
         subtitle: `${prk.zone || 'TimPark'} • ${prk.hourlyRateRon} RON/h`,
@@ -307,19 +392,128 @@ export default function MapScreen() {
     }
 
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return items.slice(0, 45);
-    return items
+    if (!q) {
+      return localItems.slice(0, 12);
+    }
+
+    const matchedLocal = localItems
       .filter(
         (it) =>
           it.name.toLowerCase().includes(q) ||
           it.subtitle.toLowerCase().includes(q)
       )
-      .slice(0, 45);
-  }, [landmarks, stations, parkings, searchQuery]);
+      .slice(0, 10);
+
+    // Combine live OSM street addresses + matched local stations/POIs
+    const combined: SearchSuggestionItem[] = [...externalResults];
+    for (const loc of matchedLocal) {
+      if (
+        !combined.some(
+          (c) => c.name.toLowerCase() === loc.name.toLowerCase()
+        )
+      ) {
+        combined.push(loc);
+      }
+    }
+    return combined.slice(0, 15);
+  }, [landmarks, stations, parkings, searchQuery, externalResults]);
 
   const panelSummaryText = selectedOption
     ? `Preporučeno: ${selectedOption.title} (${selectedOption.durationMinutes} min • ${selectedOption.distanceKm} km • +${selectedOption.ecoPoints} bodova)`
-    : 'Odaberi točku A i B na karti za izračun ruta';
+    : 'Odaberi točku A i B za izračun najoptimalnije rute';
+
+  const showAutocomplete =
+    searchFocused || searchQuery.trim().length > 0;
+
+  // Polazište (A) & Odredište (B) rendered at the very top of TravelOptionsPanel (bottom sheet)
+  const renderBottomSheetAbSlot = () => (
+    <View style={styles.bottomAbContainer}>
+      {/* Polazište (A) + One-Tap "Moja lokacija" Button */}
+      <View style={styles.abFieldWrapper}>
+        <TouchableOpacity
+          style={[
+            styles.abBox,
+            mapTapTarget === 'origin' && styles.abBoxActiveOrigin,
+          ]}
+          onPress={() => {
+            setMapTapTarget('origin');
+            setSearchFocused(true);
+            searchInputRef.current?.focus();
+          }}
+          activeOpacity={0.85}
+        >
+          <View style={styles.abDotOrigin} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.abLabel}>Polazište (A)</Text>
+            <Text style={styles.abValue} numberOfLines={1}>
+              {endpoints.originName}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Direct 1-click "Moja lokacija" GPS button */}
+        <TouchableOpacity
+          style={styles.myLocationQuickBtn}
+          onPress={handleUseMyLocationAsOrigin}
+          activeOpacity={0.8}
+          accessibilityLabel="Postavi moju trenutnu lokaciju kao Polazište (A)"
+        >
+          {isLocatingOrigin ? (
+            <ActivityIndicator size="small" color={colors.primaryDark} />
+          ) : (
+            <Text style={styles.myLocationQuickText}>🎯 Moja lokacija</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
+      {/* Swap A <-> B Button */}
+      <TouchableOpacity
+        style={styles.abSwapButton}
+        onPress={handleSwapOriginDestination}
+        activeOpacity={0.8}
+        accessibilityLabel="Zamijeni polazište i odredište"
+      >
+        <Text style={styles.abSwapIcon}>⇄</Text>
+      </TouchableOpacity>
+
+      {/* Odredište (B) */}
+      <View style={styles.abFieldWrapper}>
+        <TouchableOpacity
+          style={[
+            styles.abBox,
+            mapTapTarget === 'destination' && styles.abBoxActiveDest,
+          ]}
+          onPress={() => {
+            setMapTapTarget('destination');
+            setSearchFocused(true);
+            searchInputRef.current?.focus();
+          }}
+          activeOpacity={0.85}
+        >
+          <View style={styles.abDotDest} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.abLabel}>Odredište (B)</Text>
+            <Text style={styles.abValue} numberOfLines={1}>
+              {endpoints.destinationName}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.pickOnMapMiniBtn}
+          onPress={() => {
+            setMapTapTarget('destination');
+            setPanelOpen(false);
+            setSearchFocused(false);
+            Keyboard.dismiss();
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.pickOnMapMiniText}>👆 Klikni na karti</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'left', 'right']}>
@@ -335,7 +529,6 @@ export default function MapScreen() {
         </View>
 
         <View style={styles.headerRight}>
-          {/* Unified Profile, Weather & API Settings Pill */}
           <TouchableOpacity
             style={styles.profileSettingsBtn}
             onPress={() => {
@@ -386,63 +579,135 @@ export default function MapScreen() {
           onTapTargetChange={setMapTapTarget}
           onSelectPoiAsOrigin={handleSelectPoiAsOrigin}
           onSelectPoiAsDestination={handleSelectPoiAsDestination}
+          onUserLocationResolved={setUserGpsLocation}
         />
 
-        {/* Floating A -> B Route Selector Card at the top of the map */}
-        <View style={styles.floatingAbCard}>
-          <TouchableOpacity
-            style={[
-              styles.abInputBox,
-              mapTapTarget === 'origin' && styles.abInputBoxActiveOrigin,
-            ]}
-            onPress={() => {
-              setSearchQuery('');
-              setLocationPickerTarget('origin');
-            }}
-            activeOpacity={0.85}
-          >
-            <View style={styles.abDotOrigin} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.abInputLabel}>Polazište (A)</Text>
-              <Text style={styles.abInputValue} numberOfLines={1}>
-                {endpoints.originName}
-              </Text>
-            </View>
-          </TouchableOpacity>
+        {/* Floating Address & Place Search Bar at the Top of the Map (Filters sit directly below it in MapContainer) */}
+        <View style={styles.floatingSearchBarContainer}>
+          <View style={styles.searchBarInputRow}>
+            <Text style={styles.searchIcon}>🔍</Text>
+            <TextInput
+              ref={searchInputRef}
+              style={styles.searchBarInput}
+              value={searchQuery}
+              onFocus={() => setSearchFocused(true)}
+              onChangeText={(text) => {
+                setSearchQuery(text);
+                if (!searchFocused) setSearchFocused(true);
+              }}
+              placeholder={
+                mapTapTarget === 'origin'
+                  ? 'Upiši adresu ili stanicu za Polazište (A)...'
+                  : 'Upiši adresu, ulicu ili stanicu u Temišvaru...'
+              }
+              placeholderTextColor={colors.textMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {isSearchingAddress && (
+              <ActivityIndicator
+                size="small"
+                color={colors.primary}
+                style={{ marginRight: 6 }}
+              />
+            )}
+            {(searchQuery.length > 0 || searchFocused) && (
+              <TouchableOpacity
+                onPress={() => {
+                  setSearchQuery('');
+                  setSearchFocused(false);
+                  Keyboard.dismiss();
+                }}
+                style={styles.clearSearchBtn}
+              >
+                <Text style={styles.clearSearchText}>✕</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-          <TouchableOpacity
-            style={styles.abSwapButton}
-            onPress={handleSwapOriginDestination}
-            activeOpacity={0.8}
-            accessibilityLabel="Zamijeni polazište i odredište"
-          >
-            <Text style={styles.abSwapIcon}>⇄</Text>
-          </TouchableOpacity>
+          {/* Autocomplete Dropdown List when typing or focused */}
+          {showAutocomplete && (
+            <View style={styles.autocompleteDropdown}>
+              {/* Top quick row: Use My Current GPS Location as Origin (A) */}
+              <TouchableOpacity
+                style={styles.autocompleteGpsRow}
+                onPress={handleUseMyLocationAsOrigin}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.autocompleteEmoji}>🎯</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.autocompleteGpsTitle}>
+                    Moja trenutna lokacija (GPS)
+                  </Text>
+                  <Text style={styles.autocompleteSub}>
+                    Postavi kao Polazište (Točka A)
+                  </Text>
+                </View>
+                <View style={styles.setABadge}>
+                  <Text style={styles.setABadgeText}>Polazište A</Text>
+                </View>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[
-              styles.abInputBox,
-              mapTapTarget === 'destination' && styles.abInputBoxActiveDest,
-            ]}
-            onPress={() => {
-              setSearchQuery('');
-              setLocationPickerTarget('destination');
-            }}
-            activeOpacity={0.85}
-          >
-            <View style={styles.abDotDest} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.abInputLabel}>Odredište (B)</Text>
-              <Text style={styles.abInputValue} numberOfLines={1}>
-                {endpoints.destinationName}
-              </Text>
+              <ScrollView
+                style={styles.autocompleteScroll}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {autocompleteSuggestions.map((item) => {
+                  const pt = { lat: item.lat, lng: item.lng };
+                  return (
+                    <View key={item.id} style={styles.autocompleteItemRow}>
+                      <TouchableOpacity
+                        style={styles.autocompleteMainClick}
+                        onPress={() => {
+                          if (mapTapTarget === 'origin') {
+                            handleSelectPoiAsOrigin(pt, item.name);
+                          } else {
+                            handleSelectPoiAsDestination(pt, item.name);
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={styles.autocompleteEmoji}>{item.icon}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.autocompleteTitle} numberOfLines={1}>
+                            {item.name}
+                          </Text>
+                          <Text style={styles.autocompleteSub} numberOfLines={1}>
+                            {item.subtitle}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      <View style={styles.autocompleteActionBtns}>
+                        <TouchableOpacity
+                          style={styles.setABadge}
+                          onPress={() => handleSelectPoiAsOrigin(pt, item.name)}
+                        >
+                          <Text style={styles.setABadgeText}>A</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.setBBadge}
+                          onPress={() =>
+                            handleSelectPoiAsDestination(pt, item.name)
+                          }
+                        >
+                          <Text style={styles.setBBadgeText}>B</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
             </View>
-          </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Collapsible Route Options Panel (Minimized by default so map is full-screen!) */}
+      {/* Collapsible Route Options Panel with Polazište (A) & Odredište (B) on top */}
       <TravelOptionsPanel
+        topSlot={renderBottomSheetAbSlot()}
         isOpen={panelOpen}
         onToggleOpen={setPanelOpen}
         summaryText={panelSummaryText}
@@ -471,93 +736,6 @@ export default function MapScreen() {
           />
         ))}
       </TravelOptionsPanel>
-
-      {/* Location Search & Picker Modal for Point A or Point B */}
-      <Modal
-        visible={locationPickerTarget !== null}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setLocationPickerTarget(null)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.pickerModalCard}>
-            <View style={styles.connectionModalHeader}>
-              <Text style={styles.connectionModalTitle}>
-                {locationPickerTarget === 'origin'
-                  ? '📍 Odaberi Polazište (Točka A)'
-                  : '🏁 Odaberi Odredište (Točka B)'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => setLocationPickerTarget(null)}
-                style={styles.modalCloseBtn}
-              >
-                <Text style={styles.modalCloseText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Direct Map Tap Button */}
-            <TouchableOpacity
-              style={styles.pickOnMapBannerBtn}
-              onPress={() => {
-                if (locationPickerTarget) {
-                  setMapTapTarget(locationPickerTarget);
-                }
-                setLocationPickerTarget(null);
-                setPanelOpen(false);
-              }}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.pickOnMapBannerText}>
-                👆 Klikni direktno na kartu za postavljanje točke{' '}
-                {locationPickerTarget === 'origin' ? 'A' : 'B'}
-              </Text>
-            </TouchableOpacity>
-
-            <TextInput
-              style={styles.urlInput}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholder="Pretraži stanicu, znamenitost, fakultet ili parking..."
-              placeholderTextColor={colors.textMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <ScrollView
-              style={styles.pickerListScroll}
-              showsVerticalScrollIndicator={false}
-            >
-              {searchableLocations.map((loc) => (
-                <TouchableOpacity
-                  key={loc.id}
-                  style={styles.pickerItemRow}
-                  onPress={() => {
-                    const pt = { lat: loc.lat, lng: loc.lng };
-                    if (locationPickerTarget === 'origin') {
-                      handleSelectPoiAsOrigin(pt, loc.name);
-                    } else {
-                      handleSelectPoiAsDestination(pt, loc.name);
-                    }
-                    setLocationPickerTarget(null);
-                  }}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.pickerItemEmoji}>{loc.icon}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.pickerItemTitle} numberOfLines={1}>
-                      {loc.name}
-                    </Text>
-                    <Text style={styles.pickerItemSub} numberOfLines={1}>
-                      {loc.subtitle}
-                    </Text>
-                  </View>
-                  <Text style={styles.pickerSelectArrow}>Odaberi ➔</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
 
       {/* EcoMutare Trip Completed Modal */}
       <TripCompletedModal
@@ -639,7 +817,7 @@ export default function MapScreen() {
             <View style={styles.modalDivider} />
 
             <Text style={styles.inputLabel}>
-              Način rada: {useMockMode ? '🛡️ Offline / Cestovni ruter' : isMock ? '⚠️ Live Fallback' : '🌐 Live Backend API'}
+              Način rada: {useMockMode ? '🛡️ Samostalni cestovni ruter' : isMock ? '⚠️ Live Fallback' : '🌐 Live Backend API'}
             </Text>
             <Text style={styles.connectionModalDesc}>
               Podaci o stanicama, parkinzima i znamenitostima vuku se izravno s
@@ -805,39 +983,156 @@ const styles = StyleSheet.create({
     flex: 1,
     position: 'relative',
   },
-  floatingAbCard: {
+  floatingSearchBarContainer: {
     position: 'absolute',
     top: spacing.sm,
     left: spacing.md,
     right: spacing.md,
+    zIndex: 28,
+  },
+  searchBarInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.surface,
-    borderRadius: borderRadius.lg,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: 6,
-    zIndex: 24,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: spacing.md,
+    height: 44,
+    borderWidth: 1.5,
+    borderColor: colors.primaryDark,
     ...shadows.md,
   },
-  abInputBox: {
+  searchIcon: {
+    fontSize: 15,
+    marginRight: 8,
+  },
+  searchBarInput: {
     flex: 1,
+    color: colors.textPrimary,
+    ...typography.bodyMedium,
+    fontSize: 13,
+    paddingVertical: 0,
+  },
+  clearSearchBtn: {
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  clearSearchText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.textSecondary,
+  },
+  autocompleteDropdown: {
+    marginTop: 6,
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    maxHeight: 290,
+    overflow: 'hidden',
+    ...shadows.lg,
+  },
+  autocompleteGpsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    backgroundColor: colors.surfaceMuted,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 10,
+  },
+  autocompleteGpsTitle: {
+    ...typography.bodyMedium,
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.primaryDark,
+  },
+  autocompleteScroll: {
+    maxHeight: 235,
+  },
+  autocompleteItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    gap: 8,
+  },
+  autocompleteMainClick: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  autocompleteEmoji: {
+    fontSize: 17,
+  },
+  autocompleteTitle: {
+    ...typography.bodyMedium,
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textPrimary,
+  },
+  autocompleteSub: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  autocompleteActionBtns: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  setABadge: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  setABadgeText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textInverse,
+  },
+  setBBadge: {
+    backgroundColor: colors.danger,
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: borderRadius.full,
+  },
+  setBBadgeText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    fontWeight: '800',
+    color: colors.textInverse,
+  },
+  bottomAbContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  abFieldWrapper: {
+    flex: 1,
+    gap: 4,
+  },
+  abBox: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: colors.background,
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-    borderWidth: 1,
+    paddingVertical: 5,
+    borderWidth: 1.5,
     borderColor: colors.border,
     gap: 6,
   },
-  abInputBoxActiveOrigin: {
+  abBoxActiveOrigin: {
     borderColor: colors.primary,
     backgroundColor: colors.surfaceMuted,
   },
-  abInputBoxActiveDest: {
+  abBoxActiveDest: {
     borderColor: colors.danger,
   },
   abDotOrigin: {
@@ -852,31 +1147,62 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.danger,
   },
-  abInputLabel: {
+  abLabel: {
     ...typography.caption,
     fontSize: 9,
     color: colors.textSecondary,
     textTransform: 'uppercase',
     fontWeight: '700',
   },
-  abInputValue: {
+  abValue: {
     ...typography.captionMedium,
     fontSize: 12,
     color: colors.textPrimary,
     fontWeight: '800',
   },
-  abSwapButton: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+  myLocationQuickBtn: {
     backgroundColor: colors.surfaceMuted,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderWidth: 1,
+    borderColor: colors.primary,
+    alignSelf: 'flex-start',
+  },
+  myLocationQuickText: {
+    ...typography.captionMedium,
+    fontSize: 10,
+    color: colors.primaryDark,
+    fontWeight: '800',
+  },
+  pickOnMapMiniBtn: {
+    backgroundColor: colors.background,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: colors.controlBorder,
+    alignSelf: 'flex-start',
+  },
+  pickOnMapMiniText: {
+    ...typography.captionMedium,
+    fontSize: 10,
+    color: colors.textSecondary,
+    fontWeight: '700',
+  },
+  abSwapButton: {
+    width: 32,
+    height: 32,
+    marginTop: 4,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1.5,
     borderColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   abSwapIcon: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '800',
     color: colors.primaryDark,
   },
@@ -886,65 +1212,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
-  },
-  pickerModalCard: {
-    width: '100%',
-    maxWidth: 440,
-    maxHeight: '82%',
-    backgroundColor: colors.surface,
-    borderRadius: borderRadius.xl,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.lg,
-  },
-  pickOnMapBannerBtn: {
-    backgroundColor: colors.surfaceMuted,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: borderRadius.md,
-    paddingVertical: spacing.xs + 4,
-    paddingHorizontal: spacing.sm,
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  pickOnMapBannerText: {
-    ...typography.captionMedium,
-    fontSize: 12,
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
-  pickerListScroll: {
-    marginTop: spacing.xs,
-  },
-  pickerItemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    gap: spacing.sm,
-  },
-  pickerItemEmoji: {
-    fontSize: 18,
-  },
-  pickerItemTitle: {
-    ...typography.bodyMedium,
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textPrimary,
-  },
-  pickerItemSub: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.textSecondary,
-  },
-  pickerSelectArrow: {
-    ...typography.captionMedium,
-    fontSize: 11,
-    color: colors.primary,
-    fontWeight: '700',
   },
   connectionModalCard: {
     width: '100%',

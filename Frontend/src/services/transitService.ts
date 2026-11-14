@@ -903,4 +903,76 @@ export const transitService = {
     }
     return FALLBACK_LANDMARKS;
   },
+
+  /**
+   * Live geocoding search for any street address, house number, building, or place in Timișoara
+   * via OpenStreetMap (Photon / Nominatim bounded to Timișoara).
+   */
+  async searchExternalAddresses(query: string): Promise<
+    {
+      id: string;
+      name: string;
+      subtitle: string;
+      icon: string;
+      lat: number;
+      lng: number;
+    }[]
+  > {
+    const trimmed = query.trim();
+    if (trimmed.length < 2) return [];
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    try {
+      const encodedQ = encodeURIComponent(`${trimmed}, Timișoara`);
+      const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=8&viewbox=21.13,45.81,21.32,45.69&bounded=1&q=${encodedQ}`;
+      const res = await fetch(url, {
+        headers: {
+          Accept: 'application/json',
+          'Accept-Language': 'ro,en,hr',
+          'User-Agent': 'EcoMutare-UniHack8-Timisoara/1.0',
+        },
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+
+      if (!res.ok) return [];
+      const data = await res.json();
+      if (!Array.isArray(data)) return [];
+
+      return data
+        .filter((item: any) => item.lat && item.lon)
+        .map((item: any, idx: number) => {
+          const addr = item.address || {};
+          const road = addr.road || addr.pedestrian || addr.suburb || '';
+          const houseNumber = addr.house_number ? ` ${addr.house_number}` : '';
+          const primaryName =
+            item.name ||
+            (road ? `${road}${houseNumber}` : String(item.display_name || '').split(',')[0]);
+          const neighbourhood =
+            addr.Salvation || addr.neighbourhood || addr.suburb || 'Timișoara';
+          const subtitle =
+            road && item.name && item.name !== road
+              ? `${road}${houseNumber}, ${neighbourhood}`
+              : String(item.display_name || 'Adresa • Timișoara')
+                  .split(',')
+                  .slice(1, 3)
+                  .join(',')
+                  .trim() || 'Adresa • Timișoara';
+
+          return {
+            id: `osm_${item.place_id || idx}`,
+            name: primaryName || trimmed,
+            subtitle,
+            icon: '📍',
+            lat: Number(parseFloat(String(item.lat)).toFixed(6)),
+            lng: Number(parseFloat(String(item.lon)).toFixed(6)),
+          };
+        });
+    } catch {
+      clearTimeout(timeoutId);
+      return [];
+    }
+  },
 };

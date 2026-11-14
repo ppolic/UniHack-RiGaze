@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Platform,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import * as Location from 'expo-location';
@@ -12,6 +13,7 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { transitService } from '../../services/transitService';
+import { WebLeafletMap } from './WebLeafletMap';
 import {
   GeoPoint,
   StationLocation,
@@ -39,11 +41,150 @@ if (Platform.OS !== 'web') {
 export const TIMISOARA_CENTER = {
   latitude: 45.7537,
   longitude: 21.2257,
-  latitudeDelta: 0.035,
-  longitudeDelta: 0.035,
+  latitudeDelta: 0.032,
+  longitudeDelta: 0.032,
 };
 
-type PoiFilterType = 'all' | 'transit' | 'bike' | 'parking' | 'landmarks';
+/**
+ * Official Google Maps Aubergine Dark Mode JSON style.
+ */
+const AUBERGINE_MAP_STYLE = [
+  {
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkLand }],
+  },
+  {
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkLabel }],
+  },
+  {
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapDarkCanvas }],
+  },
+  {
+    featureType: 'administrative.country',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapDarkBorder }],
+  },
+  {
+    featureType: 'administrative.province',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapDarkBorder }],
+  },
+  {
+    featureType: 'administrative.land_parcel',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkLabelSecondary }],
+  },
+  {
+    featureType: 'landscape.man_made',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapDarkRoadArterial }],
+  },
+  {
+    featureType: 'landscape.natural',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkPark }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkPoi }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkPoiLabel }],
+  },
+  {
+    featureType: 'poi',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapDarkRoadStroke }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'geometry.fill',
+    stylers: [{ color: colors.mapDarkPark }],
+  },
+  {
+    featureType: 'poi.park',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkParkLabel }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkRoad }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkRoadLabel }],
+  },
+  {
+    featureType: 'road',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapDarkRoadStroke }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkRoadHighway }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'geometry.stroke',
+    stylers: [{ color: colors.mapDarkRoadHighwayStroke }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkRoadHighwayLabel }],
+  },
+  {
+    featureType: 'road.highway',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapDarkRoadHighwayLabelStroke }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkRoadLabel }],
+  },
+  {
+    featureType: 'transit',
+    elementType: 'labels.text.stroke',
+    stylers: [{ color: colors.mapDarkRoadStroke }],
+  },
+  {
+    featureType: 'transit.line',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkTransitLine }],
+  },
+  {
+    featureType: 'transit.station',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkPoi }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'geometry',
+    stylers: [{ color: colors.mapDarkWater }],
+  },
+  {
+    featureType: 'water',
+    elementType: 'labels.text.fill',
+    stylers: [{ color: colors.mapDarkWaterLabel }],
+  },
+];
+
+export type PoiCategoryFilter =
+  | 'bus'
+  | 'tram'
+  | 'trolleybus'
+  | 'bike'
+  | 'parking'
+  | 'landmarks';
 
 type SelectedPoi =
   | { kind: 'station'; data: StationLocation }
@@ -64,7 +205,17 @@ interface MapContainerProps {
   onTapTargetChange?: (target: 'origin' | 'destination') => void;
   onSelectPoiAsOrigin?: (point: GeoPoint, name: string) => void;
   onSelectPoiAsDestination?: (point: GeoPoint, name: string) => void;
+  onUserLocationResolved?: (point: GeoPoint) => void;
 }
+
+const ALL_CATEGORIES: PoiCategoryFilter[] = [
+  'bus',
+  'tram',
+  'trolleybus',
+  'bike',
+  'parking',
+  'landmarks',
+];
 
 export const MapContainer: React.FC<MapContainerProps> = ({
   origin,
@@ -80,12 +231,21 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   onTapTargetChange,
   onSelectPoiAsOrigin,
   onSelectPoiAsDestination,
+  onUserLocationResolved,
 }) => {
   const mapRef = useRef<any>(null);
-  const [userLocation, setUserLocation] = useState<GeoPoint | null>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
-  const [poiFilter, setPoiFilter] = useState<PoiFilterType>('all');
+
+  // Clean initial state: empty array = show ONLY the active route A -> B without 400+ icons cluttering the map!
+  const [activeFilters, setActiveFilters] = useState<PoiCategoryFilter[]>([]);
+  const [isDarkMap, setIsDarkMap] = useState(true);
+  const [webFocusTarget, setWebFocusTarget] = useState<{
+    lat: number;
+    lng: number;
+    zoom?: number;
+    nonce: number;
+  } | null>(null);
   const [selectedPoi, setSelectedPoi] = useState<SelectedPoi | null>(null);
   const [loadingTimetable, setLoadingTimetable] = useState(false);
   const [internalTapTarget, setInternalTapTarget] = useState<'origin' | 'destination'>('destination');
@@ -99,22 +259,34 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   };
 
-  const filteredStations = stations.filter((st) => {
-    if (poiFilter === 'all') return true;
-    if (poiFilter === 'transit') {
-      return st.type === 'tram' || st.type === 'bus' || st.type === 'trolleybus';
+  const toggleCategoryFilter = (cat: PoiCategoryFilter) => {
+    setSelectedPoi(null);
+    setActiveFilters((prev) =>
+      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
+    );
+  };
+
+  const toggleAllOrCleanFilters = () => {
+    setSelectedPoi(null);
+    if (activeFilters.length > 0) {
+      setActiveFilters([]);
+    } else {
+      setActiveFilters([...ALL_CATEGORIES]);
     }
-    if (poiFilter === 'bike') {
-      return st.type === 'bike_station' || st.type === 'scooter_station';
+  };
+
+  const filteredStations = stations.filter((st) => {
+    if (st.type === 'bus') return activeFilters.includes('bus');
+    if (st.type === 'tram') return activeFilters.includes('tram');
+    if (st.type === 'trolleybus') return activeFilters.includes('trolleybus');
+    if (st.type === 'bike_station' || st.type === 'scooter_station') {
+      return activeFilters.includes('bike');
     }
     return false;
   });
 
-  const filteredParkings =
-    poiFilter === 'all' || poiFilter === 'parking' ? parkings : [];
-
-  const filteredLandmarks =
-    poiFilter === 'all' || poiFilter === 'landmarks' ? landmarks : [];
+  const filteredParkings = activeFilters.includes('parking') ? parkings : [];
+  const filteredLandmarks = activeFilters.includes('landmarks') ? landmarks : [];
 
   const getStationEmoji = (type: StationLocation['type']) => {
     switch (type) {
@@ -163,8 +335,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   };
 
-  const handleMapCoordinatePress = (e: any) => {
-    // Ignore map tap if a POI marker was just pressed within 250ms
+  const handlePointPress = (rawPt: GeoPoint) => {
     if (Date.now() - lastMarkerPressTime.current < 250) {
       return;
     }
@@ -172,13 +343,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       setSelectedPoi(null);
       return;
     }
-    const coord = e?.nativeEvent?.coordinate;
-    if (!coord || typeof coord.latitude !== 'number' || typeof coord.longitude !== 'number') {
-      return;
-    }
     const pt: GeoPoint = {
-      lat: Number(coord.latitude.toFixed(6)),
-      lng: Number(coord.longitude.toFixed(6)),
+      lat: Number(rawPt.lat.toFixed(6)),
+      lng: Number(rawPt.lng.toFixed(6)),
     };
     const resolvedName = transitService.resolveNearestPointName(pt);
     if (mapTapTarget === 'origin' && onSelectPoiAsOrigin) {
@@ -187,6 +354,14 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     } else if (onSelectPoiAsDestination) {
       onSelectPoiAsDestination(pt, resolvedName);
     }
+  };
+
+  const handleMapCoordinatePress = (e: any) => {
+    const coord = e?.nativeEvent?.coordinate;
+    if (!coord || typeof coord.latitude !== 'number' || typeof coord.longitude !== 'number') {
+      return;
+    }
+    handlePointPress({ lat: coord.latitude, lng: coord.longitude });
   };
 
   const renderPoiActionButtons = (point: GeoPoint, name: string) => (
@@ -226,10 +401,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           const location = await Location.getCurrentPositionAsync({
             accuracy: Location.Accuracy.Balanced,
           });
-          setUserLocation({
-            lat: location.coords.latitude,
-            lng: location.coords.longitude,
-          });
+          const pt = {
+            lat: Number(location.coords.latitude.toFixed(6)),
+            lng: Number(location.coords.longitude.toFixed(6)),
+          };
+          if (onUserLocationResolved) {
+            onUserLocationResolved(pt);
+          }
         }
       } catch (err) {
         console.warn('Location permission or fetch error:', err);
@@ -263,7 +441,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     if (coordinatesToFit.length >= 2) {
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(coordinatesToFit, {
-          edgePadding: { top: 125, right: 50, bottom: 135, left: 50 },
+          edgePadding: { top: 115, right: 50, bottom: 165, left: 50 },
           animated: true,
         });
       }, 300);
@@ -276,19 +454,30 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
-      const coords = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
+      const pt = {
+        lat: Number(location.coords.latitude.toFixed(6)),
+        lng: Number(location.coords.longitude.toFixed(6)),
       };
-      setUserLocation({
-        lat: location.coords.latitude,
-        lng: location.coords.longitude,
+      if (onUserLocationResolved) {
+        onUserLocationResolved(pt);
+      }
+      setWebFocusTarget({ lat: pt.lat, lng: pt.lng, zoom: 16, nonce: Date.now() });
+      mapRef.current?.animateToRegion(
+        {
+          latitude: pt.lat,
+          longitude: pt.lng,
+          latitudeDelta: 0.018,
+          longitudeDelta: 0.018,
+        },
+        600
+      );
+    } catch {
+      setWebFocusTarget({
+        lat: TIMISOARA_CENTER.latitude,
+        lng: TIMISOARA_CENTER.longitude,
+        zoom: 14,
+        nonce: Date.now(),
       });
-      mapRef.current?.animateToRegion(coords, 600);
-    } catch (e) {
-      // Fallback to Timișoara center if user GPS is off/unavailable
       mapRef.current?.animateToRegion(TIMISOARA_CENTER, 600);
     } finally {
       setIsLocating(false);
@@ -296,36 +485,45 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   };
 
   const handleCenterOnTimisoara = () => {
+    setWebFocusTarget({
+      lat: TIMISOARA_CENTER.latitude,
+      lng: TIMISOARA_CENTER.longitude,
+      zoom: 14,
+      nonce: Date.now(),
+    });
     mapRef.current?.animateToRegion(TIMISOARA_CENTER, 600);
   };
 
+  /**
+   * High-contrast vivid colors for each transport mode so the route pops out clearly on the map!
+   */
   const getModeStrokeColor = (mode: string) => {
     switch (mode) {
-      case 'Bike':
-        return colors.modes.bicycle;
       case 'Walk':
-        return colors.modes.walking;
-      case 'PublicTransport':
-        return colors.modes.publicTransit;
+        return colors.mapRouteWalk;
+      case 'Bike':
+        return colors.mapRouteBike;
       case 'Scooter':
-        return colors.modes.scooter;
+        return colors.mapRouteScooter;
+      case 'PublicTransport':
+        return colors.mapRouteTransit;
       case 'Car':
       default:
-        return colors.modes.carWithParking;
+        return colors.mapRouteCar;
     }
   };
 
   const getModeStrokeWidth = (mode: string) => {
     switch (mode) {
       case 'PublicTransport':
-        return 6;
+        return 7;
       case 'Bike':
       case 'Scooter':
-        return 5;
+        return 6;
       case 'Walk':
       case 'Car':
       default:
-        return 4;
+        return 6;
     }
   };
 
@@ -360,7 +558,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 style={[
                   styles.segmentColorDot,
                   { backgroundColor: getModeStrokeColor(seg.mode) },
-                  seg.mode === 'Walk' && styles.segmentDotDashed,
                 ]}
               />
               <Text style={styles.segmentPillText}>
@@ -377,39 +574,64 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   };
 
   const renderPoiFilterBar = () => {
-    const filters: { id: PoiFilterType; label: string }[] = [
-      { id: 'all', label: 'Sve' },
-      { id: 'transit', label: '🚊 SMTT' },
+    const filterItems: { id: PoiCategoryFilter; label: string }[] = [
+      { id: 'bus', label: '🚌 Busevi' },
+      { id: 'tram', label: '🚊 Tramvaji' },
+      { id: 'trolleybus', label: '🚎 Trolejbusi' },
       { id: 'bike', label: '🚲 VeloTM' },
-      { id: 'parking', label: '🅿️ TimPark' },
-      { id: 'landmarks', label: '🏛️ Grad' },
+      { id: 'parking', label: '🅿️ Parking' },
+      { id: 'landmarks', label: '🏛️ Znamenitosti' },
     ];
 
+    const anyActive = activeFilters.length > 0;
+
     return (
-      <View style={styles.poiFilterRow}>
-        {filters.map((f) => {
-          const isActive = poiFilter === f.id;
-          return (
-            <TouchableOpacity
-              key={f.id}
-              onPress={() => {
-                setPoiFilter(f.id);
-                setSelectedPoi(null);
-              }}
-              style={[styles.poiFilterChip, isActive && styles.poiFilterChipActive]}
-              activeOpacity={0.8}
+      <View style={styles.poiFilterWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.poiFilterScrollContent}
+        >
+          {/* Quick Toggle: Clean Map vs Show All */}
+          <TouchableOpacity
+            onPress={toggleAllOrCleanFilters}
+            style={[
+              styles.poiFilterChip,
+              !anyActive && styles.poiFilterChipCleanActive,
+            ]}
+            activeOpacity={0.8}
+          >
+            <Text
+              style={[
+                styles.poiFilterChipText,
+                !anyActive && styles.poiFilterChipTextActive,
+              ]}
             >
-              <Text
-                style={[
-                  styles.poiFilterChipText,
-                  isActive && styles.poiFilterChipTextActive,
-                ]}
+              {anyActive ? '👁️ Sakrij ikone' : '👁️ Čista karta (Prikaži sve)'}
+            </Text>
+          </TouchableOpacity>
+
+          {filterItems.map((f) => {
+            const isActive = activeFilters.includes(f.id);
+            return (
+              <TouchableOpacity
+                key={f.id}
+                onPress={() => toggleCategoryFilter(f.id)}
+                style={[styles.poiFilterChip, isActive && styles.poiFilterChipActive]}
+                activeOpacity={0.8}
               >
-                {f.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+                <Text
+                  style={[
+                    styles.poiFilterChipText,
+                    isActive && styles.poiFilterChipTextActive,
+                  ]}
+                >
+                  {f.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
     );
   };
@@ -553,116 +775,48 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     );
   };
 
-  // Web Fallback Renderer
-  const renderWebFallback = () => {
-    const webStationPositions = [
-      { top: '26%', left: '16%' },
-      { top: '62%', left: '20%' },
-      { top: '28%', right: '22%' },
-      { top: '68%', right: '16%' },
-    ];
-    const webParkingPositions = [
-      { top: '44%', left: '14%' },
-      { top: '42%', right: '18%' },
-    ];
-    const webLandmarkPositions = [
-      { top: '34%', left: '46%' },
-      { top: '56%', left: '54%' },
-      { top: '24%', left: '62%' },
-    ];
-
-    return (
-      <View style={styles.webFallbackContainer}>
-        {/* River Bega indicator */}
-        <View style={styles.riverIndicator}>
-          <Text style={styles.riverText}>~ Rijeka Bega (Timișoara) ~</Text>
-        </View>
-
-        {/* Interactive POI Stations on Web */}
-        {filteredStations.slice(0, 4).map((st, idx) => (
-          <TouchableOpacity
-            key={st.id}
-            onPress={() => handleSelectStation(st)}
-            style={[
-              styles.webPoiFloating,
-              webStationPositions[idx % webStationPositions.length] as any,
-              styles.markerStation,
-              st.type === 'bike_station' ? styles.markerBike : styles.markerTram,
-            ]}
-          >
-            <Text style={styles.markerMiniIcon}>{getStationEmoji(st.type)}</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Interactive POI Parkings on Web */}
-        {filteredParkings.slice(0, 2).map((prk, idx) => (
-          <TouchableOpacity
-            key={prk.id}
-            onPress={() => setSelectedPoi({ kind: 'parking', data: prk })}
-            style={[
-              styles.webPoiFloating,
-              webParkingPositions[idx % webParkingPositions.length] as any,
-              styles.markerParking,
-            ]}
-          >
-            <Text style={styles.markerParkingText}>P</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Interactive Landmarks on Web */}
-        {filteredLandmarks.slice(0, 3).map((lm, idx) => (
-          <TouchableOpacity
-            key={`web_lm_${lm.id}`}
-            onPress={() => setSelectedPoi({ kind: 'landmark', data: lm })}
-            style={[
-              styles.webPoiFloating,
-              webLandmarkPositions[idx % webLandmarkPositions.length] as any,
-              styles.markerStation,
-              styles.markerLandmark,
-            ]}
-          >
-            <Text style={styles.markerMiniIcon}>🏛️</Text>
-          </TouchableOpacity>
-        ))}
-
-        {/* Origin Pin */}
-        {origin && (
-          <View style={[styles.pinContainer, styles.originPin]}>
-            <View style={styles.pinCircleGreen}>
-              <Text style={styles.pinText}>A</Text>
-            </View>
-            <View style={styles.pinLabelBox}>
-              <Text style={styles.pinLabel}>{originName}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Route Line Simulation */}
-        {origin && destination && (
-          <View style={styles.simulatedRouteLine}>
-            <View
-              style={[
-                styles.routeGlow,
-                { backgroundColor: getModeStrokeColor(selectedOption?.mode || selectedMode) },
-              ]}
-            />
-          </View>
-        )}
-
-        {/* Destination Pin */}
-        {destination && (
-          <View style={[styles.pinContainer, styles.destinationPin]}>
-            <View style={styles.pinCircleRed}>
-              <Text style={styles.pinText}>B</Text>
-            </View>
-            <View style={styles.pinLabelBox}>
-              <Text style={styles.pinLabel}>{destinationName}</Text>
-            </View>
-          </View>
-        )}
-      </View>
-    );
-  };
+  // Interactive Leaflet / OpenStreetMap Renderer for Web
+  const renderWebMap = () => (
+    <WebLeafletMap
+      origin={origin}
+      destination={destination}
+      originName={originName}
+      destinationName={destinationName}
+      stations={filteredStations}
+      parkings={filteredParkings}
+      landmarks={filteredLandmarks}
+      selectedOption={selectedOption}
+      selectedPoiKey={selectedPoi ? `${selectedPoi.kind}:${selectedPoi.data.id}` : null}
+      selectedParkingPolygon={
+        selectedPoi?.kind === 'parking' ? selectedPoi.data.polygon : null
+      }
+      isDarkMap={isDarkMap}
+      focusTarget={webFocusTarget}
+      getModeStrokeColor={getModeStrokeColor}
+      getModeStrokeWidth={getModeStrokeWidth}
+      getStationEmoji={getStationEmoji}
+      onMapClick={handlePointPress}
+      onDragOrigin={(pt) => {
+        if (onSelectPoiAsOrigin) {
+          onSelectPoiAsOrigin(pt, transitService.resolveNearestPointName(pt));
+        }
+      }}
+      onDragDestination={(pt) => {
+        if (onSelectPoiAsDestination) {
+          onSelectPoiAsDestination(pt, transitService.resolveNearestPointName(pt));
+        }
+      }}
+      onSelectStation={(st) => handleSelectStation(st)}
+      onSelectParking={(prk) => {
+        lastMarkerPressTime.current = Date.now();
+        setSelectedPoi({ kind: 'parking', data: prk });
+      }}
+      onSelectLandmark={(lm) => {
+        lastMarkerPressTime.current = Date.now();
+        setSelectedPoi({ kind: 'landmark', data: lm });
+      }}
+    />
+  );
 
   return (
     <View style={styles.container}>
@@ -671,6 +825,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           ref={mapRef}
           style={styles.map}
           initialRegion={TIMISOARA_CENTER}
+          userInterfaceStyle={isDarkMap ? 'dark' : 'light'}
+          customMapStyle={isDarkMap ? AUBERGINE_MAP_STYLE : []}
+          showsPointsOfInterest={true}
+          showsBuildings={true}
           showsUserLocation={hasLocationPermission}
           showsMyLocationButton={false}
           showsCompass={true}
@@ -734,7 +892,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             </Marker>
           )}
 
-          {/* Infrastructure POI Markers: ALL SMTT tram/trolleybus/bus stops and VeloTM */}
+          {/* Filtered SMTT bus/tram/trolleybus stops and VeloTM stations */}
           {filteredStations.map((st) => {
             const isSelected =
               selectedPoi?.kind === 'station' && selectedPoi.data.id === st.id;
@@ -758,7 +916,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             );
           })}
 
-          {/* Infrastructure POI Markers: TimPark Parkings */}
+          {/* Filtered TimPark Parkings */}
           {filteredParkings.map((prk) => {
             const isSelected =
               selectedPoi?.kind === 'parking' && selectedPoi.data.id === prk.id;
@@ -793,12 +951,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                   latitude: pt.lat,
                   longitude: pt.lng,
                 }))}
-                strokeColor={colors.primaryDark}
-                strokeWidth={3}
+                strokeColor={colors.accent}
+                strokeWidth={4}
               />
             )}
 
-          {/* City Tourist Landmarks (/api/mobile/pois) — all selectable as A or B */}
+          {/* Filtered City Tourist Landmarks (/api/mobile/pois) */}
           {filteredLandmarks.map((lm) => {
             const isSelected =
               selectedPoi?.kind === 'landmark' && selectedPoi.data.id === lm.id;
@@ -825,7 +983,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             );
           })}
 
-          {/* Active Route Segments Geometry */}
+          {/* WHITE GLOWING HALO + NEON MODE ROUTE SEGMENTS ON DARK MAP */}
           {selectedOption?.segments &&
             selectedOption.segments.map((seg, idx) => {
               if (!seg.geometry || seg.geometry.length < 2) return null;
@@ -834,20 +992,41 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 longitude: pt.lng,
               }));
               const isWalk = seg.mode === 'Walk';
+              const innerWidth = getModeStrokeWidth(seg.mode);
               return (
-                <Polyline
-                  key={`seg_${selectedOption.id}_${idx}`}
-                  coordinates={coords}
-                  strokeColor={getModeStrokeColor(seg.mode)}
-                  strokeWidth={getModeStrokeWidth(seg.mode)}
-                  lineDashPattern={isWalk ? [6, 8] : undefined}
-                  lineCap="round"
-                  lineJoin="round"
-                />
+                <React.Fragment key={`seg_pair_${selectedOption.id}_${idx}`}>
+                  {/* Outer dark depth shadow so the white halo & white walk dashes pop on any street */}
+                  <Polyline
+                    coordinates={coords}
+                    strokeColor={colors.mapRouteDarkHalo}
+                    strokeWidth={innerWidth + 7}
+                    lineCap="round"
+                    lineJoin="round"
+                  />
+                  {/* Bright White glowing halo for non-walk neon modes */}
+                  {!isWalk && (
+                    <Polyline
+                      coordinates={coords}
+                      strokeColor={colors.mapRouteOutline}
+                      strokeWidth={innerWidth + 3}
+                      lineCap="round"
+                      lineJoin="round"
+                    />
+                  )}
+                  {/* Inner vivid neon mode-colored line (or crisp Pure White dashed for Walk) */}
+                  <Polyline
+                    coordinates={coords}
+                    strokeColor={getModeStrokeColor(seg.mode)}
+                    strokeWidth={innerWidth}
+                    lineDashPattern={isWalk ? [8, 8] : undefined}
+                    lineCap="round"
+                    lineJoin="round"
+                  />
+                </React.Fragment>
               );
             })}
 
-          {/* Multimodal Transfer Junction Markers (where one segment ends and the next begins) */}
+          {/* Multimodal Transfer Junction Markers */}
           {selectedOption?.segments &&
             selectedOption.segments.slice(0, -1).map((seg, idx) => {
               const allSegments = selectedOption.segments;
@@ -874,10 +1053,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             })}
         </MapView>
       ) : (
-        renderWebFallback()
+        renderWebMap()
       )}
 
-      {/* Top POI Filter Chips */}
+      {/* Individual Category Filter Chips below the Top Search Bar */}
       {renderPoiFilterBar()}
 
       {/* Selected POI Info Card or Active Route Segments Legend Overlay */}
@@ -889,6 +1068,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={styles.controlButton}
           onPress={handleCenterOnUser}
           activeOpacity={0.8}
+          accessibilityLabel="Centriraj na moju GPS lokaciju"
         >
           {isLocating ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -901,10 +1081,32 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={styles.controlButton}
           onPress={handleCenterOnTimisoara}
           activeOpacity={0.8}
+          accessibilityLabel="Centriraj na centar Temišvara"
         >
           <Text style={styles.controlIcon}>📍</Text>
         </TouchableOpacity>
 
+        {/* Standard Dark / Light Map Mode Toggle */}
+        <TouchableOpacity
+          style={[
+            styles.controlButton,
+            isDarkMap && styles.controlBtnHighContrast,
+          ]}
+          onPress={() => setIsDarkMap((prev) => !prev)}
+          activeOpacity={0.8}
+          accessibilityLabel="Prebaci između standardnog Dark i Light prikaza karte"
+        >
+          <Text
+            style={[
+              styles.tapTargetText,
+              isDarkMap && styles.highContrastActiveText,
+            ]}
+          >
+            {isDarkMap ? '🌙' : '☀️'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* Map Tap Target Toggle (A vs B) */}
         <TouchableOpacity
           style={[
             styles.controlButton,
@@ -928,7 +1130,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.mapDarkLand,
     position: 'relative',
   },
   map: {
@@ -940,29 +1142,24 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  webFallbackContainer: {
-    flex: 1,
-    position: 'relative',
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  poiFilterRow: {
+  poiFilterWrapper: {
     position: 'absolute',
-    top: 64,
-    left: spacing.md,
-    right: 68,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
+    top: 58,
+    left: 0,
+    right: 0,
     zIndex: 22,
+  },
+  poiFilterScrollContent: {
+    paddingHorizontal: spacing.md,
+    gap: 6,
+    alignItems: 'center',
   },
   poiFilterChip: {
     backgroundColor: colors.surface,
     paddingHorizontal: spacing.sm + 4,
     paddingVertical: 6,
     borderRadius: borderRadius.full,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
     ...shadows.sm,
   },
@@ -970,18 +1167,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryDark,
     borderColor: colors.primaryDark,
   },
+  poiFilterChipCleanActive: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primaryDark,
+  },
   poiFilterChipText: {
     ...typography.captionMedium,
     fontSize: 12,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
   poiFilterChipTextActive: {
     color: colors.textInverse,
-    fontWeight: '700',
+    fontWeight: '800',
   },
   poiPopupCard: {
     position: 'absolute',
-    bottom: 88,
+    bottom: 150,
     left: spacing.md,
     right: spacing.md,
     backgroundColor: colors.surface,
@@ -1096,15 +1298,19 @@ const styles = StyleSheet.create({
     borderColor: colors.danger,
     borderWidth: 2,
   },
+  controlBtnHighContrast: {
+    backgroundColor: colors.primaryDark,
+    borderColor: colors.accent,
+    borderWidth: 2,
+  },
   tapTargetText: {
     ...typography.captionMedium,
     fontSize: 11,
     fontWeight: '800',
     color: colors.textPrimary,
   },
-  webPoiFloating: {
-    position: 'absolute',
-    zIndex: 14,
+  highContrastActiveText: {
+    color: colors.accent,
   },
   markerSelectedHighlight: {
     transform: [{ scale: 1.25 }],
@@ -1113,7 +1319,7 @@ const styles = StyleSheet.create({
   },
   segmentsBanner: {
     position: 'absolute',
-    bottom: 88,
+    bottom: 150,
     left: spacing.md,
     right: spacing.md,
     flexDirection: 'row',
@@ -1123,11 +1329,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm + 2,
     paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 1.5,
+    borderColor: colors.primaryDark,
     gap: 4,
     zIndex: 18,
-    ...shadows.sm,
+    ...shadows.md,
   },
   segmentPill: {
     flexDirection: 'row',
@@ -1135,18 +1341,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   segmentColorDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  segmentDotDashed: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     borderWidth: 1.5,
-    borderColor: colors.surface,
+    borderColor: colors.mapRouteOutline,
   },
   segmentPillText: {
     ...typography.captionMedium,
     fontSize: 11,
     color: colors.textPrimary,
+    fontWeight: '700',
   },
   segmentArrow: {
     fontSize: 10,
@@ -1154,18 +1359,18 @@ const styles = StyleSheet.create({
     marginHorizontal: 2,
   },
   transferDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: colors.surface,
-    borderWidth: 3,
+    borderWidth: 3.5,
     ...shadows.sm,
   },
   mapControls: {
     position: 'absolute',
     right: spacing.md,
-    top: 64,
-    gap: spacing.sm,
+    top: 102,
+    gap: spacing.xs + 2,
     zIndex: 20,
   },
   controlButton: {
@@ -1186,26 +1391,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pinCircleGreen: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.primary,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
+    ...shadows.md,
   },
   pinCircleRed: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: colors.danger,
-    borderWidth: 2,
+    borderWidth: 2.5,
     borderColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    ...shadows.sm,
+    ...shadows.md,
   },
   pinText: {
     color: colors.textInverse,
@@ -1223,7 +1428,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 11,
     color: colors.textInverse,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   markerStation: {
     width: 26,
@@ -1261,65 +1466,5 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontWeight: '800',
     fontSize: 12,
-  },
-  riverIndicator: {
-    position: 'absolute',
-    top: '48%',
-    left: 0,
-    right: 0,
-    height: 38,
-    backgroundColor: colors.mapWater,
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ rotate: '-6deg' }],
-  },
-  riverText: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.secondary,
-    fontWeight: '600',
-  },
-  pinContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  originPin: {
-    top: '32%',
-    left: '26%',
-  },
-  destinationPin: {
-    top: '64%',
-    right: '28%',
-  },
-  simulatedRouteLine: {
-    position: 'absolute',
-    top: '40%',
-    left: '32%',
-    width: '45%',
-    height: 80,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeGlow: {
-    width: '100%',
-    height: 6,
-    borderRadius: 3,
-    transform: [{ rotate: '42deg' }],
-  },
-  cityBadge: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.md,
-    backgroundColor: colors.mapBadgeBackground,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cityBadgeText: {
-    ...typography.captionMedium,
-    color: colors.textPrimary,
   },
 });
