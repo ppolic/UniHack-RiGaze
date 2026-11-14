@@ -11,6 +11,7 @@ import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppButton } from '../common/AppButton';
 import { RouteOptionDto } from '../../types/route';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface TripCompletedModalProps {
   visible: boolean;
@@ -37,6 +38,7 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
   onClose,
   onViewRewards,
 }) => {
+  const { t } = useTranslation();
   if (!option) return null;
 
   const effectivePoints = earlyFinish ? 0 : option.ecoPoints;
@@ -62,10 +64,10 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
 
           <Text style={styles.title}>
             {earlyFinish
-              ? 'Vožnja završena prerano'
+              ? t.tripEarlyTitle
               : isZeroPoints
-              ? 'Putovanje završeno'
-              : 'Zeleno putovanje završeno!'}
+              ? t.tripFinishedNeutralTitle
+              : t.tripCompletedTitle}
           </Text>
 
           <Text style={styles.routeSummaryText}>
@@ -85,33 +87,33 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
                 isZeroPoints && styles.rewardPointsValueNeutral,
               ]}
             >
-              +{effectivePoints} Eco-bodova
+              +{effectivePoints} {t.ecoPointsUnit}
             </Text>
             <Text style={styles.rewardSubtext}>
               {earlyFinish
-                ? 'Vožnja je završena prije dolaska na odredište (unutar 60 m od točke B), stoga bodovi nisu dodijeljeni.'
+                ? t.tripEarlySub
                 : isZeroPoints
-                ? 'Vožnja osobnim automobilom ne donosi eko-bodove. Idući put odaberite VeloTM ili STPT tramvaj za +90 bodova!'
-                : 'Hvala što čuvate čist zrak i smanjujete gužve u Timișoari!'}
+                ? t.tripNeutralSub
+                : t.tripCompletedSub}
             </Text>
           </View>
 
           {/* 3 Impact Metrics Row */}
           <View style={styles.metricsRow}>
             <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>Ušteda CO₂</Text>
+              <Text style={styles.metricLabel}>{t.co2Saved}</Text>
               <Text style={styles.metricValue}>
                 {co2SavedGrams > 0 ? `-${co2SavedGrams}g` : '0g'}
               </Text>
             </View>
 
             <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>Udaljenost</Text>
+              <Text style={styles.metricLabel}>{t.distanceShort}</Text>
               <Text style={styles.metricValue}>{option.distanceKm} km</Text>
             </View>
 
             <View style={styles.metricBox}>
-              <Text style={styles.metricLabel}>Trajanje</Text>
+              <Text style={styles.metricLabel}>{t.durationLabel}</Text>
               <Text style={styles.metricValue}>{option.durationMinutes} min</Text>
             </View>
           </View>
@@ -120,12 +122,12 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
           <View style={styles.progressSection}>
             <View style={styles.progressHeader}>
               <Text style={styles.progressTitle}>
-                ⭐ Ukupno: {totalPoints} bodova
+                {t.totalPointsHeader(totalPoints)}
               </Text>
               <Text style={styles.progressTargetText}>
                 {pointsRemaining > 0
-                  ? `Još ${pointsRemaining} do STPT dnevne karte`
-                  : 'Nagrada otključana! 🎉'}
+                  ? t.pointsToStpt(pointsRemaining)
+                  : t.rewardUnlocked}
               </Text>
             </View>
             <View style={styles.progressBarTrack}>
@@ -141,7 +143,7 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
           {/* Action Buttons */}
           <View style={styles.actionsColumn}>
             <AppButton
-              title="Pregledaj nagrade 🎁"
+              title={t.viewRewards}
               onPress={onViewRewards}
               variant="primary"
               size="md"
@@ -153,7 +155,7 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
               onPress={onClose}
               activeOpacity={0.75}
             >
-              <Text style={styles.secondaryCloseText}>Natrag na kartu</Text>
+              <Text style={styles.secondaryCloseText}>{t.backToMap}</Text>
             </TouchableOpacity>
           </View>
         </View>

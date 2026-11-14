@@ -5,9 +5,11 @@ import { useAuth } from '../../hooks/useAuth';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export const PointsSummaryCard: React.FC = () => {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   const points = user?.totalEcoPoints ?? 0;
   const co2Saved = user?.totalCo2SavedKg ?? 0;
@@ -17,7 +19,7 @@ export const PointsSummaryCard: React.FC = () => {
     <AppCard style={styles.card}>
       <View style={styles.topRow}>
         <View>
-          <Text style={styles.titleLabel}>Moji Eko-Bodovi</Text>
+          <Text style={styles.titleLabel}>{t.myEcoPoints}</Text>
           <Text style={styles.pointsNumber}>{points}</Text>
         </View>
         <View style={styles.leafIconBadge}>
@@ -30,17 +32,17 @@ export const PointsSummaryCard: React.FC = () => {
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
           <Text style={styles.statVal}>{co2Saved} kg</Text>
-          <Text style={styles.statLbl}>Ušteđeno CO₂</Text>
+          <Text style={styles.statLbl}>{t.co2SavedShort}</Text>
         </View>
         <View style={styles.verticalDivider} />
         <View style={styles.statBox}>
           <Text style={styles.statVal}>{tripsCount}</Text>
-          <Text style={styles.statLbl}>Zelenih ruta</Text>
+          <Text style={styles.statLbl}>{t.greenRoutesShort}</Text>
         </View>
         <View style={styles.verticalDivider} />
         <View style={styles.statBox}>
           <Text style={styles.statVal}>{(co2Saved * 0.05).toFixed(1)} 🌳</Text>
-          <Text style={styles.statLbl}>Ekiv. stabala</Text>
+          <Text style={styles.statLbl}>{t.treesEquivShort}</Text>
         </View>
       </View>
     </AppCard>

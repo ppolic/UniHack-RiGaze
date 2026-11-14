@@ -3,6 +3,7 @@ import { Tabs } from 'expo-router';
 import { Text, View, StyleSheet } from 'react-native';
 import { colors } from '../../theme/colors';
 import { borderRadius } from '../../theme/spacing';
+import { useTranslation } from '../../hooks/useTranslation';
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -13,6 +14,8 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
+
   return (
     <Tabs
       screenOptions={{
@@ -37,28 +40,28 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Karta i Rute',
+          title: t.tabMap,
           tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Povijest',
+          title: t.tabHistory,
           tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="rewards"
         options={{
-          title: 'Nagrade',
+          title: t.tabRewards,
           tabBarIcon: ({ focused }) => <TabIcon emoji="🎁" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t.tabProfile,
           tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
         }}
       />

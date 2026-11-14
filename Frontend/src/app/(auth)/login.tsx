@@ -8,10 +8,12 @@ import { typography } from '../../theme/typography';
 import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function LoginScreen() {
   const router = useRouter();
   const { loginAsDemoUser } = useAuth();
+  const { language, toggleLanguage, t } = useTranslation();
   const [email, setEmail] = useState('student@ecomutare.tm');
   const [password, setPassword] = useState('password123');
 
@@ -31,29 +33,41 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
+      <View style={styles.langRow}>
+        <TouchableOpacity
+          style={styles.langToggleBtn}
+          onPress={toggleLanguage}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={
+            language === 'ro'
+              ? 'Schimbă limba în engleză'
+              : 'Switch language to Romanian'
+          }
+        >
+          <Text style={styles.langToggleText}>
+            {language === 'ro' ? '🇷🇴 Română (Schimbă în EN)' : '🇬🇧 English (Switch to RO)'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.header}>
         <View style={styles.logoBadge}>
           <Text style={styles.logoText}>🌱</Text>
         </View>
         <Text style={styles.appTitle}>BeGreen</Text>
-        <Text style={styles.tagline}>
-          Getting from A to B shouldn't cost the planet.
-        </Text>
+        <Text style={styles.tagline}>{t.loginTagline}</Text>
       </View>
 
       <AppCard style={styles.formCard}>
-        <Text style={styles.formTitle}>DEMO MODE — Demo pristup</Text>
-        <Text style={styles.demoNotice}>
-          Email i lozinka služe samo za prikaz obrasca i ne provjeravaju se na serveru.
-          Ne unosite stvarne lozinke. Nastavak otvara studentski demo profil, bez
-          autentifikacije stvarnog računa.
-        </Text>
+        <Text style={styles.formTitle}>{t.loginFormTitle}</Text>
+        <Text style={styles.demoNotice}>{t.loginNotice}</Text>
         <AppInput
-          label="Email adresa"
-          accessibilityLabel="Email adresa — demo, ne provjerava se"
+          label={t.emailAddressLabel}
+          accessibilityLabel={t.emailAddressLabel}
           value={email}
           onChangeText={setEmail}
-          placeholder="unesite email"
+          placeholder={t.emailPlaceholder}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -62,8 +76,8 @@ export default function LoginScreen() {
           onSubmitEditing={handleLogin}
         />
         <AppInput
-          label="Lozinka"
-          accessibilityLabel="Lozinka — samo demo, ne unosite stvarnu lozinku"
+          label={t.passwordLabel}
+          accessibilityLabel={t.passwordLabel}
           value={password}
           onChangeText={setPassword}
           placeholder="••••••••"
@@ -76,7 +90,7 @@ export default function LoginScreen() {
         />
 
         <AppButton
-          title="Otvori studentski demo"
+          title={t.openStudentDemoBtn}
           onPress={handleLogin}
           style={styles.submitBtn}
         />
@@ -86,24 +100,25 @@ export default function LoginScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            Želite vlastiti demo profil? <Text style={styles.linkText}>Izradite demo profil</Text>
+            {t.wantCustomDemo}
+            <Text style={styles.linkText}>{t.createDemoProfileLink}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>
 
       {/* Hackathon Quick Demo Presets */}
       <View style={styles.demoBox}>
-        <Text style={styles.demoTitle}>⚡ Brzi Demo Pristup (za žiri i testiranje):</Text>
+        <Text style={styles.demoTitle}>{t.quickDemoTitle}</Text>
         <View style={styles.demoButtonsRow}>
           <AppButton
-            title="👤 Student (Bicikl/JPP)"
+            title={t.quickDemoStudent}
             variant="outline"
             size="sm"
             onPress={handleLogin}
             style={styles.demoBtn}
           />
           <AppButton
-            title="♿ Pristupačnost (Kolica)"
+            title={t.quickDemoAccess}
             variant="outline"
             size="sm"
             onPress={handleDemoAccessibilityLogin}
@@ -121,6 +136,23 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.background,
     justifyContent: 'center',
+  },
+  langRow: {
+    alignItems: 'flex-end',
+    marginBottom: spacing.sm,
+  },
+  langToggleBtn: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  langToggleText: {
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   header: {
     alignItems: 'center',

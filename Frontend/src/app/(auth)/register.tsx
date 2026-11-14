@@ -8,6 +8,7 @@ import { typography } from '../../theme/typography';
 import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
+import { getTranslations, useTranslation } from '../../hooks/useTranslation';
 
 type FormErrors = { fullName?: string; email?: string; birthDate?: string };
 
@@ -20,7 +21,8 @@ function calculateAge(birthDate: string, today: Date): number {
 }
 
 function getBirthDateError(value: string, now = new Date()): string | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Unesite datum u obliku YYYY-MM-DD.';
+  const tr = getTranslations();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return tr.regDateFormatError;
   const [year, month, day] = value.split('-').map(Number);
   // Round-trip the calendar fields to reject normalization such as February 30.
   // setFullYear also avoids the Date constructor's special handling of years 0–99.
@@ -28,16 +30,17 @@ function getBirthDateError(value: string, now = new Date()): string | undefined 
   date.setHours(0, 0, 0, 0);
   date.setFullYear(year, month - 1, day);
   if (year < 1 || date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
-    return 'Unesite stvarni kalendarski datum.';
+    return tr.regDateInvalidError;
   }
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (date > today) return 'Datum rođenja ne može biti u budućnosti.';
+  if (date > today) return tr.regDateFutureError;
   return undefined;
 }
 
 export default function RegisterScreen() {
   const router = useRouter();
   const { setUser, setToken } = useAuth();
+  const { t } = useTranslation();
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -53,9 +56,9 @@ export default function RegisterScreen() {
     const trimmedEmail = email.trim();
     const trimmedBirthDate = birthDate.trim();
     const nextErrors: FormErrors = {
-      fullName: trimmedName ? undefined : 'Unesite ime i prezime.',
+      fullName: trimmedName ? undefined : t.regNameError,
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
-        ? undefined : 'Unesite valjanu email adresu.',
+        ? undefined : t.regEmailError,
       birthDate: getBirthDateError(trimmedBirthDate, today),
     };
     setErrors(nextErrors);
@@ -90,11 +93,8 @@ export default function RegisterScreen() {
       automaticallyAdjustKeyboardInsets
     >
       <View style={styles.header}>
-        <Text style={styles.title}>DEMO MODE — Lokalni profil</Text>
-        <Text style={styles.subtitle}>
-          Izradite lokalni demo profil za isprobavanje aplikacije. Ne stvara se stvarni
-          račun na serveru. Profil je privremen i ne sprema se nakon ponovnog pokretanja aplikacije.
-        </Text>
+        <Text style={styles.title}>{t.regTitle}</Text>
+        <Text style={styles.subtitle}>{t.regSubtitle}</Text>
       </View>
 
       <AppCard style={styles.formCard}>
@@ -104,8 +104,8 @@ export default function RegisterScreen() {
           </Text>
         )}
         <AppInput
-          label="Ime i prezime"
-          accessibilityLabel="Ime i prezime"
+          label={t.regFullNameLabel}
+          accessibilityLabel={t.regFullNameLabel}
           accessibilityHint={errors.fullName}
           error={errors.fullName}
           value={fullName}
@@ -113,15 +113,15 @@ export default function RegisterScreen() {
             setFullName(value);
             setErrors((previous) => ({ ...previous, fullName: undefined }));
           }}
-          placeholder="npr. Ana Horvat"
+          placeholder={t.regFullNamePlaceholder}
           autoCapitalize="words"
           autoComplete="name"
           returnKeyType="done"
           onSubmitEditing={handleRegister}
         />
         <AppInput
-          label="Email"
-          accessibilityLabel="Email"
+          label={t.regEmailLabel}
+          accessibilityLabel={t.regEmailLabel}
           accessibilityHint={errors.email}
           error={errors.email}
           value={email}
@@ -129,7 +129,7 @@ export default function RegisterScreen() {
             setEmail(value);
             setErrors((previous) => ({ ...previous, email: undefined }));
           }}
-          placeholder="korisnik@ecomutare.tm"
+          placeholder="utilizator@begreen.tm"
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -138,8 +138,8 @@ export default function RegisterScreen() {
           onSubmitEditing={handleRegister}
         />
         <AppInput
-          label="Datum rođenja (YYYY-MM-DD)"
-          accessibilityLabel="Datum rođenja, u obliku godina-mjesec-dan"
+          label={t.regBirthDateLabel}
+          accessibilityLabel={t.regBirthDateLabel}
           accessibilityHint={errors.birthDate}
           error={errors.birthDate}
           value={birthDate}
@@ -154,12 +154,12 @@ export default function RegisterScreen() {
           onSubmitEditing={handleRegister}
         />
 
-        <Text style={styles.sectionHeader}>Pristupačnost i Vlastita Vozila</Text>
+        <Text style={styles.sectionHeader}>{t.regSectionAccessibility}</Text>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Osoba s invaliditetom (kolica)</Text>
+          <Text style={styles.toggleText}>{t.disabilityLabel}</Text>
           <Switch
-            accessibilityLabel="Osoba s invaliditetom, kolica"
+            accessibilityLabel={t.disabilityLabel}
             value={hasDisability}
             onValueChange={setHasDisability}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -167,9 +167,9 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Posjedujem vlastiti bicikl</Text>
+          <Text style={styles.toggleText}>{t.ownBikeLabel}</Text>
           <Switch
-            accessibilityLabel="Posjedujem vlastiti bicikl"
+            accessibilityLabel={t.ownBikeLabel}
             value={hasOwnBicycle}
             onValueChange={setHasOwnBicycle}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -177,9 +177,9 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Posjedujem automobil</Text>
+          <Text style={styles.toggleText}>{t.ownCarLabel}</Text>
           <Switch
-            accessibilityLabel="Posjedujem automobil"
+            accessibilityLabel={t.ownCarLabel}
             value={hasOwnCar}
             onValueChange={setHasOwnCar}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -187,7 +187,7 @@ export default function RegisterScreen() {
         </View>
 
         <AppButton
-          title="Izradi demo profil (+50 eko-bodova)"
+          title={t.regSubmitBtn}
           onPress={handleRegister}
           style={styles.submitBtn}
         />
@@ -197,7 +197,7 @@ export default function RegisterScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            <Text style={styles.linkText}>Natrag na demo pristup</Text>
+            <Text style={styles.linkText}>{t.regBackToDemo}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>

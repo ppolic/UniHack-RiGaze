@@ -9,9 +9,11 @@ import { AppCard } from '../../components/common/AppCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
 import { useRouter } from 'expo-router';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileScreen() {
   const { user, setUser, logout } = useAuth();
+  const { t } = useTranslation();
   const router = useRouter();
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
@@ -38,7 +40,7 @@ export default function ProfileScreen() {
 
     const fullName = draft.name.trim();
     if (!fullName) {
-      setNameError('Unesite ime za prikaz. Ime ne može biti prazno.');
+      setNameError(t.displayNameEmptyError);
       return;
     }
 
@@ -66,8 +68,8 @@ export default function ProfileScreen() {
               <AppCard>
                 <View accessibilityLiveRegion="polite">
                   <AppInput
-                    label="Ime za prikaz"
-                    accessibilityLabel="Ime za prikaz"
+                    label={t.displayNameLabel}
+                    accessibilityLabel={t.displayNameLabel}
                     accessibilityHint={nameError}
                     value={draft.name}
                     onChangeText={(name) => {
@@ -87,9 +89,9 @@ export default function ProfileScreen() {
                   />
                 </View>
                 <View style={styles.editActions}>
-                  <AppButton title="Spremi" onPress={handleSave} style={styles.editButton} />
+                  <AppButton title={t.save} onPress={handleSave} style={styles.editButton} />
                   <AppButton
-                    title="Odustani"
+                    title={t.cancel}
                     variant="outline"
                     onPress={handleCancel}
                     style={styles.editButton}
@@ -97,14 +99,14 @@ export default function ProfileScreen() {
                 </View>
               </AppCard>
             ) : (
-              <AppButton title="Uredi profil" variant="outline" onPress={handleEdit} />
+              <AppButton title={t.editProfileBtn} variant="outline" onPress={handleEdit} />
             )}
           </View>
         )}
 
         <View style={styles.logoutWrapper}>
           <AppButton
-            title="Odjavi se"
+            title={t.logoutBtn}
             variant="outline"
             onPress={handleLogout}
           />

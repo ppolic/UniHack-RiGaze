@@ -12,27 +12,30 @@ import { RewardCoupon } from '../../types/rewards';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
 import { API_CONFIG } from '../../services/api';
+import { getTranslations, useTranslation } from '../../hooks/useTranslation';
 
 // Date-only rewards remain valid through the end of the device's local day.
 function expiryError(expiryDate: string): string | null {
+  const tr = getTranslations();
   if (!expiryDate) return null;
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(expiryDate);
   const expiry = new Date(dateOnly ? `${expiryDate}T00:00:00` : expiryDate);
-  if (!Number.isFinite(expiry.getTime())) return 'Rok valjanosti nije moguće provjeriti.';
+  if (!Number.isFinite(expiry.getTime())) return tr.rewardsExpiryCheckFailed;
   if (dateOnly) {
     const [year, month, day] = expiryDate.split('-').map(Number);
     if (expiry.getFullYear() !== year || expiry.getMonth() + 1 !== month || expiry.getDate() !== day) {
-      return 'Rok valjanosti nije moguće provjeriti.';
+      return tr.rewardsExpiryCheckFailed;
     }
     expiry.setDate(expiry.getDate() + 1);
   }
-  return Date.now() >= expiry.getTime() ? 'Ova demo nagrada je istekla.' : null;
+  return Date.now() >= expiry.getTime() ? tr.rewardsExpired : null;
 }
 
 const redemptionKey = (userId: string, rewardId: string) => JSON.stringify([userId, rewardId]);
 
 export default function RewardsScreen() {
   const { user, isAuthenticated } = useAuth();
+  const { language, t } = useTranslation();
   const [coupons, setCoupons] = useState<RewardCoupon[]>([]);
   const [catalogueError, setCatalogueError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +60,7 @@ export default function RewardsScreen() {
     rewardsService.getCoupons().then((result) => {
       if (active) setCoupons(result);
     }).catch(() => {
-      if (active) setCatalogueError('Nije moguće učitati demo nagrade. Pokušajte ponovno kasnije.');
+      if (active) setCatalogueError(getTranslations().rewardsLoadError);
     });
     return () => {
       active = false;
@@ -65,7 +68,7 @@ export default function RewardsScreen() {
       sessionVersion.current += 1;
       unsubscribe();
     };
-  }, []);
+  }, [language]);
 
   const handleRedeem = async (coupon: RewardCoupon) => {
     // State alone cannot block two taps before React renders the disabled buttons.
@@ -82,35 +85,36 @@ export default function RewardsScreen() {
     };
     setError(null);
 
+    const tr = getTranslations();
     try {
       if (API_CONFIG.USE_MOCK_FALLBACK !== true) {
-        throw new Error('Iskorištavanje putem backend sustava još nije dostupno.');
+        throw new Error(tr.rewardsBackendUnavailable);
       }
       if (!initial.isAuthenticated || !initial.user || !token) {
-        throw new Error('Prijavite se za iskorištavanje demo nagrada.');
+        throw new Error(tr.rewardsLoginRequired);
       }
       const key = redemptionKey(initial.user.id, coupon.id);
       const cost = coupon.pointsCost;
       const validate = (balance: number) => {
         if (completed.current.has(key) || coupon.isRedeemed) {
-          throw new Error('Ova demo nagrada već je iskorištena.');
+          throw new Error(tr.rewardsAlreadyRedeemed);
         }
         if (!Number.isSafeInteger(cost) || cost < 0 || !Number.isFinite(balance)) {
-          throw new Error('Bodove za ovu demo nagradu nije moguće provjeriti.');
+          throw new Error(tr.rewardsInvalidCost);
         }
         const expiry = expiryError(coupon.expiryDate);
         if (expiry) throw new Error(expiry);
-        if (balance < cost) throw new Error(`Nedostaje vam ${cost - balance} eko-bodova.`);
+        if (balance < cost) throw new Error(tr.rewardsMissingPoints(cost - balance));
       };
       validate(initial.user.totalEcoPoints);
       setPendingId(coupon.id);
       const response = await rewardsService.redeemCoupon(coupon.id);
       if (!isCurrent()) return;
       if (response?.success !== true || typeof response.promoCode !== 'string' || !response.promoCode.trim()) {
-        throw new Error('Demo nagrada nije aktivirana. Pokušajte ponovno.');
+        throw new Error(tr.rewardsActivationFailed);
       }
       if (API_CONFIG.USE_MOCK_FALLBACK !== true) {
-        throw new Error('Demo način više nije aktivan. Bodovi nisu potrošeni.');
+        throw new Error(tr.rewardsModeChanged);
       }
       // Re-read after the await: FE1 may have awarded points or updated the user.
       const latest = useUserStore.getState();
@@ -122,7 +126,7 @@ export default function RewardsScreen() {
       setRedemptions(new Map(completed.current));
     } catch (failure) {
       if (mounted.current && sessionVersion.current === version) {
-        setError(failure instanceof Error ? failure.message : 'Iskorištavanje nije uspjelo. Pokušajte ponovno.');
+        setError(failure instanceof Error ? failure.message : tr.rewardsRedeemFailed);
       }
     } finally {
       locked.current = false;
@@ -135,17 +139,13 @@ export default function RewardsScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <PointsSummaryCard />
 
-        <Text style={styles.sectionTitle}>DEMO katalog nagrada</Text>
-        <Text style={styles.notice}>
-          Ovo su primjeri nagrada za demonstraciju. Nazivi i popusti nisu stvarne partnerske
-          ponude. Generirani promo kodovi nemaju stvarnu vrijednost i ne mogu se iskoristiti.
-          Evidencija iskorištavanja privremena je i može nestati pri zatvaranju ovog zaslona.
-        </Text>
+        <Text style={styles.sectionTitle}>{t.rewardsCatalogTitle}</Text>
+        <Text style={styles.notice}>{t.rewardsNotice}</Text>
         {!mockMode && (
-          <Text style={styles.notice}>Backend iskorištavanje još nije dostupno. Demo iskorištavanje je isključeno.</Text>
+          <Text style={styles.notice}>{t.rewardsBackendOff}</Text>
         )}
         {(!isAuthenticated || !user) && (
-          <Text style={styles.notice}>Prijavite se za iskorištavanje demo nagrada.</Text>
+          <Text style={styles.notice}>{t.rewardsLoginRequired}</Text>
         )}
         {(catalogueError || error) && (
           <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
@@ -163,11 +163,11 @@ export default function RewardsScreen() {
             <AppCard key={coupon.id} style={styles.couponCard}>
               <View style={styles.couponHeader}>
                 <View>
-                  <Text style={styles.partnerName}>Demo primjer: {coupon.partnerName}</Text>
+                  <Text style={styles.partnerName}>{t.demoExamplePrefix} {coupon.partnerName}</Text>
                   <Text style={styles.couponTitle}>{coupon.title}</Text>
                 </View>
                 <Badge
-                  label={`${coupon.pointsCost} bodova`}
+                  label={`${coupon.pointsCost} ${t.points}`}
                   variant="reward"
                 />
               </View>
@@ -177,7 +177,7 @@ export default function RewardsScreen() {
               <View style={styles.couponFooter}>
                 <Badge label={coupon.discountValue} variant="success" />
                 <AppButton
-                  title={redeemed ? 'Redeemed — demo' : 'Iskoristi — demo'}
+                  title={redeemed ? t.redeemedDemoLabel : t.redeemDemoBtn}
                   loading={pendingId === coupon.id}
                   disabled={!mockMode || !isAuthenticated || !user || pendingId !== null || redeemed || !!expiry || !validCost || missing > 0}
                   size="sm"
@@ -186,18 +186,18 @@ export default function RewardsScreen() {
               </View>
               {pendingId === coupon.id && (
                 <Text style={styles.feedback} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>
-                  Aktiviranje demo nagrade…
+                  {t.activatingReward}
                 </Text>
               )}
               {redeemed ? (
                 <View style={styles.redemptionFeedback} accessibilityLiveRegion="polite">
-                  <Badge label="Redeemed — demo" variant="success" />
-                  {code && <Text selectable style={styles.promoCode}>Demo promo kod: {code}</Text>}
+                  <Badge label={t.redeemedDemoLabel} variant="success" />
+                  {code && <Text selectable style={styles.promoCode}>{t.demoPromoCode} {code}</Text>}
                 </View>
               ) : expiry || !validCost ? (
-                <Text style={styles.error}>{expiry || 'Neispravan trošak nagrade.'}</Text>
+                <Text style={styles.error}>{expiry || t.invalidRewardCostInline}</Text>
               ) : missing > 0 && (
-                <Text style={styles.feedback}>Nedostaje vam {missing} eko-bodova.</Text>
+                <Text style={styles.feedback}>{t.rewardsMissingPoints(missing)}</Text>
               )}
             </AppCard>
           );

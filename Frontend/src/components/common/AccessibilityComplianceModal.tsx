@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -10,6 +10,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../hooks/useTranslation';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -162,10 +163,15 @@ export const AccessibilityComplianceModal: React.FC<
     updatePreferences,
   } = useAuth();
 
-  const [lang, setLang] = useState<StatementLanguage>('ro');
+  const { language } = useTranslation();
+  const [lang, setLang] = useState<StatementLanguage>(language);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+
+  useEffect(() => {
+    setLang(language);
+  }, [language, visible]);
 
   const copy = STATEMENT_COPY[lang];
 

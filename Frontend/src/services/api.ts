@@ -1,10 +1,12 @@
+import { getTranslations } from '../hooks/useTranslation';
+
 /**
- * Base API Client for EcoMutare
+ * Base API Client for BeGreen
  * Supports dynamic IP switching for physical devices on local network.
  */
 
 export const API_CONFIG = {
-  // Zamijeni s lokalnim IP-jem računala ako testiraš s mobitela preko Expo Go (npr. 'http://192.168.1.15:5279')
+  // Replace with local LAN IP when testing from a physical phone via Expo Go (e.g. 'http://192.168.1.15:5279')
   BASE_URL: 'http://localhost:5279',
   USE_MOCK_FALLBACK: true,
   TIMEOUT_MS: 4000,
@@ -26,6 +28,7 @@ export async function checkBackendHealth(): Promise<{
   latencyMs?: number;
   message: string;
 }> {
+  const tr = getTranslations();
   const startedAt = Date.now();
   try {
     await apiFetch('/routes/plan', {
@@ -46,15 +49,15 @@ export async function checkBackendHealth(): Promise<{
     return {
       ok: true,
       latencyMs,
-      message: `Backend aktivan (${latencyMs} ms)`,
+      message: tr.svcApiHealthy(latencyMs),
     };
   } catch (err: any) {
     return {
       ok: false,
       message:
         err?.name === 'AbortError'
-          ? `Timeout (${API_CONFIG.TIMEOUT_MS} ms) — koristite Offline Demo`
-          : `Nedostupno (${API_CONFIG.BASE_URL}) — siguran Offline Demo je spreman`,
+          ? tr.svcApiTimeout(API_CONFIG.TIMEOUT_MS)
+          : tr.svcApiUnreachable(API_CONFIG.BASE_URL),
     };
   }
 }

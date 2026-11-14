@@ -1,4 +1,5 @@
 import { apiFetch, API_CONFIG } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import {
   transitService,
   decodeGooglePolyline,
@@ -305,15 +306,16 @@ async function buildRealSmttTransitRoute(
       return best && bestD < 450 ? best.name : fallbackLabel;
     };
 
-    const stopAName = findClosestStopName(boardPt, 'Stanica polaska');
-    const stopBName = findClosestStopName(alightPt, 'Stanica dolaska');
+    const tr = getTranslations();
+    const stopAName = findClosestStopName(boardPt, tr.svcDefaultStopA);
+    const stopBName = findClosestStopName(alightPt, tr.svcDefaultStopB);
 
     const vehicleLabel =
       bestPath.type === 0
-        ? 'Tramvaj'
+        ? tr.svcVehicleTram
         : bestPath.type === 11
-        ? 'Trolejbus'
-        : 'Autobus';
+        ? tr.svcVehicleTrolleybus
+        : tr.svcVehicleBus;
 
     const [walkToStopGeometry, walkFromStopGeometry] = await Promise.all([
       fetchStreetGeometry(origin, boardPt, 'foot'),
@@ -331,9 +333,10 @@ async function buildRealSmttTransitRoute(
   }
 
   // Fallback if paths array was empty: route along street network between nearest stops
+  const tr = getTranslations();
   const transitGeometry = await fetchStreetGeometry(origin, destination, 'driving');
   return {
-    lineTitle: 'Javni prijevoz (SMTT)',
+    lineTitle: tr.svcPublicTransitSmtt,
     stopAName: transitService.resolveNearestPointName(origin),
     stopBName: transitService.resolveNearestPointName(destination),
     walkToStopGeometry: [origin, transitGeometry[0]],
@@ -350,6 +353,7 @@ async function buildRoadFollowingPlanResponse(
   request: RoutePlanRequest
 ): Promise<RoutePlanResponse> {
   const { origin, destination, profile } = request;
+  const tr = getTranslations();
 
   // Fetch road-following geometries in parallel
   const [
@@ -372,8 +376,8 @@ async function buildRoadFollowingPlanResponse(
     id: 'walk',
     mode: 'Walk',
     title: profile.hasDisability
-      ? 'Pješke / Kolica (Prilagođeni pločnici)'
-      : 'Pješke',
+      ? tr.svcWalkWheelchairTitle
+      : tr.svcWalkTitle,
     durationMinutes: walkDurationMin,
     distanceKm: walkDistKm,
     costRon: 0,
@@ -384,7 +388,7 @@ async function buildRoadFollowingPlanResponse(
     segments: [
       {
         mode: 'Walk',
-        description: 'Pješačka ruta ulicama i mostovima Temišvara',
+        description: tr.svcWalkDesc,
         durationMinutes: walkDurationMin,
         distanceKm: walkDistKm,
         geometry: walkGeometry,
@@ -395,7 +399,7 @@ async function buildRoadFollowingPlanResponse(
 
   // 2. BIKE OPTION (Own bike OR nearest VeloTM dock + street bike route)
   let bikeSegments: RouteSegmentDto[] = [];
-  let bikeTitle = profile.ownsBike ? 'Vlastiti bicikl' : 'Najam bicikla (VeloTM)';
+  let bikeTitle = profile.ownsBike ? tr.svcOwnBikeTitle : tr.svcRentBikeTitle;
 
   let nearestVeloStart = VELOTM_STATIONS[0];
   let minVeloDist = Infinity;
@@ -420,14 +424,14 @@ async function buildRoadFollowingPlanResponse(
     bikeSegments = [
       {
         mode: 'Walk',
-        description: `Pješke do stanice ${nearestVeloStart.name}`,
+        description: tr.svcWalkToStation(nearestVeloStart.name),
         durationMinutes: wMin,
         distanceKm: wDist,
         geometry: walkToVelo,
       },
       {
         mode: 'Bike',
-        description: `Biciklistička ruta cestom od ${nearestVeloStart.name} do odredišta`,
+        description: tr.svcBikeFromStation(nearestVeloStart.name),
         durationMinutes: bMin,
         distanceKm: bDist,
         geometry: bikeFromVelo,
@@ -439,7 +443,7 @@ async function buildRoadFollowingPlanResponse(
     bikeSegments = [
       {
         mode: 'Bike',
-        description: 'Biciklistička ruta ulicama i stazama Temišvara',
+        description: tr.svcBikeDesc,
         durationMinutes: bMin,
         distanceKm: bDist,
         geometry: directBikeGeometry,
@@ -472,8 +476,7 @@ async function buildRoadFollowingPlanResponse(
         ? [
             {
               type: 'Helmet',
-              message:
-                'Kaciga je zakonski obavezna za vozače od 14 do 16 godina.',
+              message: tr.svcHelmetWarning,
             },
           ]
         : [],
@@ -489,7 +492,7 @@ async function buildRoadFollowingPlanResponse(
   const scooterOption: RouteOptionDto = {
     id: 'scooter',
     mode: 'Scooter',
-    title: profile.ownsScooter ? 'Vlastiti e-romobil' : 'Najam e-romobila',
+    title: profile.ownsScooter ? tr.svcOwnScooterTitle : tr.svcRentScooterTitle,
     durationMinutes: scooterDurationMin,
     distanceKm: scooterDistKm,
     costRon: profile.ownsScooter
@@ -502,7 +505,7 @@ async function buildRoadFollowingPlanResponse(
     segments: [
       {
         mode: 'Scooter',
-        description: 'Vožnja e-romobilom prometnicama i biciklističkim koridorom',
+        description: tr.svcScooterDesc,
         durationMinutes: scooterDurationMin,
         distanceKm: scooterDistKm,
         geometry: directBikeGeometry,
@@ -513,8 +516,7 @@ async function buildRoadFollowingPlanResponse(
         ? [
             {
               type: 'Helmet',
-              message:
-                'Kaciga je zakonski obavezna za vozače od 14 do 16 godina.',
+              message: tr.svcHelmetWarning,
             },
           ]
         : [],
@@ -533,7 +535,7 @@ async function buildRoadFollowingPlanResponse(
   if (w1Dist >= 0.04) {
     transitSegments.push({
       mode: 'Walk',
-      description: `Pješke do stanice ${transitRoute.stopAName}`,
+      description: tr.svcWalkToStation(transitRoute.stopAName),
       durationMinutes: w1Min,
       distanceKm: w1Dist,
       geometry: transitRoute.walkToStopGeometry,
@@ -549,7 +551,7 @@ async function buildRoadFollowingPlanResponse(
   if (w2Dist >= 0.04) {
     transitSegments.push({
       mode: 'Walk',
-      description: `Pješke od stanice ${transitRoute.stopBName} do odredišta`,
+      description: tr.svcWalkFromStopToDest(transitRoute.stopBName),
       durationMinutes: w2Min,
       distanceKm: w2Dist,
       geometry: transitRoute.walkFromStopGeometry,
@@ -563,7 +565,7 @@ async function buildRoadFollowingPlanResponse(
     id: 'transit',
     mode: 'PublicTransport',
     title: profile.hasDisability
-      ? `${transitRoute.lineTitle} (Niski pod)`
+      ? `${transitRoute.lineTitle} (${tr.svcLowFloorTag})`
       : transitRoute.lineTitle,
     durationMinutes: totalTransitMin,
     distanceKm: totalTransitDistKm,
@@ -577,7 +579,7 @@ async function buildRoadFollowingPlanResponse(
       ? [
           {
             type: 'NotAccessible',
-            message: 'Odabrana SMTT linija s pristupačnim ulazom.',
+            message: tr.svcAccessibleStopMsg,
           },
         ]
       : [],
@@ -620,8 +622,8 @@ async function buildRoadFollowingPlanResponse(
     {
       mode: 'Car',
       description: nearestParking
-        ? `Vožnja cestom do ${nearestParking.name}`
-        : 'Vožnja automobilom prometnicama Temišvara',
+        ? tr.svcDriveToParking(nearestParking.name)
+        : tr.svcDriveDesc,
       durationMinutes: carDriveMin,
       distanceKm: carDriveKm,
       geometry: carDriveGeo,
@@ -630,9 +632,10 @@ async function buildRoadFollowingPlanResponse(
   if (nearestParking && minParkingDist < 900 && minParkingDist > 40) {
     carSegments.push({
       mode: 'Walk',
-      description: `Pješke od ${nearestParking.name} (${
+      description: tr.svcWalkFromParking(
+        nearestParking.name,
         nearestParking.zone || 'TimPark'
-      }) do odredišta`,
+      ),
       durationMinutes: carWalkMin,
       distanceKm: carWalkKm,
       geometry: carWalkGeo,
@@ -643,8 +646,10 @@ async function buildRoadFollowingPlanResponse(
     id: 'car',
     mode: 'Car',
     title: profile.hasDisability
-      ? 'Automobil (Invalidski TimPark parking)'
-      : `Automobil + ${nearestParking ? nearestParking.name : 'TimPark'}`,
+      ? tr.svcCarAccessibleTitle
+      : `${tr.svcCarTitlePrefix} + ${
+          nearestParking ? nearestParking.name : 'TimPark'
+        }`,
     durationMinutes: carDriveMin + carWalkMin,
     distanceKm: totalCarDistKm,
     costRon: profile.hasDisability
@@ -663,7 +668,7 @@ async function buildRoadFollowingPlanResponse(
     warnings: [
       {
         type: 'Estimate',
-        message: `Automobil emitira ${carCo2}g CO₂. Javni prijevoz ili bicikl čuvaju zrak u Temišvaru.`,
+        message: tr.svcCarCo2Warn(carCo2),
       },
     ],
   };

@@ -13,8 +13,10 @@ import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
 import { Badge } from '../common/Badge';
 import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceModal';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export const ProfileDetails: React.FC = () => {
+  const { t } = useTranslation();
   const {
     user,
     updatePreferences,
@@ -38,9 +40,9 @@ export const ProfileDetails: React.FC = () => {
         <Text style={styles.userName}>{user.fullName}</Text>
         <Text style={styles.userEmail}>{user.email}</Text>
         <View style={styles.badgesRow}>
-          <Badge label={`Dob: ${user.age} god.`} variant="neutral" />
+          <Badge label={t.ageBadge(user.age)} variant="neutral" />
           {hasDisability && (
-            <Badge label="Pristupačnost aktivna" variant="info" />
+            <Badge label={t.accessibilityActiveBadge} variant="info" />
           )}
           {(wcagLargeText || wcagTextRouteMode) && (
             <Badge label="WCAG 2.1 AA" variant="success" />
@@ -50,16 +52,14 @@ export const ProfileDetails: React.FC = () => {
 
       {/* Mobility Preferences & Accessibility Settings */}
       <Text style={styles.sectionTitle} accessibilityRole="header">
-        Pristupačnost i Vlastita Vozila
+        {t.accessibilityAndVehicles}
       </Text>
       <AppCard style={styles.settingsCard}>
         {/* Disability Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Osoba s invaliditetom / Kolica</Text>
-            <Text style={styles.toggleDesc}>
-              Automatski filtrira pristupačan javni prijevoz i rezervirani parking.
-            </Text>
+            <Text style={styles.toggleLabel}>{t.disabilityLabel}</Text>
+            <Text style={styles.toggleDesc}>{t.disabilityDesc}</Text>
           </View>
           <Switch
             value={user.preferences.hasDisability}
@@ -67,7 +67,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Osoba s invaliditetom ili invalidska kolica"
+            accessibilityLabel={t.disabilityLabel}
             accessibilityState={{ checked: user.preferences.hasDisability }}
           />
         </View>
@@ -77,10 +77,8 @@ export const ProfileDetails: React.FC = () => {
         {/* Own Bicycle Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Posjedujem vlastiti bicikl</Text>
-            <Text style={styles.toggleDesc}>
-              Ne predlaže najam, već direktne biciklističke rute.
-            </Text>
+            <Text style={styles.toggleLabel}>{t.ownBikeLabel}</Text>
+            <Text style={styles.toggleDesc}>{t.ownBikeDesc}</Text>
           </View>
           <Switch
             value={user.preferences.hasOwnBicycle}
@@ -88,7 +86,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Posjedujem vlastiti bicikl"
+            accessibilityLabel={t.ownBikeLabel}
             accessibilityState={{ checked: user.preferences.hasOwnBicycle }}
           />
         </View>
@@ -98,10 +96,8 @@ export const ProfileDetails: React.FC = () => {
         {/* Own Car Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Posjedujem automobil</Text>
-            <Text style={styles.toggleDesc}>
-              Omogućuje opciju vožnje s preporučenim parkingom.
-            </Text>
+            <Text style={styles.toggleLabel}>{t.ownCarLabel}</Text>
+            <Text style={styles.toggleDesc}>{t.ownCarDesc}</Text>
           </View>
           <Switch
             value={user.preferences.hasOwnCar}
@@ -109,7 +105,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Posjedujem vlastiti automobil"
+            accessibilityLabel={t.ownCarLabel}
             accessibilityState={{ checked: user.preferences.hasOwnCar }}
           />
         </View>
@@ -117,15 +113,13 @@ export const ProfileDetails: React.FC = () => {
 
       {/* WCAG 2.1 Level AA / Romanian Law 232/2022 / EN 301 549 Section */}
       <Text style={styles.wcagSectionTitle} accessibilityRole="header">
-        Pristupačnost (Zakon 232/2022 • WCAG 2.1 AA)
+        {t.wcagSectionHeader}
       </Text>
       <AppCard style={styles.settingsCard}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>🔤 Povećani tekst (WCAG 1.4.4)</Text>
-            <Text style={styles.toggleDesc}>
-              Povećava ključne nazive ruta, mjerenja i upute za slabovidne osobe.
-            </Text>
+            <Text style={styles.toggleLabel}>{t.wcagLargeTextLabel}</Text>
+            <Text style={styles.toggleDesc}>{t.wcagLargeTextDesc}</Text>
           </View>
           <Switch
             value={wcagLargeText}
@@ -133,7 +127,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Uključi povećani tekst prema WCAG 1.4.4"
+            accessibilityLabel={t.wcagLargeTextLabel}
             accessibilityState={{ checked: wcagLargeText }}
           />
         </View>
@@ -142,10 +136,8 @@ export const ProfileDetails: React.FC = () => {
 
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>📋 Tekstualni prikaz karte (EN 301 549)</Text>
-            <Text style={styles.toggleDesc}>
-              Zamjenjuje vizualnu kartu dostupnim tekstualnim popisom stanica i koraka rute.
-            </Text>
+            <Text style={styles.toggleLabel}>{t.wcagTextMapLabel}</Text>
+            <Text style={styles.toggleDesc}>{t.wcagTextMapDesc}</Text>
           </View>
           <Switch
             value={wcagTextRouteMode}
@@ -153,7 +145,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Uključi tekstualnu alternativu karte prema normi EN 301 549"
+            accessibilityLabel={t.wcagTextMapLabel}
             accessibilityState={{ checked: wcagTextRouteMode }}
           />
         </View>
@@ -166,14 +158,14 @@ export const ProfileDetails: React.FC = () => {
           activeOpacity={0.85}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           accessibilityRole="button"
-          accessibilityLabel="Open Romanian Law 232/2022 and WCAG 2.1 AA Accessibility Statement in Romanian and English"
+          accessibilityLabel={t.statementModalA11y}
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.statementBtnTitle}>
-              📜 Law 232/2022 & WCAG 2.1 AA Statement (RO / EN)
+              {t.statementModalTitleBtn}
             </Text>
             <Text style={styles.statementBtnSub}>
-              Declarație privind accesibilitatea • EN 301 549 • ADR Feedback
+              {t.statementModalSubBtn}
             </Text>
           </View>
           <Text style={styles.statementBtnArrow}>➔</Text>

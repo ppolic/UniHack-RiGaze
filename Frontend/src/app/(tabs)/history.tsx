@@ -8,6 +8,7 @@ import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
 import { rewardsService } from '../../services/rewardsService';
 import { TripHistoryItem } from '../../types/rewards';
+import { useTranslation } from '../../hooks/useTranslation';
 
 type HistoryState =
   | { status: 'loading' }
@@ -15,6 +16,7 @@ type HistoryState =
   | { status: 'success'; trips: TripHistoryItem[] };
 
 export default function HistoryScreen() {
+  const { language, t } = useTranslation();
   const [state, setState] = useState<HistoryState>({ status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
 
@@ -35,7 +37,7 @@ export default function HistoryScreen() {
       // Ignore results after unmount or when a newer request replaces this one.
       active = false;
     };
-  }, [requestVersion]);
+  }, [requestVersion, language]);
 
   const handleRetry = () => {
     setState({ status: 'loading' });
@@ -46,10 +48,8 @@ export default function HistoryScreen() {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Povijest Putovanja</Text>
-          <Text style={styles.subtitle}>
-            Zabilježena putovanja i doprinos smanjenju emisija u Timișoari.
-          </Text>
+          <Text style={styles.title}>{t.historyTitle}</Text>
+          <Text style={styles.subtitle}>{t.historySubtitle}</Text>
         </View>
 
         {state.status === 'loading' && (
@@ -57,11 +57,11 @@ export default function HistoryScreen() {
             style={styles.statusCard}
             accessible
             accessibilityRole="progressbar"
-            accessibilityLabel="Učitavanje povijesti putovanja"
+            accessibilityLabel={t.historyLoading}
             accessibilityState={{ busy: true }}
           >
             <ActivityIndicator size="large" color={colors.primary} accessible={false} />
-            <Text style={styles.statusMessage}>Učitavanje povijesti putovanja…</Text>
+            <Text style={styles.statusMessage}>{t.historyLoading}</Text>
           </View>
         )}
 
@@ -72,17 +72,17 @@ export default function HistoryScreen() {
               accessibilityRole="alert"
               accessibilityLiveRegion="assertive"
             >
-              Nije moguće učitati povijest putovanja. Provjerite vezu i pokušajte ponovno.
+              {t.historyError}
             </Text>
-            <AppButton title="Pokušaj ponovno" onPress={handleRetry} />
+            <AppButton title={t.retry} onPress={handleRetry} />
           </AppCard>
         )}
 
         {state.status === 'success' && state.trips.length === 0 && (
           <AppCard style={styles.statusCard}>
-            <Text style={styles.routeText}>Još nema zabilježenih putovanja</Text>
+            <Text style={styles.routeText}>{t.historyEmptyTitle}</Text>
             <Text style={styles.statusMessage} accessibilityLiveRegion="polite">
-              Ovdje ćete pronaći pregled svojih zabilježenih putovanja i osvojenih eko-bodova.
+              {t.historyEmptySub}
             </Text>
           </AppCard>
         )}
@@ -92,7 +92,7 @@ export default function HistoryScreen() {
             <View style={styles.topRow}>
               <Text style={styles.tripDate}>{trip.date}</Text>
               <Badge
-                label={`+${trip.pointsEarned} bodova`}
+                label={`+${trip.pointsEarned} ${t.points}`}
                 variant="reward"
               />
             </View>
@@ -103,10 +103,10 @@ export default function HistoryScreen() {
 
             <View style={styles.metaRow}>
               <Text style={styles.metaLabel}>
-                Način: <Text style={styles.metaVal}>{trip.mode}</Text>
+                {t.modePrefix}: <Text style={styles.metaVal}>{trip.mode}</Text>
               </Text>
               <Text style={styles.metaLabel}>
-                Udaljenost: <Text style={styles.metaVal}>{trip.distanceKm} km</Text>
+                {t.distancePrefix}: <Text style={styles.metaVal}>{trip.distanceKm} km</Text>
               </Text>
               <Text style={styles.metaLabel}>
                 CO₂: <Text style={styles.metaVal}>-{trip.co2SavedGrams}g</Text>

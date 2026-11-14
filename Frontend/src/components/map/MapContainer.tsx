@@ -14,6 +14,7 @@ import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { transitService } from '../../services/transitService';
 import { WebLeafletMap } from './WebLeafletMap';
+import { useTranslation } from '../../hooks/useTranslation';
 import {
   GeoPoint,
   StationLocation,
@@ -222,8 +223,8 @@ const ALL_CATEGORIES: PoiCategoryFilter[] = [
 export const MapContainer: React.FC<MapContainerProps> = ({
   origin,
   destination,
-  originName = 'Polazište',
-  destinationName = 'Odredište',
+  originName,
+  destinationName,
   userLocation,
   isNavigating = false,
   stations = [],
@@ -237,6 +238,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   onSelectPoiAsDestination,
   onUserLocationResolved,
 }) => {
+  const { t } = useTranslation();
+  const resolvedOriginName = originName ?? t.originDefaultName;
+  const resolvedDestinationName = destinationName ?? t.destDefaultName;
   const mapRef = useRef<any>(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
@@ -409,13 +413,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={styles.poiRouteBtn}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
-          accessibilityLabel={`Postavi ${name} kao Odredište B`}
+          accessibilityLabel={t.setAsDestBA11y(name)}
           onPress={() => {
             onSelectPoiAsDestination(point, name);
             setSelectedPoi(null);
           }}
         >
-          <Text style={styles.poiRouteBtnText}>🏁 Odredište (B)</Text>
+          <Text style={styles.poiRouteBtnText}>{t.setAsDestB}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -632,12 +636,12 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
   const renderPoiFilterBar = () => {
     const filterItems: { id: PoiCategoryFilter; label: string }[] = [
-      { id: 'bus', label: '🚌 Busevi' },
-      { id: 'tram', label: '🚊 Tramvaji' },
-      { id: 'trolleybus', label: '🚎 Trolejbusi' },
+      { id: 'bus', label: t.filterBus },
+      { id: 'tram', label: t.filterTram },
+      { id: 'trolleybus', label: t.filterTrolleybus },
       { id: 'bike', label: '🚲 VeloTM' },
       { id: 'parking', label: '🅿️ Parking' },
-      { id: 'landmarks', label: '🏛️ Znamenitosti' },
+      { id: 'landmarks', label: t.filterLandmarks },
     ];
 
     const anyActive = activeFilters.length > 0;
@@ -660,7 +664,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
             accessibilityState={{ selected: anyActive }}
-            accessibilityLabel={anyActive ? 'Sakrij sve ikone s karte' : 'Prikaži sve kategorije na karti'}
+            accessibilityLabel={anyActive ? t.hideIconsA11y : t.showAllA11y}
           >
             <Text
               style={[
@@ -668,7 +672,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 !anyActive && styles.poiFilterChipTextActive,
               ]}
             >
-              {anyActive ? '👁️ Sakrij ikone' : '👁️ Čista karta (Prikaži sve)'}
+              {anyActive ? t.hideIcons : t.cleanMapShowAll}
             </Text>
           </TouchableOpacity>
 
@@ -683,7 +687,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isActive }}
-                accessibilityLabel={`Filter karte: ${f.label}`}
+                accessibilityLabel={`${t.filterMapPrefix} ${f.label}`}
               >
                 <Text
                   style={[
@@ -718,16 +722,16 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 </Text>
                 <Text style={styles.poiPopupSubtitle} numberOfLines={2}>
                   {isBike
-                    ? `Slobodno bicikala: ${st.availableBikes ?? 0} / ${st.totalDocks ?? 15} mjesta`
-                    : `Linije: ${st.lines?.join(', ') || '-'}${
+                    ? t.bikesFreeLabel(st.availableBikes ?? 0, st.totalDocks ?? 15)
+                    : `${t.linesPrefix}: ${st.lines?.join(', ') || '-'}${
                         st.nextArrivalMinutes
-                          ? ` • Dolazak za ${st.nextArrivalMinutes} min`
+                          ? t.arrivesInMin(st.nextArrivalMinutes)
                           : ''
                       }${
                         st.nextDepartures && st.nextDepartures.length > 0
-                          ? `\nPolasci: ${st.nextDepartures.slice(0, 3).join(' • ')}`
+                          ? `\n${t.departuresPrefix} ${st.nextDepartures.slice(0, 3).join(' • ')}`
                           : loadingTimetable
-                          ? ' • Učitavam vozni red...'
+                          ? t.loadingSchedule
                           : ''
                       }`}
                 </Text>
@@ -738,7 +742,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               style={styles.poiCloseBtn}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
-              accessibilityLabel="Zatvori karticu točke na karti"
+              accessibilityLabel={t.closePoiA11y}
             >
               <Text style={styles.poiCloseText}>✕</Text>
             </TouchableOpacity>
@@ -784,7 +788,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               style={styles.poiCloseBtn}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               accessibilityRole="button"
-              accessibilityLabel="Zatvori karticu točke na karti"
+              accessibilityLabel={t.closePoiA11y}
             >
               <Text style={styles.poiCloseText}>✕</Text>
             </TouchableOpacity>
@@ -804,8 +808,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     const prk = selectedPoi.data;
     const availabilityText =
       prk.spotsAvailable != null && prk.totalSpots != null
-        ? `Slobodno: ${prk.spotsAvailable}/${prk.totalSpots} mjesta`
-        : 'TimPark zona (status uživo: bez senzora)';
+        ? t.spotsAvailableLabel(prk.spotsAvailable, prk.totalSpots)
+        : t.timParkNoSensor;
 
     return (
       <View style={styles.poiPopupCard}>
@@ -828,7 +832,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             style={styles.poiCloseBtn}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
-            accessibilityLabel="Zatvori karticu parkirališta"
+            accessibilityLabel={t.closePoiA11y}
           >
             <Text style={styles.poiCloseText}>✕</Text>
           </TouchableOpacity>
@@ -838,8 +842,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           <View style={styles.poiAccessBadge}>
             <Text style={styles.poiAccessText}>
               {prk.smsCode && prk.smsNumber
-                ? `📱 SMS ${prk.smsNumber} (kod ${prk.smsCode})`
-                : `♿ ${prk.accessibleSpots ?? 2} invalidska mjesta`}
+                ? t.smsCodeLabel(prk.smsNumber, prk.smsCode)
+                : t.accessibleSpotsLabel(prk.accessibleSpots ?? 2)}
             </Text>
           </View>
 
@@ -854,8 +858,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     <WebLeafletMap
       origin={origin}
       destination={destination}
-      originName={originName}
-      destinationName={destinationName}
+      originName={resolvedOriginName}
+      destinationName={resolvedDestinationName}
       userLocation={userLocation}
       isNavigating={isNavigating}
       stations={filteredStations}
@@ -909,8 +913,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           {origin && (
             <Marker
               coordinate={{ latitude: origin.lat, longitude: origin.lng }}
-              title={originName}
-              description="Tvoja trenutna GPS lokacija (Polazište A)"
+              title={resolvedOriginName}
+              description={t.myGpsOriginMarker}
               draggable={false}
             >
               <View style={styles.markerAnchor}>
@@ -918,7 +922,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                   <Text style={styles.pinText}>A</Text>
                 </View>
                 <View style={styles.pinLabelBox}>
-                  <Text style={styles.pinLabel}>{originName}</Text>
+                  <Text style={styles.pinLabel}>{resolvedOriginName}</Text>
                 </View>
               </View>
             </Marker>
@@ -928,8 +932,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           {destination && (
             <Marker
               coordinate={{ latitude: destination.lat, longitude: destination.lng }}
-              title={destinationName}
-              description="Odredište (povuci za promjenu)"
+              title={resolvedDestinationName}
+              description={t.destMarkerDrag}
               draggable={!isNavigating}
               onDragEnd={(e: any) => {
                 const c = e?.nativeEvent?.coordinate;
@@ -1085,7 +1089,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           {userLocation && (
             <Marker
               coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}
-              title="Moja GPS lokacija"
+              title={t.myGpsMarkerTitle}
               anchor={{ x: 0.5, y: 0.5 }}
             >
               <View style={styles.gpsDotOuter}>
@@ -1106,7 +1110,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 <Marker
                   key={`junction_${selectedOption.id}_${idx}`}
                   coordinate={{ latitude: junctionPt.lat, longitude: junctionPt.lng }}
-                  title={`Presjedanje: ${getModeIcon(nextSeg.mode)}`}
+                  title={`${t.transferPrefix}: ${getModeIcon(nextSeg.mode)}`}
                   description={nextSeg.description}
                   anchor={{ x: 0.5, y: 0.5 }}
                 >
@@ -1138,7 +1142,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           activeOpacity={0.8}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           accessibilityRole="button"
-          accessibilityLabel="Centriraj na moju GPS lokaciju"
+          accessibilityLabel={t.centerGpsA11y}
         >
           {isLocating ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -1153,7 +1157,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           activeOpacity={0.8}
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           accessibilityRole="button"
-          accessibilityLabel="Centriraj na centar Temišvara"
+          accessibilityLabel={t.centerTimisoaraA11y}
         >
           <Text style={styles.controlIcon}>📍</Text>
         </TouchableOpacity>
@@ -1169,7 +1173,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
           accessibilityRole="button"
           accessibilityState={{ selected: isDarkMap }}
-          accessibilityLabel="Prebaci između standardnog Dark i Light prikaza karte"
+          accessibilityLabel={t.toggleMapThemeA11y}
         >
           <Text
             style={[

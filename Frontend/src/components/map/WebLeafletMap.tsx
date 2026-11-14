@@ -42,8 +42,8 @@ interface WebLeafletMapProps {
 export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
   origin,
   destination,
-  originName = 'Polazište',
-  destinationName = 'Odredište',
+  originName = 'Plecare',
+  destinationName = 'Destinație',
   userLocation,
   isNavigating = false,
   stations,
