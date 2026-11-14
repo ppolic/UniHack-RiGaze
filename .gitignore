@@ -446,3 +446,6 @@ FodyWeavers.xsd
 # OS datoteke
 .DS_Store
 Thumbs.db
+
+# Lokalno preuzeti alati (npr. Auth0 CLI binary)
+EcoMutare/.tools/
