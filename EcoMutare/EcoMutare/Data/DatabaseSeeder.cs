@@ -383,7 +383,7 @@ public static class DatabaseSeeder
                 new PointTransaction { UserId = ana.Id, Points = 250, Type = PointTransactionType.Bonus, Description = "Početni eko-bonus za održivu mobilnost" },
                 new PointTransaction { UserId = ana.Id, Points = 21, Type = PointTransactionType.Earned, Description = "Vožnja biciklom: Complex → UPT", TripHistoryId = t1.Id },
                 new PointTransaction { UserId = ana.Id, Points = 20, Type = PointTransactionType.Earned, Description = "STPT Tramvaj 1: Victoriei → Gara de Nord", TripHistoryId = t2.Id },
-                new PointTransaction { UserId = ana.Id, Points = 29, Type = PointTransactionType.Bonus, Description = "Waze prijava i potvrda biciklističke staze" }
+                new PointTransaction { UserId = ana.Id, Points = 29, Type = PointTransactionType.Bonus, Description = "Prijava i potvrda biciklističke staze u zajednici" }
             );
             await db.SaveChangesAsync(ct);
         }
@@ -413,7 +413,7 @@ public static class DatabaseSeeder
             db.PointTransactions.AddRange(
                 new PointTransaction { UserId = marko.Id, Points = 418, Type = PointTransactionType.Bonus, Description = "Eko-ambasador pristupačnosti Timișoara" },
                 new PointTransaction { UserId = marko.Id, Points = 17, Type = PointTransactionType.Earned, Description = "Niskopodni STPT prijevoz: Victoriei → UVT", TripHistoryId = tm.Id },
-                new PointTransaction { UserId = marko.Id, Points = 15, Type = PointTransactionType.Bonus, Description = "Waze prijava nedostupnog rubnjaka (Piața Maria)" }
+                new PointTransaction { UserId = marko.Id, Points = 15, Type = PointTransactionType.Bonus, Description = "Prijava nedostupnog rubnjaka u zajednici (Piața Maria)" }
             );
             await db.SaveChangesAsync(ct);
         }
@@ -442,11 +442,11 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync(ct);
         }
 
-        logger.LogInformation("DatabaseSeeder završio: demo korisnici, GTFS, stanice, parkinzi, Carpool, Waze prijave i GapCells su spremni u MySQL bazi.");
+        logger.LogInformation("DatabaseSeeder završio: korisnici, GTFS, stanice, parkinzi, Carpool, prijave građana i GapCells su spremni u MySQL bazi.");
     }
 
     /// <summary>
-    /// Ako je MySQL baza bila kreirana ranijom verzijom modela (prije dodavanja Carpool, Waze i profilnih kolona),
+    /// Ako je MySQL baza bila kreirana ranijom verzijom modela (prije dodavanja Carpool, CommunityReport i profilnih kolona),
     /// sigurno dodaje nove tablice i kolone bez brisanja postojećih podataka.
     /// </summary>
     private static async Task EnsureSchemaUpgradesAsync(AppDbContext db, ILogger logger, CancellationToken ct)

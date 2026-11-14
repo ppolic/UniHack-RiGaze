@@ -63,7 +63,7 @@ builder.Services.AddHttpClient<EcoMutare.Services.Routing.IRoutingProvider, EcoM
     client.Timeout = TimeSpan.FromSeconds(Math.Max(2, opts.TimeoutSeconds));
 }).AddStandardResilienceHandler();
 
-// Pravila, Waze Community Intelligence, Green Intelligence i glavni multimodalni planer ruta (sat 12-48)
+// Pravila, Crowd Community Intelligence, Green Intelligence i glavni multimodalni planer ruta (sat 12-48)
 builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
     builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
 builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();

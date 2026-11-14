@@ -92,7 +92,7 @@ public class Auth0ConfigResponse
     public bool PasskeysWebAuthnEnabled { get; set; } = true;
     public bool OrganizationsHomeRealmDiscoveryEnabled { get; set; } = true;
     public bool ZeroKnowledgeAgeActionEnabled { get; set; } = true;
-    public bool BotDetectionWazeTrustShieldEnabled { get; set; } = true;
+    public bool BotDetectionCrowdTrustShieldEnabled { get; set; } = true;
     public List<string> SupportedOrganizations { get; set; } = new()
     {
         "Universitatea Politehnica Timișoara (UPT) (@upt.ro / @student.upt.ro)",
@@ -117,7 +117,7 @@ public class AuthResponse
     public bool OwnsScooter { get; set; }
     public bool OwnsCar { get; set; }
 
-    // === Inovativne Auth0 značajke (1: Organizations, 2: Passkeys, 3: Zero-Knowledge Age, 5: Waze Trust Score) ===
+    // === Inovativne Auth0 značajke (1: Organizations, 2: Passkeys, 3: Zero-Knowledge Age, 5: Crowd Trust Score) ===
     public string? VerifiedOrganization { get; set; }
     public string OrganizationBadge { get; set; } = string.Empty;
     public bool PasskeyEnabled { get; set; }
@@ -127,7 +127,7 @@ public class AuthResponse
     public bool EmailVerified { get; set; } = true;
     public int TrustScore { get; set; }
     public string TrustBadge { get; set; } = string.Empty;
-    public int WazeVoteWeight { get; set; } = 1;
+    public int ReportVoteWeight { get; set; } = 1;
 }
 
 public class UpdateUserProfileRequest

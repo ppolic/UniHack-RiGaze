@@ -1,8 +1,8 @@
-# 🌱 BeGreen — Smart Sustainable Urban Mobility, Waze-Style Crowd Shield & Green Intelligence for Timișoara
+# 🌱 BeGreen — Smart Sustainable Urban Mobility, Real-Time Crowd Shield & Green Intelligence for Timișoara
 
 **UniHack 8 — The Bloom (Green Mobility Track) · Partner: Primăria Municipiului Timișoara**
 
-**BeGreen** is a full-stack sustainable urban mobility platform designed for **Timișoara**. It combines a **multimodal route planner** (Walk, VeloTM Bike, e-Scooter, STPT Public Transport, Bike + Transit Combined, Carpool, and Park & Ride), a **Waze-style real-time crowd hazard & accessibility shield**, **EcoChallenges gamification** (personal challenges + neighborhood vs. neighborhood competition), and a **Green Intelligence 500×500m civic analytics engine** for **Primăria Municipiului Timișoara**.
+**BeGreen** is a full-stack sustainable urban mobility platform designed for **Timișoara**. It combines a **multimodal route planner** (Walk, VeloTM Bike, e-Scooter, STPT Public Transport, Bike + Transit Combined, Carpool, and Park & Ride), a **real-time crowd-sourced hazard & accessibility shield**, **EcoChallenges gamification** (personal challenges + neighborhood vs. neighborhood competition), and a **Green Intelligence 500×500m civic analytics engine** for **Primăria Municipiului Timișoara**.
 
 ---
 
@@ -15,7 +15,7 @@ While the official **Timișoara CityApp** focuses on municipal news, static tour
 | **Multimodal Route Planning** | No active route planner | Compares **Walk, Bike (VeloTM), Scooter, STPT Transit, Combined (Bike+Transit), Carpool & Car (Park & Ride)** ranked by $\text{CO}_2$, EcoPoints, duration, and cost |
 | **Real-Time Weather, AQI & Slope Shield** | Static info only | Live **Open-Meteo** weather, wind, precipitation, PM2.5/PM10 air quality & **OpenRouteService** elevation/slope evaluation |
 | **Legal Age & Accessibility Rules Engine** | None | Enforces **Romanian traffic law** (blocks scooters/bikes on roads for `< 14` yrs, mandatory helmet warning `< 16` yrs) & **step-free routing** (`cycling-electric` / `wheelchair`) for users with disabilities (`hasDisability: true`) |
-| **Waze-Style Crowd Reports & Sesizări Live** | One-way form submission | Live map & route warnings for **road blockades, blocked bike lanes, and wheelchair barriers**, synced with **`https://sesizari.primariatm.ro/api/sesizari`** + community confirmations (`👍` / `👎`) |
+| **Real-Time Crowd Reports & Sesizări Live** | One-way form submission | Live map & route warnings for **road blockades, blocked bike lanes, and wheelchair barriers**, synced with **`https://sesizari.primariatm.ro/api/sesizari`** + community confirmations (`👍` / `👎`) |
 | **Citizen Demand for Missing Bike Lanes** | No spatial gap analytics | Citizens report corridors where they commute daily without a bike lane (`POST /hazards/missing-bike-lane`) + saved **Favorite Routes** feed a **500×500m Green Intelligence Grid (`GapCells`)** |
 | **EcoChallenges & District Competition** | No daily retention loop | Personal weekly challenges (auto-adapted for wheelchair users) + **Timișoara District Green Challenge** (*Centar* vs. *Complexul Studențesc* vs. *Iulius Town* vs. *Zona Industrială*) |
 | **Actionable Civic Output for City Hall** | Tickets only | Generates Top 3 infrastructure investment priorities with ready-to-publish project drafts for **`https://decidem.primariatm.ro`** |
@@ -98,24 +98,26 @@ The MySQL seeder (`DatabaseSeeder.cs`) automatically creates **5 ready-to-use Be
 - `GET /auth/demo-accounts` — List all 5 pre-seeded demo accounts for instant testing
 
 ### 🧭 Multimodal Route Planner (`RoutesController`)
-- `POST /routes/plan` — Computes, filters, and ranks all mobility options (`Walk`, `Bike`, `Scooter`, `PublicTransport`, `Combined`, `Car`) using real-time weather, air quality, terrain slope, legal age/disability rules, and **active Waze road hazards along the route geometry**
+- `POST /routes/plan` — Computes, filters, and ranks all mobility options (`Walk`, `Bike`, `Scooter`, `PublicTransport`, `Combined`, `Car`) using real-time weather, air quality, terrain slope, legal age/disability rules, and **active crowd-reported road hazards along the route geometry**
 
-### ⚠️ Waze-Style Crowd Reports & Sesizări Integration (`CommunityReportsController`)
-- `GET /hazards` (alias `GET /reports`) — Returns active Waze community reports (road blockades, wheelchair barriers, blocked bike lanes, missing bike lanes) merged with **live reports from `https://sesizari.primariatm.ro/api/sesizari`**
-- `POST /hazards` — Submit a new Waze-style field report (`+15` EcoPoints; immediately warns commuters on `POST /routes/plan`)
+### ⚠️ Real-Time Crowd Reports & Sesizări Integration (`CommunityReportsController`)
+- `GET /hazards` (alias `GET /reports`) — Returns active community reports (road blockades, wheelchair barriers, blocked bike lanes, missing bike lanes) merged with **live reports from `https://sesizari.primariatm.ro/api/sesizari`**
+- `GET /hazards/categories` — Returns the 1-tap category picker (icons, colors, quick subtypes, EcoPoints)
+- `POST /hazards/quick-pin` — 1-tap GPS pin reporting from the map (`+15` EcoPoints; auto-resolves Timișoara street/zone)
+- `POST /hazards` — Submit a detailed crowd field report (`+15` EcoPoints; immediately warns commuters on `POST /routes/plan`)
 - `POST /hazards/missing-bike-lane` — Citizen report: *"I commute here frequently and a bike lane is missing!"* (`+20` EcoPoints; feeds the Green Intelligence `GapCells` grid and generates a `decidem.primariatm.ro` proposal)
-- `POST /hazards/{id}/confirm` — Waze community upvote: **"Still there / I need this bike lane too 👍"** (`+5` EcoPoints)
-- `POST /hazards/{id}/resolve` — Waze community vote: **"Resolved / Cleared 👎"**
+- `POST /hazards/{id}/confirm` — Community upvote: **"Still there / I need this bike lane too 👍"** (`+5` EcoPoints)
+- `POST /hazards/{id}/resolve` — Community vote: **"Resolved / Cleared 👎"**
 
 ### ⭐ User Favorite Routes & Smart Commute (`FavoriteRoutesController`)
-- `GET /favorites` — List saved favorite routes with a live **Waze Commute Hazard Alert** (`activeHazardsOnRouteCount`)
+- `GET /favorites` — List saved favorite routes with a live **Commute Hazard Alert** (`activeHazardsOnRouteCount`)
 - `POST /favorites` — Save a favorite route (with `missingBikeLaneOnRoute: true` to register recurring weekly demand in Green Intelligence)
 - `GET /favorites/{id}/plan` — **1-Click Smart Commute** route calculation for a saved favorite route
 - `DELETE /favorites/{id}` — Remove a favorite route
 
 ### 🏆 EcoChallenges & District Green Challenge (`ChallengesController`)
 - `GET /challenges` (alias `GET /challenges/overview`) — Complete overview returning both **Personal Weekly Challenges** and the **Timișoara District Green Challenge Leaderboard** in a single call
-- `GET /challenges/my` — Personal weekly challenges (*3 Bike Rides This Week*, *1 Car-Free Day*, *10 km Walk / Step-Free*, *Try a New STPT Transit Line*, *Save 5 kg $\text{CO}_2$*, *Waze Community Guardian*) with live progress calculated from MySQL `TripHistories` and automatic adaptation for wheelchair users (`hasDisability: true`)
+- `GET /challenges/my` — Personal weekly challenges (*3 Bike Rides This Week*, *1 Car-Free Day*, *10 km Walk / Step-Free*, *Try a New STPT Transit Line*, *Save 5 kg $\text{CO}_2$*, *Community Guardian*) with live progress calculated from MySQL `TripHistories` and automatic adaptation for wheelchair users (`hasDisability: true`)
 - `GET /challenges/zones` (alias `GET /challenges/leaderboard/zones`) — **Green Challenge – This Week** neighborhood competition (*Centar / Cetate* vs. *Complexul Studențesc* vs. *Iulius Town / Aradului* vs. *Zona Industrială SE* vs. *Calea Șagului*), dynamically updated whenever a user logs a green trip
 - `POST /challenges/{id}/claim` — Claim bonus EcoPoints (`+100`, `+50`, `+80`, `+60`, `+150`, `+40`) for a completed challenge and record a `Bonus` transaction in MySQL
 

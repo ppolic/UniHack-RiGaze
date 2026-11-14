@@ -319,9 +319,9 @@ public class ChallengesController : ControllerBase
             rewardPoints: 150,
             claimedIds: claimedIds));
 
-        // 6. Izazov: Waze čuvar zajednice
+        // 6. Izazov: Čuvar zajednice
         challenges.Add(BuildChallenge(
-            id: "waze-guardian",
+            id: "crowd-guardian",
             title: "Prijavi ili potvrdi prepreku u gradu",
             description: "Pomozi sugrađanima prijavom blokirane staze, radova ili nedostupnog prilaza za kolica.",
             category: "Community",

@@ -22,11 +22,11 @@ public interface ICommunityIntelligenceService
     IReadOnlyList<CommunityReportDto> GetCachedReportsSnapshot(bool onlyActive = true);
 
     Task<CommunityReportActionResponseDto> CreateReportAsync(CreateCommunityReportRequestDto req, CancellationToken ct = default);
-    Task<CommunityReportActionResponseDto> CreateQuickWazePinAsync(QuickWazePinRequestDto req, CancellationToken ct = default);
+    Task<CommunityReportActionResponseDto> CreateQuickPinReportAsync(QuickPinReportRequestDto req, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto> ReportMissingBikeLaneAsync(MissingBikeLaneRequestDto req, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ConfirmReportAsync(int id, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ResolveReportAsync(int id, CancellationToken ct = default);
-    IReadOnlyList<WazeCategoryMenuDto> GetWazeCategoryMenu();
+    IReadOnlyList<HazardCategoryMenuDto> GetHazardCategoryMenu();
 
     IReadOnlyList<CommunityReportDto> GetHazardsNearGeometry(
         IReadOnlyList<GeoPoint> geometry,
@@ -186,7 +186,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             ConfirmationsCount = 1,
             ResolvedVotesCount = 0,
             IsActive = true,
-            Source = "BeGreen Waze Crowd",
+            Source = "BeGreen Crowd Report",
             OfficialActionUrl = officialUrl,
             ReportedByUserId = req.UserId,
             CreatedAt = DateTime.UtcNow
@@ -197,18 +197,18 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
 
         string channelNote = req.Category == CommunityReportCategory.MissingBikeLane
             ? "Prijava je dodana u Green Intelligence 500m mrežu za planiranje novih biciklističkih staza i pripremljena za participativni proračun na https://decidem.primariatm.ro."
-            : "Prijava je odmah aktivna u Waze sloju za preusmjeravanje ruta u stvarnom vremenu. Za trajni komunalni popravak od strane službi Grada Temišvara povežite prijavu na https://sesizari.primariatm.ro.";
+            : "Prijava je odmah aktivna u BeGreen sloju u stvarnom vremenu za preusmjeravanje ruta. Za trajni komunalni popravak od strane službi Grada Temišvara povežite prijavu na https://sesizari.primariatm.ro.";
 
         return new CommunityReportActionResponseDto
         {
             Report = MapReportDto(entity, null),
             AwardedEcoPoints = awardedPoints,
-            Message = $"Hvala! Vaša Waze prijava ('{entity.Title}') je aktivna na karti i u planeru ruta (+{awardedPoints} eko-bodova).",
+            Message = $"Hvala! Vaša crowd prijava ('{entity.Title}') je aktivna na karti i u planeru ruta (+{awardedPoints} eko-bodova).",
             OfficialCityIntegrationNote = channelNote
         };
     }
 
-    public async Task<CommunityReportActionResponseDto> CreateQuickWazePinAsync(QuickWazePinRequestDto req, CancellationToken ct = default)
+    public async Task<CommunityReportActionResponseDto> CreateQuickPinReportAsync(QuickPinReportRequestDto req, CancellationToken ct = default)
     {
         string zone = ResolveNearestTimisoaraZoneName(req.Latitude, req.Longitude);
         string subtype = string.IsNullOrWhiteSpace(req.Subtype) ? string.Empty : req.Subtype.Trim();
@@ -219,7 +219,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             {
                 StreetOrCorridorName = zone,
                 Reason = string.IsNullOrWhiteSpace(req.PhotoOrNote)
-                    ? $"Brza Waze prijava s karte{(string.IsNullOrEmpty(subtype) ? "" : $" ({subtype})")}: na potezu {zone} nedostaje sigurna biciklistička staza."
+                    ? $"Brza prijava s karte{(string.IsNullOrEmpty(subtype) ? "" : $" ({subtype})")}: na potezu {zone} nedostaje sigurna biciklistička staza."
                     : req.PhotoOrNote.Trim(),
                 Latitude = req.Latitude,
                 Longitude = req.Longitude,
@@ -249,7 +249,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         }, ct);
     }
 
-    public IReadOnlyList<WazeCategoryMenuDto> GetWazeCategoryMenu() => new List<WazeCategoryMenuDto>
+    public IReadOnlyList<HazardCategoryMenuDto> GetHazardCategoryMenu() => new List<HazardCategoryMenuDto>
     {
         new()
         {
@@ -648,7 +648,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         double nearestLaneDist = CalculateMinDistanceToBikeCorridorsMeters(mid);
 
         string statusMsg = hazards.Count > 0
-            ? $"⚠️ Waze alarm na omiljenoj ruti: {hazards[0].Title} ({hazards[0].StreetOrZone}, {hazards[0].ConfirmationsCount} potvrda). Preporučujemo provjeru alternativne rute."
+            ? $"⚠️ Upozorenje zajednice na omiljenoj ruti: {hazards[0].Title} ({hazards[0].StreetOrZone}, {hazards[0].ConfirmationsCount} potvrda). Preporučujemo provjeru alternativne rute."
             : "✅ Nema prijavljenih blokada na vašoj omiljenoj ruti.";
 
         if (f.MissingBikeLaneOnRoute)
@@ -778,7 +778,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("Dohvat uživo sa sesizari.primariatm.ro nije uspio (koristimo lokalne Waze prijave): {Message}", ex.Message);
+                _logger.LogDebug("Dohvat uživo sa sesizari.primariatm.ro nije uspio (koristimo lokalne prijave građana): {Message}", ex.Message);
             }
 
             _cache.Set(cacheKey, cached, TimeSpan.FromMinutes(15));
@@ -866,7 +866,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             }
             catch (Exception ex)
             {
-                _logger.LogDebug("MySQL baza trenutno nije dostupna za sinkronizaciju Waze prijava – radimo iz in-memory spremnika ({Msg}).", ex.Message);
+                _logger.LogDebug("MySQL baza trenutno nije dostupna za sinkronizaciju prijava zajednice – radimo iz in-memory spremnika ({Msg}).", ex.Message);
             }
         }
     }
@@ -890,7 +890,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
                         UserId = user.Id,
                         Points = bonusPoints,
                         Type = PointTransactionType.Bonus,
-                        Description = $"Waze prijava u zajednici: {entity.Title}"
+                        Description = $"Prijava prepreke u zajednici: {entity.Title}"
                     });
                 }
             }
@@ -1110,7 +1110,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
                 AffectsWheelchair = false,
                 ConfirmationsCount = 9,
                 IsActive = true,
-                Source = "EcoMutare Waze Crowd",
+                Source = "BeGreen Crowd Report",
                 ExternalSesizariId = "SZN2026-019812",
                 OfficialActionUrl = "https://sesizari.primariatm.ro",
                 CreatedAt = DateTime.UtcNow.AddMinutes(-45)
@@ -1128,7 +1128,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
                 AffectsWheelchair = true,
                 ConfirmationsCount = 6,
                 IsActive = true,
-                Source = "EcoMutare Waze Accessibility",
+                Source = "BeGreen Accessibility Crowd",
                 ExternalSesizariId = "SZN2026-019839",
                 OfficialActionUrl = "https://sesizari.primariatm.ro",
                 CreatedAt = DateTime.UtcNow.AddHours(-2)
@@ -1146,7 +1146,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
                 AffectsWheelchair = false,
                 ConfirmationsCount = 5,
                 IsActive = true,
-                Source = "EcoMutare Waze Crowd",
+                Source = "BeGreen Crowd Report",
                 OfficialActionUrl = "https://sesizari.primariatm.ro",
                 CreatedAt = DateTime.UtcNow.AddMinutes(-80)
             },

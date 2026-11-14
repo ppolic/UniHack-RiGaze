@@ -43,7 +43,7 @@ public enum AgeCategory
     Adult
 }
 
-// Kategorija Waze-style građanske prijave na terenu u Timișoari
+// Kategorija građanske prijave na terenu u stvarnom vremenu u Timișoari
 public enum CommunityReportCategory
 {
     RoadBlockade,

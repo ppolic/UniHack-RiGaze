@@ -1,8 +1,8 @@
-# Automated Auth0 Setup Script for BeGreen (EcoMutare) ASP.NET Core 9 API
+﻿# Automated Auth0 Setup Script for BeGreen (EcoMutare) ASP.NET Core 9 API
 # Configures:
 # 1) Auth0 API + SPA Client
 # 2) Auth0 Passkeys (WebAuthn Biometric 1-Tap Login for Accessibility)
-# 3) Auth0 Post-Login Action (Zero-Knowledge Age Tier + UPT/UVT/Continental Organization + Waze Trust Score)
+# 3) Auth0 Post-Login Action (Zero-Knowledge Age Tier + UPT/UVT/Continental Organization + Citizen Trust Score)
 # 4) Auth0 Attack Protection (Bot Detection & Brute-Force Shield)
 $ErrorActionPreference = "Stop"
 
@@ -70,7 +70,7 @@ try {
     Write-Host "Napomena: Passkeys mozete ukljuciti i u Dashboardu (Authentication -> Database -> Passkeys)." -ForegroundColor Yellow
 }
 
-Write-Host "`n5. Ukljucujem Auth0 Attack Protection (Bot Detection & Brute-Force Shield za Waze prijave)..." -ForegroundColor Green
+Write-Host "`n5. Ukljucujem Auth0 Attack Protection (Bot Detection & Brute-Force Shield za prijave građana)..." -ForegroundColor Green
 try {
     auth0 protection brute-force-protection update --enabled=true | Out-Null
     auth0 protection breached-password-detection update --enabled=true | Out-Null

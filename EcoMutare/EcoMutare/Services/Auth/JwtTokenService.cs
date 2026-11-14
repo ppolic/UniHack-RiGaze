@@ -26,7 +26,7 @@ public class JwtTokenService
             new(JwtRegisteredClaimNames.Email, user.Email),
             new("age_category", user.AgeCategory.ToString()),
             new("trust_score", intel.TrustScore.ToString()),
-            new("waze_weight", intel.WazeVoteWeight.ToString())
+            new("report_weight", intel.ReportVoteWeight.ToString())
         };
 
         if (!string.IsNullOrWhiteSpace(intel.VerifiedOrganization))
@@ -58,7 +58,7 @@ public record UserAuth0Evaluation(
     bool EmailVerified,
     int TrustScore,
     string TrustBadge,
-    int WazeVoteWeight);
+    int ReportVoteWeight);
 
 public static class Auth0IntelligenceHelper
 {
@@ -84,7 +84,7 @@ public static class Auth0IntelligenceHelper
             ? $"Zero-Knowledge Auth0 Action Verified ({user.AgeCategory} – datum rođenja se NE čuva u bazi)"
             : $"Auth0 Action Age-Tier Shield Active ({user.AgeCategory} – samo anonimizirana dobna zastavica šalje se planeru)";
 
-        // 5. Auth0 Bot Detection & Waze Citizen Trust Score
+        // 5. Auth0 Bot Detection & Citizen Trust Score
         int trustScore = 50; // Bazni verificirani račun
         if (!string.IsNullOrWhiteSpace(orgName)) trustScore += 25;
         if (passkeyEnabled) trustScore += 15;
@@ -93,7 +93,7 @@ public static class Auth0IntelligenceHelper
 
         int voteWeight = trustScore >= 85 ? 3 : (trustScore >= 65 ? 2 : 1);
         string trustBadge = trustScore >= 85
-            ? $"Trusted Waze Guardian 🛡️ ({voteWeight}x Vote Weight)"
+            ? $"Trusted Community Guardian 🛡️ ({voteWeight}x Vote Weight)"
             : (trustScore >= 65
                 ? $"Verified Community Member ✅ ({voteWeight}x Vote Weight)"
                 : "Standard Citizen Account (1x Vote Weight)");
@@ -108,7 +108,7 @@ public static class Auth0IntelligenceHelper
             EmailVerified: true,
             TrustScore: trustScore,
             TrustBadge: trustBadge,
-            WazeVoteWeight: voteWeight);
+            ReportVoteWeight: voteWeight);
     }
 
     public static (string? OrganizationName, string Badge) ResolveOrganization(
@@ -180,9 +180,11 @@ public static class ClaimsExtensions
         return int.TryParse(user.FindFirst(JwtRegisteredClaimNames.Sub)?.Value, out var id) ? id : null;
     }
 
-    /// <summary>Dohvaća Waze težinu glasa (1x, 2x ili 3x) iz Auth0 Trust Score claima.</summary>
-    public static int GetWazeVoteWeight(this ClaimsPrincipal user) =>
-        int.TryParse(user.FindFirst("waze_weight")?.Value, out var w) ? Math.Clamp(w, 1, 3) : 1;
+    /// <summary>Dohvaća težinu glasa zajednice (1x, 2x ili 3x) iz Auth0 Trust Score claima.</summary>
+    public static int GetReportVoteWeight(this ClaimsPrincipal user) =>
+        int.TryParse(user.FindFirst("report_weight")?.Value ?? user.FindFirst("waze_weight")?.Value, out var w)
+            ? Math.Clamp(w, 1, 3)
+            : 1;
 
     /// <summary>Dohvaća verificiranu organizaciju korisnika (npr. UPT, UVT, Continental) iz JWT claima.</summary>
     public static string? GetVerifiedOrganization(this ClaimsPrincipal user) =>

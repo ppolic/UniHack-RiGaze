@@ -69,7 +69,7 @@ public class DiagnosticsController : ControllerBase
                     TransitStopTimes = await _db.StopTimes.CountAsync(ct),
                     CarpoolRides = await _db.CarpoolRides.CountAsync(ct),
                     CarpoolBookings = await _db.CarpoolBookings.CountAsync(ct),
-                    CommunityWazeReports = await _db.CommunityReports.CountAsync(ct),
+                    CommunityHazardReports = await _db.CommunityReports.CountAsync(ct),
                     FavoriteRoutes = await _db.FavoriteRoutes.CountAsync(ct),
                     GapCells = await _db.GapCells.CountAsync(ct),
                     Rewards = await _db.Rewards.CountAsync(ct),
@@ -91,7 +91,7 @@ public class DiagnosticsController : ControllerBase
 
     /// <summary>
     /// 1-Click Demo Seeder (sat 38–48 BE2): osigurava sve tablice u MySQL-u i puni 5 demo računa (lozinka Demo123!),
-    /// GTFS vozni red, VeloTM stanice, TimPark parkinge, Carpool vožnje, Waze prijave, Favorite rute i GapCells.
+    /// GTFS vozni red, VeloTM stanice, TimPark parkinge, Carpool vožnje, prijave prepreka, Favorite rute i GapCells.
     /// </summary>
     [HttpPost("/admin/seed-demo")]
     [HttpPost("seed-demo")]

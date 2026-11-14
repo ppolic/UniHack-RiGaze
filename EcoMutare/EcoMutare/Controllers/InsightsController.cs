@@ -11,7 +11,7 @@ namespace EcoMutare.Controllers;
 /// <summary>
 /// Green Intelligence (sat 24–32): gradski analitički pogled za Timișoaru (BE1 + BE2).
 /// Prikazuje biciklističke koridore, izračunate praznine u mreži (~500m rešetka),
-/// agregirana anonimna putovanja, Waze prijave građana, ušteđeni CO₂ i top 3 zone za ulaganje,
+/// agregirana anonimna putovanja, crowd prijave građana, ušteđeni CO₂ i top 3 zone za ulaganje,
 /// te sinkronizira izračunate ćelije u MySQL tablicu GapCells.
 /// </summary>
 [ApiController]
@@ -34,7 +34,7 @@ public class InsightsController : ControllerBase
 
     /// <summary>
     /// Vraća kartu biciklističkih staza i rešetku grada (~500m ćelije) s izračunatim prazninama (GapCells),
-    /// potražnjom, udjelom automobila, Waze prijavama građana i udaljenošću do najbliže staze/stanice.
+    /// potražnjom, udjelom automobila, prijavama građana i udaljenošću do najbliže staze/stanice.
     /// </summary>
     [HttpGet("gaps")]
     [ProducesResponseType(typeof(InsightsGapsResponseDto), StatusCodes.Status200OK)]
@@ -54,7 +54,7 @@ public class InsightsController : ControllerBase
 
     /// <summary>
     /// Vraća ključne brojke za gradski dashboard: ukupno ušteđeni CO₂ (kg), broj putovanja,
-    /// Waze prijave za nedostajuće biciklističke staze i top 3 zone za novu stazu/liniju (uz nacrt za decidem.primariatm.ro).
+    /// prijave građana za nedostajuće biciklističke staze i top 3 zone za novu stazu/liniju (uz nacrt za decidem.primariatm.ro).
     /// </summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(InsightsSummaryResponseDto), StatusCodes.Status200OK)]

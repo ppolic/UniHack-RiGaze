@@ -14,7 +14,7 @@ using Microsoft.IdentityModel.JsonWebTokens;
 namespace EcoMutare.Controllers;
 
 /// <summary>
-/// Registracija, prijava (lokalni JWT + Auth0 Universal Login, Passkeys, Organizations, Zero-Knowledge Age & Waze Trust Score)
+/// Registracija, prijava (lokalni JWT + Auth0 Universal Login, Passkeys, Organizations, Zero-Knowledge Age & Citizen Trust Score)
 /// i upravljanje profilom korisnika (/auth/register, /auth/login, /auth/auth0, /auth/passkey/enroll, /auth/me, /me).
 /// </summary>
 [ApiController]
@@ -126,7 +126,7 @@ public class AuthController : ControllerBase
     /// 1) Auth0 Organizations (automatska verifikacija UPT, UVT, Continental domene za siguran Carpool),
     /// 2) Auth0 Passkeys / WebAuthn (prijava biometrijom u 1 dodiru za osobe s invaliditetom i bicikliste),
     /// 3) Auth0 Zero-Knowledge Age Action (provjera dobi Under14/From14To15/Adult bez pohrane datuma rođenja u bazu - GDPR),
-    /// 4) Auth0 Bot Detection & Waze Citizen Trust Score (veća težina glasa 2x/3x pri prijavi blokada na cesti).
+    /// 4) Auth0 Bot Detection & Citizen Trust Score (veća težina glasa 2x/3x pri prijavi blokada na cesti).
     /// </summary>
     [HttpPost("auth0")]
     [HttpPost("auth0-login")]
@@ -415,7 +415,7 @@ public class AuthController : ControllerBase
     /// 1) Prepoznavanje organizacije (UPT, UVT, Continental),
     /// 2) Detekciju Passkey (WebAuthn) prijave,
     /// 3) Zero-Knowledge provjeru dobi (Under14, From14To15, Adult) bez slanja datuma rođenja na backend (GDPR),
-    /// 4) Izračun Waze Citizen Trust Scorea protiv botova i lažnih prijava.
+    /// 4) Izračun Citizen Trust Scorea protiv botova i lažnih prijava.
     /// </summary>
     [HttpGet("auth0-action-script")]
     public ActionResult<object> GetAuth0ActionScript()
@@ -457,13 +457,13 @@ exports.onExecutePostLogin = async (event, api) => {
   api.idToken.setCustomClaim(`${ns}/age_category`, ageCategory);
   api.accessToken.setCustomClaim(`${ns}/age_category`, ageCategory);
 
-  // 4. Bot Detection & Waze Citizen Trust Score (1x, 2x or 3x vote weight)
+  // 4. Bot Detection & Citizen Trust Score (1x, 2x or 3x vote weight)
   let trustScore = event.user.email_verified ? 55 : 25;
   if (orgName) trustScore += 25;
   if (usedPasskey) trustScore += 20;
-  const wazeVoteWeight = trustScore >= 85 ? 3 : (trustScore >= 65 ? 2 : 1);
+  const reportVoteWeight = trustScore >= 85 ? 3 : (trustScore >= 65 ? 2 : 1);
   api.idToken.setCustomClaim(`${ns}/trust_score`, Math.min(100, trustScore));
-  api.accessToken.setCustomClaim(`${ns}/waze_vote_weight`, wazeVoteWeight);
+  api.accessToken.setCustomClaim(`${ns}/report_vote_weight`, reportVoteWeight);
 };
 """;
 
@@ -584,7 +584,7 @@ exports.onExecutePostLogin = async (event, api) => {
                 eval.ZeroKnowledgeAgeVerified,
                 eval.TrustScore,
                 eval.TrustBadge,
-                eval.WazeVoteWeight
+                eval.ReportVoteWeight
             };
         });
 
@@ -635,7 +635,7 @@ exports.onExecutePostLogin = async (event, api) => {
             EmailVerified = eval.EmailVerified,
             TrustScore = eval.TrustScore,
             TrustBadge = eval.TrustBadge,
-            WazeVoteWeight = eval.WazeVoteWeight
+            ReportVoteWeight = eval.ReportVoteWeight
         };
     }
 }

@@ -4,7 +4,7 @@ using EcoMutare.Domain;
 namespace EcoMutare.Dtos;
 
 /// <summary>
-/// Prikaz jedne Waze-style građanske prijave (blokada ceste, nepristupačno područje, blokirana staza ili nedostajuća biciklistička staza)
+/// Prikaz jedne građanske prijave u stvarnom vremenu (blokada ceste, nepristupačno područje, blokirana staza ili nedostajuća biciklistička staza)
 /// ili prijave povučene uživo sa službenog portala Grada Temišvara (sesizari.primariatm.ro).
 /// </summary>
 public class CommunityReportDto
@@ -30,8 +30,8 @@ public class CommunityReportDto
 }
 
 /// <summary>
-/// Zahtjev za kreiranje nove Waze-style prijave u Timișoari.
-/// Title, Description i StreetOrZone su opcionalni (za brzi Waze 1-tap pin putem GPS-a).
+/// Zahtjev za kreiranje nove crowd prijave u Timișoari.
+/// Title, Description i StreetOrZone su opcionalni (za brzi 1-tap pin putem GPS-a).
 /// </summary>
 public class CreateCommunityReportRequestDto
 {
@@ -62,10 +62,10 @@ public class CreateCommunityReportRequestDto
 }
 
 /// <summary>
-/// 1-Tap Waze brzi pin u aplikaciji: korisnik samo dodirne ikonu kategorije na mapi (npr. Blokada ceste / Fali rampa / Fali biciklistička staza),
+/// 1-Tap brzi pin u aplikaciji: korisnik samo dodirne ikonu kategorije na mapi (npr. Blokada ceste / Fali rampa / Fali biciklistička staza),
 /// bez obveznog tipkanja naslova ili ulice (ulica se automatski prepoznaje iz GPS koordinata Timișoare).
 /// </summary>
-public class QuickWazePinRequestDto
+public class QuickPinReportRequestDto
 {
     [DefaultValue(CommunityReportCategory.RoadBlockade)]
     public CommunityReportCategory Category { get; set; } = CommunityReportCategory.RoadBlockade;
@@ -76,7 +76,7 @@ public class QuickWazePinRequestDto
     [DefaultValue(21.2312)]
     public double Longitude { get; set; } = 21.2312;
 
-    /// <summary>Opcionalni brzi podtip s Waze gumba (npr. "Radovi na cesti", "Parkiran auto na stazi", "Visoki rubnjak / bez rampe").</summary>
+    /// <summary>Opcionalni brzi podtip s "+" gumba (npr. "Radovi na cesti", "Parkiran auto na stazi", "Visoki rubnjak / bez rampe").</summary>
     [DefaultValue("Radovi na cesti")]
     public string? Subtype { get; set; }
 
@@ -89,9 +89,9 @@ public class QuickWazePinRequestDto
 }
 
 /// <summary>
-/// Izbornik za Waze 1-Tap gumb ("+") u aplikaciji s ikonama, bojama, bodovima i brzim podtipovima.
+/// Izbornik za 1-Tap gumb ("+") u aplikaciji s ikonama, bojama, bodovima i brzim podtipovima.
 /// </summary>
-public class WazeCategoryMenuDto
+public class HazardCategoryMenuDto
 {
     public CommunityReportCategory Category { get; set; }
     public string Label { get; set; } = string.Empty;
@@ -131,7 +131,7 @@ public class MissingBikeLaneRequestDto
 }
 
 /// <summary>
-/// Odgovor nakon prijave ili Waze potvrde ("Još je tamo 👍" / "Riješeno 👎").
+/// Odgovor nakon prijave ili potvrde zajednice ("Još je tamo 👍" / "Riješeno 👎").
 /// </summary>
 public class CommunityReportActionResponseDto
 {
@@ -142,7 +142,7 @@ public class CommunityReportActionResponseDto
 }
 
 /// <summary>
-/// Prikaz omiljene (svakodnevne) rute korisnika uz trenutni Waze status blokada na toj ruti.
+/// Prikaz omiljene (svakodnevne) rute korisnika uz trenutni status prijava/blokada na toj ruti.
 /// </summary>
 public class FavoriteRouteDto
 {
@@ -159,7 +159,7 @@ public class FavoriteRouteDto
     public bool RequiresStepFreeAccess { get; set; }
     public string Notes { get; set; } = string.Empty;
 
-    // Live Waze Intelligence status na omiljenoj ruti:
+    // Live Crowd Intelligence status na omiljenoj ruti:
     public bool HasActiveBlockadeOrHazard { get; set; }
     public int ActiveHazardsOnRouteCount { get; set; }
     public List<CommunityReportDto> ActiveHazardsOnRoute { get; set; } = new();

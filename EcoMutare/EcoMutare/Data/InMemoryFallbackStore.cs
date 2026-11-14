@@ -171,10 +171,10 @@ public static class InMemoryFallbackStore
             new() { Id = 1, UserId = 1, Points = 250, Type = PointTransactionType.Bonus, Description = "Početni eko-bonus za održivu mobilnost", CreatedAt = DateTime.UtcNow.AddDays(-3) },
             new() { Id = 2, UserId = 1, Points = 21, Type = PointTransactionType.Earned, Description = "Vožnja biciklom: Complex → UPT", TripHistoryId = 1, CreatedAt = DateTime.UtcNow.AddDays(-2) },
             new() { Id = 3, UserId = 1, Points = 20, Type = PointTransactionType.Earned, Description = "STPT Tramvaj 1: Victoriei → Gara de Nord", TripHistoryId = 2, CreatedAt = DateTime.UtcNow.AddDays(-1) },
-            new() { Id = 4, UserId = 1, Points = 29, Type = PointTransactionType.Bonus, Description = "Waze prijava i potvrda biciklističke staze", CreatedAt = DateTime.UtcNow.AddHours(-12) },
+            new() { Id = 4, UserId = 1, Points = 29, Type = PointTransactionType.Bonus, Description = "Prijava i potvrda biciklističke staze u zajednici", CreatedAt = DateTime.UtcNow.AddHours(-12) },
             new() { Id = 5, UserId = 2, Points = 418, Type = PointTransactionType.Bonus, Description = "Eko-ambasador pristupačnosti Timișoara", CreatedAt = DateTime.UtcNow.AddDays(-3) },
             new() { Id = 6, UserId = 2, Points = 17, Type = PointTransactionType.Earned, Description = "Niskopodni STPT prijevoz: Victoriei → UVT", TripHistoryId = 3, CreatedAt = DateTime.UtcNow.AddHours(-18) },
-            new() { Id = 7, UserId = 2, Points = 15, Type = PointTransactionType.Bonus, Description = "Waze prijava nedostupnog rubnjaka (Piața Maria)", CreatedAt = DateTime.UtcNow.AddHours(-10) }
+            new() { Id = 7, UserId = 2, Points = 15, Type = PointTransactionType.Bonus, Description = "Prijava nedostupnog rubnjaka u zajednici (Piața Maria)", CreatedAt = DateTime.UtcNow.AddHours(-10) }
         };
     }
 

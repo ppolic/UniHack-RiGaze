@@ -4,7 +4,7 @@ namespace EcoMutare.Domain.Entities;
 
 /// <summary>
 /// Spremljena omiljena (svakodnevna) ruta korisnika u Timișoari.
-/// Služi za 1-click planiranje s Waze alarmima za blokade i kao ulazni signal stvarne potražnje
+/// Služi za 1-click planiranje s alarmima za blokade u stvarnom vremenu i kao ulazni signal stvarne potražnje
 /// za Green Intelligence (gdje građani svakodnevno putuju, a nedostaje biciklistička staza).
 /// </summary>
 public class FavoriteRoute

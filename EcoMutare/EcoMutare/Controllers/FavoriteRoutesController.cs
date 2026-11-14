@@ -9,7 +9,7 @@ namespace EcoMutare.Controllers;
 /// <summary>
 /// Upravljanje omiljenim (svakodnevnim) rutama korisnika u Timișoari:
 /// - Spremanje Favorite ruta (dom -> faks/posao),
-/// - Provjera uživo postoje li Waze blokade ili nedostupna područja na omiljenoj ruti,
+/// - Provjera uživo postoje li prijavljene blokade ili nedostupna područja na omiljenoj ruti,
 /// - Automatsko mapiranje potražnje za novim biciklističkim stazama u Green Intelligence sustav,
 /// - 1-Click izračun plana putovanja za omiljenu rutu.
 /// </summary>
@@ -30,7 +30,7 @@ public class FavoriteRoutesController : ControllerBase
 
     /// <summary>
     /// Vraća sve spremljene omiljene rute (s opcionalnim filtriranjem po userId)
-    /// zajedno s trenutnim Waze statusom blokada na svakoj ruti!
+    /// zajedno s trenutnim statusom blokada na svakoj ruti!
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<FavoriteRouteDto>), StatusCodes.Status200OK)]
@@ -59,7 +59,7 @@ public class FavoriteRoutesController : ControllerBase
 
     /// <summary>
     /// 1-Click Smart Commute: Izračunava multimodalni plan putovanja za spremljenu omiljenu rutu
-    /// uz trenutno vrijeme (Open-Meteo) i aktivne Waze blokade na terenu.
+    /// uz trenutno vrijeme (Open-Meteo) i aktivne prijave blokada na terenu.
     /// </summary>
     [HttpGet("{id:int}/plan")]
     [HttpPost("{id:int}/plan")]

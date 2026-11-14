@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace EcoMutare.Domain.Entities;
 
 /// <summary>
-/// Waze-style građanska prijava na terenu u Timișoari:
+/// Građanska prijava na terenu u stvarnom vremenu u Timișoari:
 /// blokade cesta, nedostupna područja za osobe s invaliditetom, blokirane biciklističke staze
 /// ili prijava koridora gdje nedostaje biciklistička staza unatoč čestom prolasku građana.
 /// </summary>
@@ -32,7 +32,7 @@ public class CommunityReport
     /// <summary>True ako prepreka izravno blokira osobe u invalidskim kolicima (hasDisability: true).</summary>
     public bool AffectsWheelchair { get; set; }
 
-    /// <summary>Broj Waze potvrda građana ("Još je tamo 👍" ili "I meni ovdje fali biciklistička staza 👍").</summary>
+    /// <summary>Broj potvrda građana ("Još je tamo 👍" ili "I meni ovdje fali biciklistička staza 👍").</summary>
     public int ConfirmationsCount { get; set; } = 1;
 
     /// <summary>Broj glasova da je prepreka uklonjena ("Riješeno 👎").</summary>
@@ -40,9 +40,9 @@ public class CommunityReport
 
     public bool IsActive { get; set; } = true;
 
-    /// <summary>Izvor podatka (npr. "EcoMutare Waze Crowd" ili "Primăria Timișoara – Sesizări Live").</summary>
+    /// <summary>Izvor podatka (npr. "BeGreen Crowd Report" ili "Primăria Timișoara – Sesizări Live").</summary>
     [MaxLength(100)]
-    public string Source { get; set; } = "EcoMutare Waze Crowd";
+    public string Source { get; set; } = "BeGreen Crowd Report";
 
     /// <summary>Opcionalni broj predmeta u sustavu Sesizări Grada Temišvara (npr. "SZN2026-019847").</summary>
     [MaxLength(60)]

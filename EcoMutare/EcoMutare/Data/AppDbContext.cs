@@ -25,7 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<CarpoolRide> CarpoolRides => Set<CarpoolRide>();
     public DbSet<CarpoolBooking> CarpoolBookings => Set<CarpoolBooking>();
 
-    // Waze-style građanske prijave (blokade cesta, nepristupačna područja, nedostajuće biciklističke staze)
+    // Građanske prijave u stvarnom vremenu (blokade cesta, nepristupačna područja, nedostajuće biciklističke staze)
     public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
 
     // Favorite rute korisnika (svakodnevni commute + potražnja za biciklističkim stazama)
@@ -126,7 +126,7 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.CarpoolRideId, x.PassengerId });
         });
 
-        // CommunityReports (Waze-style prijave)
+        // CommunityReports (prijave građana u stvarnom vremenu)
         b.Entity<CommunityReport>(e =>
         {
             e.Property(x => x.Category).HasConversion<string>().HasMaxLength(40);
