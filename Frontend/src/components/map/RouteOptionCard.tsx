@@ -21,7 +21,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 }) => {
   const desktop = useWindowDimensions().width >= 768;
   const { wcagLargeText } = useAuth();
-  const { t } = useTranslation();
+  const { t, translateMessage } = useTranslation();
   const getModeColor = (mode: string) => {
     switch (mode) {
       case 'Bike':
@@ -56,7 +56,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
   };
 
   const modeColor = getModeColor(option.mode);
-  const cardTitle = option.title || getModeLabel(option.mode);
+  const cardTitle = translateMessage(option.title) || getModeLabel(option.mode);
   const priceLabel = option.costRon === 0 ? t.free : `${option.costRon} RON`;
   const a11ySummary = `${cardTitle}${isSelected ? t.selectedComma : ''}${
     option.isRecommended ? t.recommendedComma : ''
@@ -218,7 +218,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
           ]}
           numberOfLines={desktop || wcagLargeText ? undefined : 2}
         >
-          {option.segments.map((s) => s.description).filter(Boolean).join(' ➔ ')}
+          {option.segments.map((s) => translateMessage(s.description)).filter(Boolean).join(' ➔ ')}
         </Text>
       )}
 
@@ -234,7 +234,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
                   wcagLargeText && styles.largeCaption,
                 ]}
               >
-                ⚠️ {w.message}
+                ⚠️ {translateMessage(w.message)}
               </Text>
             </View>
           ))}

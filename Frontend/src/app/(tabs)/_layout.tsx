@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { borderRadius } from '../../theme/spacing';
 import { useTranslation } from '../../hooks/useTranslation';
+import { AuthenticatedHeader } from '../../components/common/AuthenticatedHeader';
 
 export const unstable_settings = { initialRouteName: 'home' };
 
@@ -22,7 +23,8 @@ export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
-        headerShown: false,
+        headerShown: true,
+        header: () => <AuthenticatedHeader />,
         tabBarActiveTintColor: colors.primaryDark,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelPosition: 'below-icon',
@@ -47,6 +49,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
+          headerShown: false,
           title: t.tabMap,
           tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
         }}

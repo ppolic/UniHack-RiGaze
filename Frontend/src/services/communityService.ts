@@ -1,7 +1,7 @@
 import { apiFetch, ApiHttpError, isRealJwtToken } from './api';
 import { getTranslations } from '../hooks/useTranslation';
 import { useUserStore } from '../store/userStore';
-import { ChallengeDefinition, CreateIssueReport, IssueReportReceipt, issueCategories } from '../types/community';
+import { ChallengeDefinition, CreateIssueReport, IssueReportReceipt, issueCategories, reportTransportModes } from '../types/community';
 
 class CommunitySessionError extends Error {}
 class CommunityResponseError extends Error {}
@@ -18,7 +18,8 @@ const isNonnegative = (value: unknown): value is number =>
 
 function currentSession() {
   const { user, token, isAuthenticated } = useUserStore.getState();
-  if (!isAuthenticated || !user || !isRealJwtToken(token) || !/^[1-9]\d*$/.test(user.id)) {
+  if (!isAuthenticated || !user || !isRealJwtToken(token) || !/^[1-9]\d*$/.test(user.id) ||
+      !Number.isSafeInteger(Number(user.id)) || Number(user.id) > 2147483647) {
     throw new CommunitySessionError(getTranslations().sessionSignInAgain);
   }
   return { userId: user.id, token };
@@ -88,7 +89,11 @@ export const communityService = {
   },
 
   async createReport(request: CreateIssueReport): Promise<IssueReportReceipt> {
-    if (!issueCategories.includes(request.category) || !request.description.trim() || request.description.trim().length > 600 ||
+    if (!issueCategories.includes(request.category) || !request.title.trim() || request.title.trim().length > 160 ||
+        !request.description.trim() || request.description.trim().length > 600 ||
+        !Array.isArray(request.affectedModes) || request.affectedModes.length === 0 ||
+        request.affectedModes.some((mode) => !reportTransportModes.includes(mode)) ||
+        new Set(request.affectedModes).size !== request.affectedModes.length || typeof request.affectsWheelchair !== 'boolean' ||
         (request.streetOrZone?.trim().length ?? 0) > 150 ||
         !Number.isFinite(request.latitude) || Math.abs(request.latitude) > 90 ||
         !Number.isFinite(request.longitude) || Math.abs(request.longitude) > 180) {
@@ -104,17 +109,24 @@ export const communityService = {
         method: 'POST',
         body: JSON.stringify({
           category: request.category,
+          title: request.title.trim(),
           description: request.description.trim(),
+          affectedModes: request.affectedModes,
+          affectsWheelchair: request.affectsWheelchair,
           streetOrZone: request.streetOrZone?.trim() || undefined,
           latitude: request.latitude,
           longitude: request.longitude,
-          // Omit userId: the backend must derive identity from the Bearer token.
+          // Only use the numeric backend ID just confirmed by protected /auth/me.
+          userId: Number(session.userId),
         }),
       }, session.token);
       assertSession(session);
       const report = isObject(response) ? response.report : undefined;
       if (!isObject(report) || typeof report.id !== 'number' || !Number.isSafeInteger(report.id) || report.id <= 0 ||
-          report.category !== request.category || report.description !== request.description.trim() ||
+          report.category !== request.category || report.title !== request.title.trim() || report.description !== request.description.trim() ||
+          !Array.isArray(report.affectedModes) || report.affectedModes.length !== request.affectedModes.length ||
+          !request.affectedModes.every((mode) => (report.affectedModes as unknown[]).includes(mode)) ||
+          report.affectsWheelchair !== (request.affectsWheelchair || request.category === 'InaccessibleArea') ||
           typeof report.streetOrZone !== 'string' || !isObject(report.location) ||
           typeof report.location.lat !== 'number' || !Number.isFinite(report.location.lat) ||
           typeof report.location.lng !== 'number' || !Number.isFinite(report.location.lng) ||
@@ -125,7 +137,8 @@ export const communityService = {
       // awardedEcoPoints is not proof of a persisted award in the current backend.
       // Do not modify the shared balance or trip totals from this response.
       return {
-        id: report.id, category: request.category, description: report.description,
+        id: report.id, category: request.category, title: report.title, description: report.description,
+        affectedModes: [...request.affectedModes], affectsWheelchair: report.affectsWheelchair,
         streetOrZone: report.streetOrZone, latitude: report.location.lat, longitude: report.location.lng,
       };
     } finally {

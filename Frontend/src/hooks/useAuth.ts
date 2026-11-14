@@ -1,3 +1,4 @@
+import { cancelAuth0BackendSession } from '../services/auth0BackendSession';
 import { useAuth0 } from '@auth0/auth0-react';
 import { useUserStore } from '../store/userStore';
 import { UserProfile } from '../types/user';
@@ -98,7 +99,6 @@ export function useAuth() {
   const store = useUserStore();
   const auth0 = useAuth0();
 
-  const isAuth0 = auth0.isAuthenticated && !!auth0.user;
   const rawEmail = store.user?.email || auth0.user?.email || '';
   const rawName =
     store.user?.fullName ||
@@ -113,29 +113,7 @@ export function useAuth() {
     (auth0.user as Record<string, any>) || undefined
   );
 
-  const baseUser: UserProfile | null =
-    store.user ??
-    (isAuth0 && auth0.user
-      ? {
-          id: auth0.user.sub || 'auth0|user',
-          email: rawEmail,
-          fullName: rawName,
-          birthDate: '2000-01-01',
-          age: 24,
-          preferences: {
-            hasDisability: false,
-            hasOwnBicycle: false,
-            hasOwnScooter: false,
-            hasOwnCar: false,
-            preferredModes: ['PublicTransit', 'Walking'],
-            wcagLargeText: false,
-            wcagTextRouteMode: false,
-          },
-          totalEcoPoints: 100,
-          totalCo2SavedKg: 0,
-          completedTripsCount: 0,
-        }
-      : null);
+  const baseUser: UserProfile | null = store.user;
 
   const user: UserProfile | null = baseUser
     ? {
@@ -155,11 +133,12 @@ export function useAuth() {
       }
     : null;
 
-  const isAuthenticated = store.isAuthenticated || isAuth0;
+  const isAuthenticated = store.isAuthenticated && !!store.user && !!store.token;
   const isLoading = store.isLoading || auth0.isLoading;
-  const token = store.token || (isAuth0 ? 'auth0-session' : null);
+  const token = store.token;
 
   const logout = () => {
+    cancelAuth0BackendSession(auth0.user?.sub);
     store.logout();
     if (auth0.isAuthenticated) {
       auth0.logout({

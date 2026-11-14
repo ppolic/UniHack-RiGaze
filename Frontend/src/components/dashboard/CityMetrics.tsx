@@ -13,7 +13,7 @@ interface CityMetricsProps {
 }
 
 export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) => {
-  const { t } = useTranslation();
+  const { language, t } = useTranslation();
   if (!summary && gapCount === undefined) return null;
 
   return (
@@ -24,14 +24,14 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
           <>
             <AppCard style={styles.metricCard}>
               <Text style={styles.metricNumber}>
-                {summary.totalCo2SavedCityKg.toLocaleString()} kg
+                {summary.totalCo2SavedCityKg.toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO')} kg
               </Text>
               <Text style={styles.metricLabel}>{t.simCo2Saved}</Text>
             </AppCard>
 
             <AppCard style={styles.metricCard}>
               <Text style={styles.metricNumber}>
-                {summary.totalSimulatedTrips.toLocaleString()}
+                {summary.totalSimulatedTrips.toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO')}
               </Text>
               <Text style={styles.metricLabel}>{t.simTrips}</Text>
             </AppCard>
@@ -39,7 +39,7 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
         )}
         {gapCount !== undefined && (
           <AppCard style={styles.metricCard}>
-            <Text style={styles.metricNumber}>{gapCount.toLocaleString()}</Text>
+            <Text style={styles.metricNumber}>{gapCount.toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO')}</Text>
             <Text style={styles.metricLabel}>{t.identifiedCells}</Text>
           </AppCard>
         )}
@@ -63,7 +63,7 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
                   <Text style={[
                     styles.recommendation,
                     zone.recommendation === 'New Bike Corridor' && styles.bikeRecommendation,
-                  ]}>{zone.recommendation}</Text>
+                  ]}>{zone.recommendation === 'New Bike Corridor' ? t.recommendBike : zone.recommendation === 'Extend Tram Line' ? t.recommendTransit : t.recommendHub}</Text>
                   <Text style={styles.co2Potential}>
                     {t.simPotentialPrefix} -{(zone.estimatedCo2ReductionYearKg / 1000).toFixed(1)}t {t.perYearSuffix}
                   </Text>

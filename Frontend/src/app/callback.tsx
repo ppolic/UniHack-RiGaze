@@ -8,11 +8,11 @@ import { typography } from '../theme/typography';
 import { spacing } from '../theme/spacing';
 
 export default function AuthCallbackScreen() {
-  const { isLoading: isAuth0Loading, isAuthenticated: isAuth0Authenticated } = useAuth0();
+  const { isLoading: isAuth0Loading } = useAuth0();
   const { isLoading, isAuthenticated } = useAuth();
 
   const loading = isAuth0Loading || isLoading;
-  const authenticated = isAuth0Authenticated || isAuthenticated;
+  const authenticated = isAuthenticated;
 
   if (!loading) {
     return <Redirect href={authenticated ? '/(tabs)' : '/(auth)/login'} />;

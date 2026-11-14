@@ -48,12 +48,12 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             <Badge label={user.organizationBadge} variant="success" />
           )}
           {user.passkeyEnabled && (
-            <Badge label="Auth0 Passkey Biometrie ⚡" variant="info" />
+            <Badge label={t.authPasskeyBadge} variant="info" />
           )}
           <Badge
             label={
               user.zeroKnowledgeAgeVerified
-                ? `GDPR Zero-Knowledge: ${user.ageCategory ?? 'Adult'} 🛡️`
+                ? `GDPR Zero-Knowledge: ${user.ageCategory === 'Under14' ? t.authAgeChild : user.ageCategory === 'From14To15' ? t.authAgeTeen : t.authAgeAdult} 🛡️`
                 : (verifiedAge === undefined || verifiedAge === null
                 ? t.profileAgeUnconfirmed
                 : t.ageBadge(verifiedAge))

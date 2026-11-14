@@ -113,6 +113,34 @@ function authenticatedResponse(res: BackendAuthResponse): AuthResponse {
 }
 
 export const authService = {
+  async establishAuth0Session(accessToken: string): Promise<AuthResponse & { expiresAtUtc: string }> {
+    const res = await apiFetch<BackendAuthResponse>('/auth/me', {}, accessToken);
+    if (!res || !Number.isSafeInteger(res.userId) || res.userId <= 0 || res.userId > 2147483647 ||
+        typeof res.email !== 'string' || !res.email.trim() || typeof res.displayName !== 'string' || !res.displayName.trim() ||
+        !Number.isSafeInteger(res.pointsBalance) || res.pointsBalance < 0 ||
+        !['Under14', 'From14To15', 'Adult'].includes(res.ageCategory) ||
+        [res.hasDisability, res.ownsBike, res.ownsScooter, res.ownsCar].some((value) => typeof value !== 'boolean') ||
+        typeof res.expiresAtUtc !== 'string' || !Number.isFinite(Date.parse(res.expiresAtUtc)) ||
+        Date.parse(res.expiresAtUtc) <= Date.now() || typeof res.token !== 'string') {
+      throw new Error('Backend session was not confirmed.');
+    }
+    // The protected backend validates Auth0's token. These checks validate the
+    // returned session's structure/identity/lifetime, not its signature in JavaScript.
+    try {
+      const parts = res.token.split('.');
+      if (parts.length !== 3 || parts.some((part) => !/^[A-Za-z0-9_-]+$/.test(part))) throw new Error();
+      const decode = (part: string) => JSON.parse(atob(part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=')));
+      const header = decode(parts[0]);
+      const claims = decode(parts[1]);
+      if (header.alg !== 'HS256' || claims.sub !== String(res.userId) ||
+          typeof claims.exp !== 'number' || claims.exp * 1000 <= Date.now() ||
+          Math.abs(claims.exp * 1000 - Date.parse(res.expiresAtUtc)) > 2000) throw new Error();
+    } catch {
+      throw new Error('Backend session was not confirmed.');
+    }
+    return { ...authenticatedResponse(res), expiresAtUtc: res.expiresAtUtc };
+  },
+
   async login(payload: LoginPayload): Promise<AuthResponse> {
     const res = await apiFetch<BackendAuthResponse>('/auth/login', {
       method: 'POST',

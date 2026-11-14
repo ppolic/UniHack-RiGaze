@@ -19,9 +19,9 @@ import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileScreen() {
   const { user, token, setUser, logout } = useAuth();
-  const { logout: auth0Logout, user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
+  const { user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
   const router = useRouter();
-  const { language, t } = useTranslation();
+  const { language, t, translateMessage } = useTranslation();
   const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
@@ -81,21 +81,11 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     logout();
-    if (isAuth0Authenticated) {
-      auth0Logout({
-        logoutParams: {
-          returnTo:
-            typeof window !== 'undefined'
-              ? window.location.origin
-              : 'http://localhost:5279',
-        },
-      });
-    }
     router.replace('/(auth)/login');
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
@@ -115,13 +105,13 @@ export default function ProfileScreen() {
                   <AppInput
                     label={t.displayNameLabel}
                     accessibilityLabel={t.displayNameLabel}
-                    accessibilityHint={nameError}
+                    accessibilityHint={translateMessage(nameError)}
                     value={draft.name}
                     onChangeText={(name) => {
                       setDraft({ ...draft, name });
                       setNameError(undefined);
                     }}
-                    error={nameError}
+                    error={translateMessage(nameError)}
                     autoFocus
                     autoCapitalize="words"
                     autoComplete="name"
@@ -148,54 +138,54 @@ export default function ProfileScreen() {
 
           <AppCard style={styles.sessionCard}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
-              🛡️ Auth0 Sigurnost & Digitalni Identitet
+              {t.authIdentityTitle}
             </Text>
             <View style={{ gap: spacing.md, marginTop: spacing.xs }}>
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  1. 🎓 Auth0 Organizations (Verified Carpool)
+                  {t.authOrganizationsTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.organizationBadge ?? 'Timișoara Citizen 🌱'}
+                  {user?.organizationBadge ?? t.authCitizen}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Siguran Carpool otključan za {user?.verifiedOrganization ?? 'kampus i partnerske tvrtke (UPT, UVT, Continental)'}.
+                  {t.authCarpoolPrefix} {user?.verifiedOrganization ?? t.authOrganizationDefault}.
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  2. ♿ Auth0 Passkeys (Biometrija)
+                  {t.authPasskeysTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.passkeyEnabled ? 'Aktivno (WebAuthn / FaceID / Otisak prsta) ⚡' : 'Podržano u Universal Loginu'}
+                  {user?.passkeyEnabled ? t.authPasskeyActive : t.authPasskeySupported}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Pristupačna prijava u 1 sekundi za bicikliste s rukavicama i osobe s invaliditetom.
+                  {t.authPasskeyDescription}
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  3. 🛡️ GDPR Zero-Knowledge Provjera Dobi
+                  {t.authAgeTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  Status: {user?.ageCategory ?? 'Adult'} (Zero-Knowledge Action Shield)
+                  {t.authStatus}: {user?.ageCategory === 'Under14' ? t.authAgeChild : user?.ageCategory === 'From14To15' ? t.authAgeTeen : t.authAgeAdult}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Aplikacija ne pohranjuje datum rođenja djece; zakonska pravila za e-romobile primjenjuju se automatski.
+                  {t.authAgeDescription}
                 </Text>
               </View>
 
               <View>
                 <Text style={{ ...typography.captionMedium, color: colors.primary, fontWeight: '700' }}>
-                  4. 🤖 Bot Detection & Waze Citizen Trust Score
+                  {t.authTrustTitle}
                 </Text>
                 <Text style={{ ...typography.body, color: colors.textPrimary }}>
-                  {user?.trustBadge ?? 'Waze Trust Score: 85/100 (2x Glas)'}
+                  {user?.trustBadge ?? t.authTrustUnknown}
                 </Text>
                 <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                  Verificirani Auth0 račun daje veću težinu prijavama prepreka na karti i štiti kupone od botova.
+                  {t.authTrustDescription}
                 </Text>
               </View>
             </View>
@@ -209,7 +199,7 @@ export default function ProfileScreen() {
 
           {isAuth0Authenticated && auth0User && (
             <AppCard style={styles.sessionCard}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">User Profile (Auth0)</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">{t.authRawProfile}</Text>
               <Text style={{ fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary }}>
                 {JSON.stringify(auth0User, null, 2)}
               </Text>

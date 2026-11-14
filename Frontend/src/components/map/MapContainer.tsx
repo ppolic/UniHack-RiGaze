@@ -899,7 +899,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
 
           <View style={styles.poiPopupFooter}>
             <View style={styles.poiAccessBadge}>
-              <Text style={styles.poiAccessText}>📍 Primăria Timișoara POI</Text>
+              <Text style={styles.poiAccessText}>{t.mapCityPoi}</Text>
             </View>
 
             {renderPoiActionButtons({ lat: lm.lat, lng: lm.lng }, lm.name)}
@@ -924,7 +924,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 {prk.name}
               </Text>
               <Text style={styles.poiPopupSubtitle} numberOfLines={2}>
-                {availabilityText} • {prk.hourlyRateRon} RON/h
+                {availabilityText} • {prk.hourlyRateRon} {t.mapParkingHourly}
                 {prk.hourlyRateEur ? ` (${prk.hourlyRateEur} €)` : ''}
                 {prk.zone ? ` • ${prk.zone}` : ''}
               </Text>

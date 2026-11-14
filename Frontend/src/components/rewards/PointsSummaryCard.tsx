@@ -17,9 +17,9 @@ export const PointsSummaryCard: React.FC<{ balance: number }> = ({ balance }) =>
       <Text style={styles.label}>{t.myEcoPoints}</Text>
       <View style={styles.balanceRow}>
         <Text style={styles.points}>{balance}</Text>
-        <Text style={styles.unit}>{language === 'en' ? 'available points' : 'puncte disponibile'}</Text>
+        <Text style={styles.unit}>{t.availablePoints}</Text>
       </View>
-      <Text style={styles.description}>{language === 'en' ? 'One step closer to your next reward.' : 'Un pas mai aproape de următoarea recompensă.'}</Text>
+      <Text style={styles.description}>{t.nextRewardDescription}</Text>
     </AppCard>
   );
 };

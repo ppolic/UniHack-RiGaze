@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Modal,
   View,
@@ -163,15 +163,10 @@ export const AccessibilityComplianceModal: React.FC<
     updatePreferences,
   } = useAuth();
 
-  const { language } = useTranslation();
-  const [lang, setLang] = useState<StatementLanguage>(language);
+  const { language: lang, setLanguage: setLang, t } = useTranslation();
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
-
-  useEffect(() => {
-    setLang(language);
-  }, [language, visible]);
 
   const copy = STATEMENT_COPY[lang];
 
@@ -218,7 +213,7 @@ export const AccessibilityComplianceModal: React.FC<
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.headerTitle} accessibilityRole="header">
-                ♿ WCAG 2.1 AA • Law 232/2022
+                {t.accessibilityLawTitle}
               </Text>
               <Text style={styles.headerSubtitle}>{copy.headerSubtitle}</Text>
             </View>
@@ -356,7 +351,7 @@ export const AccessibilityComplianceModal: React.FC<
                 style={styles.errorBox}
                 accessibilityLiveRegion="polite"
               >
-                <Text style={styles.errorText}>⚠️ {feedbackError}</Text>
+                <Text style={styles.errorText}>⚠️ {copy.feedbackEmptyError}</Text>
               </View>
             )}
 

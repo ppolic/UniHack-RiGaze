@@ -71,7 +71,11 @@ interface SearchSuggestionItem {
 
 export default function MapScreen() {
   const router = useRouter();
-  const { language, setLanguage, toggleLanguage, t } = useTranslation();
+  const { language, setLanguage, toggleLanguage, t, translateMessage } = useTranslation();
+  const modeLabels: Record<string, string> = {
+    Walk: t.modeWalk, Bike: t.modeBike, Scooter: t.modeScooter, Car: t.modeCar,
+    PublicTransport: t.modePublicTransport, Carpool: t.modeCarpool, Combined: t.modeCombined,
+  };
   const {
     user,
     addEcoPoints,
@@ -1033,7 +1037,7 @@ export default function MapScreen() {
             {endpoints.destination && selectedOption ? (
               <View style={styles.textAltStepsList}>
                 <Text style={[styles.textAltRouteSummary, { fontSize: fs(12) }]}>
-                  {t.selected}: {selectedOption.title || selectedOption.mode} •{' '}
+                  {t.selected}: {translateMessage(selectedOption.title) || modeLabels[selectedOption.mode] || selectedOption.mode} •{' '}
                   {selectedOption.durationMinutes} min •{' '}
                   {selectedOption.distanceKm.toFixed(2)} km • +
                   {selectedOption.ecoPoints} {t.points}
@@ -1063,7 +1067,7 @@ export default function MapScreen() {
                       <Text
                         style={[styles.textAltStepMeta, { fontSize: fs(10) }]}
                       >
-                        {seg.mode} • {seg.durationMinutes} min •{' '}
+                        {modeLabels[seg.mode] || seg.mode} • {seg.durationMinutes} min •{' '}
                         {seg.distanceKm.toFixed(2)} km
                       </Text>
                     </View>
@@ -1196,9 +1200,7 @@ export default function MapScreen() {
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             accessibilityRole="button"
             accessibilityLabel={
-              language === 'ro'
-                ? 'Schimbă limba în engleză'
-                : 'Switch language to Romanian'
+              language === 'ro' ? t.switchToEnA11y : t.switchToRoA11y
             }
           >
             <Text style={styles.langHeaderBtnText}>
@@ -1278,6 +1280,19 @@ export default function MapScreen() {
         {wcagTextRouteMode && !isNavigating && renderTextualMapAlternative()}
 
         {isNavigating && renderActiveNavigationTopBanner()}
+
+        {!isNavigating && (
+          <TouchableOpacity
+            style={styles.reportIssueButton}
+            onPress={() => router.push('/report-issue')}
+            activeOpacity={0.85}
+            accessibilityRole="button"
+            accessibilityLabel={t.reportIssueHeaderTitle}
+          >
+            <Text style={styles.reportIssueIcon} accessible={false}>⚑</Text>
+            <Text style={styles.reportIssueLabel}>{t.reportIssueHeaderTitle}</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Floating Address & Place Search Bar at the Top of the Map (Filters sit directly below it in MapContainer) */}
         {!isNavigating && (
@@ -1722,6 +1737,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   topHeader: {
+    flexWrap: 'wrap',
+    gap: spacing.sm,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -1748,9 +1765,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    flexShrink: 0,
+    flexShrink: 1,
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    maxWidth: '100%',
   },
   langHeaderBtn: {
+    minHeight: 44,
+    minWidth: 64,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surfaceMuted,
     paddingHorizontal: 8,
     paddingVertical: 6,
@@ -1815,6 +1839,26 @@ const styles = StyleSheet.create({
     right: spacing.md,
     zIndex: 28,
   },
+  reportIssueButton: {
+    position: 'absolute',
+    top: 102,
+    left: spacing.md,
+    maxWidth: '65%',
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1.5,
+    borderColor: colors.warning,
+    backgroundColor: colors.surface,
+    zIndex: 20,
+    ...shadows.md,
+  },
+  reportIssueIcon: { fontSize: 24, color: colors.warning },
+  reportIssueLabel: { ...typography.captionMedium, color: colors.warning, flexShrink: 1 },
   searchBarInputRow: {
     flexDirection: 'row',
     alignItems: 'center',

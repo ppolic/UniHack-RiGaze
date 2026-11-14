@@ -16,8 +16,7 @@ export default function HomeScreen() {
   const firstName = user?.fullName.trim().split(/\s+/)[0];
 
   const shortcuts: { title: string; description: string; icon: string; href: Href; upcoming?: boolean }[] = [
-    { title: t.homeShortcutFavoritesTitle, description: t.homeShortcutFavoritesDesc, icon: '♡', href: { pathname: '/(tabs)/history', params: { section: 'favorites' } } },
-    { title: t.homeShortcutHistoryTitle, description: t.homeShortcutHistoryDesc, icon: '↺', href: { pathname: '/(tabs)/history', params: { section: 'history' } } },
+    { title: t.historyScreenTitle, description: `${t.homeShortcutFavoritesDesc} ${t.homeShortcutHistoryDesc}`, icon: '♡', href: '/(tabs)/history' },
     { title: t.homeShortcutChallengesTitle, description: t.homeShortcutChallengesDesc, icon: '⚑', href: '/challenges' },
     { title: t.homeShortcutReportTitle, description: t.homeShortcutReportDesc, icon: '⚐', href: '/report-issue' },
     { title: t.homeShortcutPointsTitle, description: t.homeShortcutPointsDesc, icon: '✧', href: '/(tabs)/rewards' },
@@ -25,7 +24,7 @@ export default function HomeScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.welcome}>

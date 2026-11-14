@@ -56,7 +56,7 @@ export const RoutePresets: React.FC<RoutePresetsProps> = ({
   const narrow = width < 768;
 
   const presets: RoutePresetItem[] = DEMO_PRESETS.map((preset) =>
-    preset.id === 'pr_1' ? { ...preset, label: t.routePresetCenter } : preset
+    ({ ...preset, label: preset.id === 'pr_1' ? t.routePresetCenter : preset.id === 'pr_2' ? t.routePresetNorth : t.routePresetCampus })
   );
 
   return (

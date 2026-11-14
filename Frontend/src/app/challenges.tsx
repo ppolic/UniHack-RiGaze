@@ -21,7 +21,7 @@ type ChallengesState =
 export default function ChallengesScreen() {
   const router = useRouter();
   const { user, token } = useAuth();
-  const { t } = useTranslation();
+  const { t, translateMessage } = useTranslation();
   const { width, fontScale } = useWindowDimensions();
   const [state, setState] = useState<ChallengesState>({ status: 'loading' });
   const [requestVersion, setRequestVersion] = useState(0);
@@ -87,10 +87,10 @@ export default function ChallengesScreen() {
           {user?.organizationBadge && (
             <View style={{ backgroundColor: colors.surfaceMuted, padding: spacing.md, borderRadius: 12, borderWidth: 1, borderColor: colors.primary, gap: 4 }}>
               <Text style={{ ...typography.captionMedium, color: colors.primaryDark, fontWeight: '700' }}>
-                🎓 Green Campus Challenge: {user.organizationBadge}
+                {t.campusChallenge}: {user.organizationBadge}
               </Text>
               <Text style={{ ...typography.caption, color: colors.textSecondary }}>
-                Vaši zeleni kilometri automatski se pribrajaju na rang listu za {user.verifiedOrganization ?? 'vašu organizaciju'}!
+                {t.campusOrganization}: {user.verifiedOrganization ?? t.authOrganizationDefault}
               </Text>
             </View>
           )}
@@ -121,7 +121,7 @@ export default function ChallengesScreen() {
           {state.status === 'error' && (
             <AppCard style={styles.statusCard}>
               <Text style={styles.sectionTitle}>{t.challengesUnavailableTitle}</Text>
-              <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{state.message}</Text>
+              <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{translateMessage(state.message)}</Text>
               <AppButton title={t.retry} onPress={reload} />
             </AppCard>
           )}

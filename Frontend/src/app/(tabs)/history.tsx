@@ -22,7 +22,7 @@ type HistoryState =
 
 export default function HistoryScreen() {
   const router = useRouter();
-  const { language, t } = useTranslation();
+  const { language, t, translateMessage } = useTranslation();
   const modeLabels: Record<string, string> = {
     Walk: t.modeWalk, Walking: t.modeWalk, Bicycle: t.modeBike, Bike: t.modeBike, Scooter: t.modeScooter,
     Bus: t.svcVehicleBus, Tram: t.svcVehicleTram, Trolleybus: t.svcVehicleTrolleybus,
@@ -64,7 +64,7 @@ export default function HistoryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.heading}>
@@ -112,7 +112,7 @@ export default function HistoryScreen() {
                 <AppCard style={styles.statusCard}>
                   <Text style={styles.sectionTitle}>{t.historyUnavailableTitle}</Text>
                   <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-                    {state.message}
+                    {translateMessage(state.message)}
                   </Text>
                   <AppButton title={t.retry} onPress={handleRetry} />
                 </AppCard>

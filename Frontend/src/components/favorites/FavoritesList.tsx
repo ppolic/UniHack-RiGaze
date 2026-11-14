@@ -17,7 +17,7 @@ type FavoritesState = { status: 'loading' } | { status: 'error'; message: string
 
 export function FavoritesList() {
   const { user, token } = useAuth();
-  const { t } = useTranslation();
+  const { t, translateMessage } = useTranslation();
   const [state, setState] = useState<FavoritesState>({ status: 'loading' });
   const [version, setVersion] = useState(0);
   const loading = useRef(false);
@@ -77,7 +77,7 @@ export function FavoritesList() {
       )}
       {state.status === 'error' && (
         <AppCard style={styles.card}>
-          <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{state.message}</Text>
+          <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{translateMessage(state.message)}</Text>
           <AppButton title={t.retry} onPress={reload} />
         </AppCard>
       )}

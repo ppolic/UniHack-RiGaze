@@ -55,7 +55,7 @@ const redemptionKey = (userId: string, rewardId: string) => JSON.stringify([user
 
 export default function RewardsScreen() {
   const { user, token, isAuthenticated } = useAuth();
-  const { language, t } = useTranslation();
+  const { language, t, translateMessage } = useTranslation();
   const { width, fontScale } = useWindowDimensions();
   const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [balanceVersion, setBalanceVersion] = useState(0);
@@ -173,7 +173,7 @@ export default function RewardsScreen() {
   ];
 
   return (
-    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={styles.screen} edges={['left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.heading}>
@@ -191,7 +191,7 @@ export default function RewardsScreen() {
           )}
           {balance.status === 'error' && (
             <AppCard style={styles.statusCard}>
-              <Text style={styles.error} accessibilityRole="alert">{balance.message}</Text>
+              <Text style={styles.error} accessibilityRole="alert">{translateMessage(balance.message)}</Text>
               <AppButton title={t.rewardsReloadBalanceBtn} onPress={() => setBalanceVersion((version) => version + 1)} />
             </AppCard>
           )}
@@ -215,11 +215,11 @@ export default function RewardsScreen() {
             {catalogue.status === 'error' && (
               <AppCard style={styles.statusCard}>
                 <Text style={styles.sectionTitle}>{t.rewardsCatalogUnavailable}</Text>
-                <Text style={styles.error} accessibilityRole="alert">{catalogue.message}</Text>
+                <Text style={styles.error} accessibilityRole="alert">{translateMessage(catalogue.message)}</Text>
                 <AppButton title={t.rewardsReloadRewardsBtn} onPress={() => setCatalogueVersion((version) => version + 1)} />
               </AppCard>
             )}
-            {error && <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{error}</Text>}
+            {error && <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{translateMessage(error)}</Text>}
             {catalogue.status === 'success' && coupons.length === 0 && (
               <AppCard style={styles.statusCard}>
                 <Text style={styles.sectionTitle}>{t.rewardsEmptyTitle}</Text>
@@ -276,7 +276,7 @@ export default function RewardsScreen() {
             )}
             {ledger.status === 'error' && (
               <AppCard style={styles.statusCard}>
-                <Text style={styles.error} accessibilityRole="alert">{ledger.message}</Text>
+                <Text style={styles.error} accessibilityRole="alert">{translateMessage(ledger.message)}</Text>
                 <AppButton title={t.rewardsReloadLedgerBtn} onPress={() => setLedgerVersion((version) => version + 1)} />
               </AppCard>
             )}
