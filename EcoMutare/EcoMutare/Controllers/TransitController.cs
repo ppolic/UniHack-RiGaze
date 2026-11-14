@@ -179,6 +179,42 @@ public class TransitController : ControllerBase
         }).ToList());
     }
 
+    /// <summary>
+    /// Nadolazeći polasci po statičkom voznom redu (bez realtime kašnjenja) za zadano stajalište (stopId) ili najbliže koordinate (lat/lng).
+    /// </summary>
+    [HttpGet("departures")]
+    [ProducesResponseType(typeof(List<StopTimeDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<List<StopTimeDto>>> GetDepartures(
+        [FromQuery] int? stopId = null,
+        [FromQuery] double? lat = null,
+        [FromQuery] double? lng = null,
+        [FromQuery] string? after = null,
+        [FromQuery] int limit = 20,
+        CancellationToken ct = default)
+    {
+        int? resolvedStopId = stopId;
+        if (resolvedStopId is null && lat.HasValue && lng.HasValue)
+        {
+            var stops = await _db.Stops.AsNoTracking().ToListAsync(ct);
+            var nearest = stops
+                .OrderBy(s => Geo.DistanceM(lat.Value, lng.Value, s.Latitude, s.Longitude))
+                .FirstOrDefault();
+            resolvedStopId = nearest?.Id;
+        }
+
+        if (resolvedStopId is null)
+        {
+            var firstStop = await _db.Stops.AsNoTracking().OrderBy(s => s.Id).FirstOrDefaultAsync(ct);
+            resolvedStopId = firstStop?.Id ?? 1;
+        }
+
+        string effectiveAfter = string.IsNullOrWhiteSpace(after)
+            ? DateTime.UtcNow.AddHours(2).ToString("HH:mm")
+            : after;
+
+        return await GetStopTimes(resolvedStopId, null, null, null, effectiveAfter, limit, ct);
+    }
+
     private static string Fmt(TimeSpan t) => $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}";
 
     private static TransitRouteDto ToDto(TransitRoute r) => new()
