@@ -68,7 +68,6 @@ builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
     builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
 builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
 builder.Services.AddSingleton<ICommunityIntelligenceService, CommunityIntelligenceService>();
-builder.Services.AddSingleton<ReportPhotoStore>();
 builder.Services.AddSingleton<IGreenIntelligenceService, GreenIntelligenceService>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();

@@ -2,11 +2,11 @@ using EcoMutare.Domain;
 using EcoMutare.Dtos;
 using EcoMutare.Services.Auth;
 using EcoMutare.Services.Community;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace EcoMutare.Controllers;
 
+/// <summary>
 /// Građanske prijave u stvarnom vremenu u Timișoari (1-Tap crowd prijava u aplikaciji + službene prijave):
 /// - Blokade cesta i radovi (RoadBlockade),
 /// - Nedostupna područja za osobe u invalidskim kolicima / kolica za bebe (InaccessibleArea),
@@ -14,19 +14,15 @@ namespace EcoMutare.Controllers;
 /// - Prijave dionica gdje nema biciklističke staze, a potrebna je zbog čestog prolaska (MissingBikeLane),
 /// + čitanje i potvrđivanje pravih prijava sa službenog gradskog portala sesizari.primariatm.ro
 /// + Auth0 Bot Detection & Citizen Trust Score (2x/3x težina glasa za verificirane Auth0 korisnike).
-
+/// </summary>
 [ApiController]
 public class CommunityReportsController : ControllerBase
 {
-    private const int MaxPhotoRequestBytes = 6 * 1024 * 1024;
-
     private readonly ICommunityIntelligenceService _community;
-    private readonly ReportPhotoStore _photos;
 
-    public CommunityReportsController(ICommunityIntelligenceService community, ReportPhotoStore photos)
+    public CommunityReportsController(ICommunityIntelligenceService community)
     {
         _community = community;
-        _photos = photos;
     }
 
     /// <summary>
@@ -77,107 +73,6 @@ public class CommunityReportsController : ControllerBase
         request.UserId ??= User.GetUserId();
         var result = await _community.CreateReportAsync(request, ct);
         return await ApplyAuth0TrustWeightAsync(result, ct);
-    }
-
-    /// <summary>
-    /// Nova prijava S FOTOGRAFIJOM u jednom zahtjevu (kamera u aplikaciji): multipart/form-data s istim poljima kao
-    /// POST /reports (Category, Title, Description, StreetOrZone, Latitude, Longitude, AffectedModes, AffectsWheelchair)
-    /// plus datoteka Photo (JPEG ili PNG, najviše 5 MB). Traži prijavu; autor prijave uvijek je prijavljeni korisnik.
-    /// Fotografija se provjerava prije kreiranja, pa neispravna slika ne stvara prijavu ni bodove.
-    /// Savjet za aplikaciju: prije slanja smanjite i ponovno spremite sliku (expo-image-manipulator, JPEG, ~0.7 kvalitete),
-    /// čime se uklanjaju EXIF podaci (npr. GPS lokacija) i smanjuje potrošnja mobilnih podataka.
-    /// </summary>
-    [HttpPost("reports/with-photo")]
-    [HttpPost("hazards/with-photo")]
-    [Authorize]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(MaxPhotoRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxPhotoRequestBytes)]
-    [ProducesResponseType(typeof(CommunityReportActionResponseDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    public async Task<ActionResult<CommunityReportActionResponseDto>> CreateReportWithPhoto(
-        [FromForm] CreateCommunityReportWithPhotoRequest request,
-        CancellationToken ct = default)
-    {
-        var userId = User.GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var (error, extension) = await _photos.ValidateAsync(request.Photo, ct);
-        if (error is not null)
-            return BadRequest(new ProblemDetails { Status = 400, Title = error });
-
-        request.UserId = userId;
-        var result = await _community.CreateReportAsync(request, ct);
-
-        var photoResult = await _community.SetReportPhotoAsync(
-            result.Report.Id, userId.Value, token => _photos.SaveAsync(request.Photo!, extension, token), ct);
-        if (photoResult.Status == ReportPhotoStatus.Ok && photoResult.Report is not null)
-        {
-            result.Report = photoResult.Report;
-        }
-        else
-        {
-            result.Message += " (Fotografija nije spremljena, pokušajte je dodati putem POST /reports/{id}/photo.)";
-        }
-
-        return await ApplyAuth0TrustWeightAsync(result, ct);
-    }
-
-    /// <summary>
-    /// Dodaje ili zamjenjuje fotografiju na postojećoj prijavi (multipart/form-data, polje "photo": JPEG ili PNG, najviše 5 MB).
-    /// Samo autor prijave smije dodati fotografiju (403 za druge, 404 ako prijava ne postoji). Radi za prijave stvorene s
-    /// POST /reports, /reports/quick-pin i /reports/missing-bike-lane dok je korisnik prijavljen.
-    /// </summary>
-    [HttpPost("reports/{id:int}/photo")]
-    [HttpPost("hazards/{id:int}/photo")]
-    [Authorize]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(MaxPhotoRequestBytes)]
-    [RequestFormLimits(MultipartBodyLengthLimit = MaxPhotoRequestBytes)]
-    [ProducesResponseType(typeof(CommunityReportDto), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType(StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CommunityReportDto>> UploadPhoto(
-        int id,
-        [FromForm] UploadReportPhotoRequest request,
-        CancellationToken ct = default)
-    {
-        var userId = User.GetUserId();
-        if (userId is null) return Unauthorized();
-
-        var (error, extension) = await _photos.ValidateAsync(request.Photo, ct);
-        if (error is not null)
-            return BadRequest(new ProblemDetails { Status = 400, Title = error });
-
-        var result = await _community.SetReportPhotoAsync(
-            id, userId.Value, token => _photos.SaveAsync(request.Photo!, extension, token), ct);
-
-        if (result.Status == ReportPhotoStatus.NotFound)
-            return NotFound(new { Message = $"Prijava #{id} nije pronađena." });
-        if (result.Status == ReportPhotoStatus.Forbidden)
-            return StatusCode(StatusCodes.Status403Forbidden,
-                new ProblemDetails { Status = 403, Title = "Samo autor prijave može dodati fotografiju." });
-
-        _photos.TryDelete(result.PreviousPhotoUrl);
-        return Ok(result.Report);
-    }
-
-    /// <summary>Vraća fotografiju prijave (javno). Naziv datoteke dolazi iz polja photoUrl u prijavi.</summary>
-    [HttpGet("reports/photos/{fileName}")]
-    [AllowAnonymous]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public IActionResult GetPhoto(string fileName)
-    {
-        if (!_photos.TryGetFile(fileName, out var path, out var contentType))
-            return NotFound();
-
-        Response.Headers["X-Content-Type-Options"] = "nosniff";
-        Response.Headers["Cache-Control"] = "public, max-age=86400";
-        return PhysicalFile(path, contentType);
     }
 
     /// <summary>
