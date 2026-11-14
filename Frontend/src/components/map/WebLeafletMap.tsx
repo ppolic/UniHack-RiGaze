@@ -520,7 +520,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
     <View style={styles.container}>
       {React.createElement('iframe', {
         ref: iframeRef,
-        title: 'EcoMutare Timișoara Map',
+        title: 'BeGreen Timișoara Map',
         srcDoc: leafletHtml,
         onLoad: () => setMapReady(true),
         style: {

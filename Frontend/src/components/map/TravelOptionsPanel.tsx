@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,8 @@ import {
   ScrollView,
   StyleSheet,
   useWindowDimensions,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
@@ -63,13 +65,109 @@ export function TravelOptionsPanel({
   const available = Math.max(0, bottom - insets.top);
 
   // Minimized height shows drag handle + A/B selector (topSlot) + compact summary row
-  const minimizedHeight = topSlot ? 142 : 76;
+  const minimizedHeight = topSlot ? 158 : 88;
   const openHeight = desktop
-    ? Math.min(available * 0.76, 560)
-    : Math.min(available * 0.68, 490);
+    ? Math.min(available * 0.85, 680)
+    : Math.min(available * 0.82, 660);
 
   const sheetHeight = expanded ? openHeight : minimizedHeight;
   const ready = bounds.height > 0;
+
+  const animatedHeight = useRef(new Animated.Value(minimizedHeight)).current;
+  const bottomValue = useRef(new Animated.Value(bottom)).current;
+  const currentHeightRef = useRef(sheetHeight);
+  const dragStartHeightRef = useRef(sheetHeight);
+  const isDraggingRef = useRef(false);
+  const minHRef = useRef(minimizedHeight);
+  const maxHRef = useRef(openHeight);
+  const expandedRef = useRef(expanded);
+  const setExpandedRef = useRef(setExpanded);
+
+  minHRef.current = minimizedHeight;
+  maxHRef.current = openHeight;
+  expandedRef.current = expanded;
+  setExpandedRef.current = setExpanded;
+
+  useEffect(() => {
+    bottomValue.setValue(bottom);
+  }, [bottom, bottomValue]);
+
+  useEffect(() => {
+    if (isDraggingRef.current) return;
+    currentHeightRef.current = sheetHeight;
+    if (!ready) {
+      animatedHeight.setValue(sheetHeight);
+      return;
+    }
+    Animated.spring(animatedHeight, {
+      toValue: sheetHeight,
+      tension: 75,
+      friction: 12,
+      useNativeDriver: false,
+    }).start();
+  }, [sheetHeight, ready, animatedHeight]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) =>
+        Math.abs(gestureState.dy) > 6 &&
+        Math.abs(gestureState.dy) > Math.abs(gestureState.dx),
+      onPanResponderGrant: () => {
+        isDraggingRef.current = true;
+        dragStartHeightRef.current = currentHeightRef.current;
+        animatedHeight.stopAnimation((value) => {
+          currentHeightRef.current = value;
+          dragStartHeightRef.current = value;
+        });
+      },
+      onPanResponderMove: (_, gestureState) => {
+        const nextH = Math.max(
+          minHRef.current,
+          Math.min(maxHRef.current, dragStartHeightRef.current - gestureState.dy)
+        );
+        currentHeightRef.current = nextH;
+        animatedHeight.setValue(nextH);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        isDraggingRef.current = false;
+        const range = Math.max(1, maxHRef.current - minHRef.current);
+        const snapThreshold = expandedRef.current
+          ? minHRef.current + range * 0.75
+          : minHRef.current + range * 0.25;
+        const shouldOpen =
+          gestureState.vy < -0.2
+            ? true
+            : gestureState.vy > 0.2
+            ? false
+            : currentHeightRef.current > snapThreshold;
+
+        const targetH = shouldOpen ? maxHRef.current : minHRef.current;
+        currentHeightRef.current = targetH;
+        Animated.spring(animatedHeight, {
+          toValue: targetH,
+          tension: 75,
+          friction: 12,
+          useNativeDriver: false,
+        }).start();
+        setExpandedRef.current(shouldOpen);
+      },
+      onPanResponderTerminate: () => {
+        isDraggingRef.current = false;
+        const midPoint = (minHRef.current + maxHRef.current) / 2;
+        const shouldOpen = currentHeightRef.current > midPoint;
+        const targetH = shouldOpen ? maxHRef.current : minHRef.current;
+        currentHeightRef.current = targetH;
+        Animated.spring(animatedHeight, {
+          toValue: targetH,
+          tension: 75,
+          friction: 12,
+          useNativeDriver: false,
+        }).start();
+        setExpandedRef.current(shouldOpen);
+      },
+    })
+  ).current;
 
   return (
     <>
@@ -83,28 +181,32 @@ export function TravelOptionsPanel({
           setBounds({ width: measuredWidth, height: measuredHeight });
         }}
       />
-      <View
+      <Animated.View
         pointerEvents="auto"
         onStartShouldSetResponder={() => true}
         style={[
           styles.sheet,
           styles.overlaySheet,
           ready && {
-            top: bottom - sheetHeight,
-            height: sheetHeight,
+            top: Animated.subtract(bottomValue, animatedHeight),
+            height: animatedHeight,
             left: 0,
             width: Math.min(bounds.width || width, width),
           },
           !ready && styles.hidden,
         ]}
       >
-        <View style={[styles.header, desktop && styles.desktopContent]}>
+        <View
+          style={[styles.header, desktop && styles.desktopContent]}
+          {...panResponder.panHandlers}
+        >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
               expanded ? 'Spusti opcije putovanja' : 'Podigni opcije putovanja'
             }
             accessibilityState={{ expanded }}
+            hitSlop={{ top: 8, bottom: 8, left: 24, right: 24 }}
             onPress={() => setExpanded(!expanded)}
             style={({ pressed }) => [
               styles.handlePressArea,
@@ -147,23 +249,28 @@ export function TravelOptionsPanel({
           </Pressable>
         </View>
 
-        {expanded && (
-          <>
-            <ScrollView
-              style={styles.optionsList}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: spacing.md }}
+        <View
+          style={styles.bodyContainer}
+          pointerEvents={expanded ? 'auto' : 'none'}
+          importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+        >
+          <ScrollView
+            style={styles.optionsList}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: spacing.md }}
+          >
+            {children}
+          </ScrollView>
+          {footer ? (
+            <View
+              style={[styles.footer, desktop && styles.desktopContent]}
+              {...panResponder.panHandlers}
             >
-              {children}
-            </ScrollView>
-            {footer ? (
-              <View style={[styles.footer, desktop && styles.desktopContent]}>
-                {footer}
-              </View>
-            ) : null}
-          </>
-        )}
-      </View>
+              {footer}
+            </View>
+          ) : null}
+        </View>
+      </Animated.View>
     </>
   );
 }
@@ -189,14 +296,16 @@ const styles = StyleSheet.create({
   },
   header: { marginBottom: 4, flexShrink: 0 },
   handlePressArea: {
-    paddingVertical: 4,
+    paddingTop: 6,
+    paddingBottom: 10,
     alignItems: 'center',
   },
   topSlotContainer: {
     marginBottom: 6,
   },
   summaryControl: {
-    paddingVertical: 4,
+    paddingTop: 6,
+    paddingBottom: 12,
     borderRadius: borderRadius.sm,
   },
   headerRow: {
@@ -232,12 +341,13 @@ const styles = StyleSheet.create({
   },
   headerPressed: { backgroundColor: colors.surfaceMuted },
   handle: {
-    width: 42,
+    width: 48,
     height: 5,
     borderRadius: borderRadius.full,
     backgroundColor: colors.controlBorder,
     alignSelf: 'center',
   },
+  bodyContainer: { flex: 1, minHeight: 0 },
   optionsList: { flex: 1, minHeight: 0 },
   footer: { flexShrink: 0 },
   desktopContent: { width: '100%', maxWidth: 960, alignSelf: 'center' },

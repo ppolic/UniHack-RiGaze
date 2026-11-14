@@ -73,7 +73,7 @@ export default function DashboardScreen() {
           {/* Banner with Simulation notice required by track evaluation */}
           <View style={styles.banner}>
             <Text style={styles.bannerTitle}>
-              🌱 EcoMutare Green Intelligence — Timișoara DEMO
+              🌱 BeGreen Green Intelligence — Timișoara DEMO
             </Text>
             <Text style={styles.bannerSubtitle}>
               Svi prikazani pokazatelji, infrastrukturne ocjene i preporuke ulaganja simulirani

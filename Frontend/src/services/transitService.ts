@@ -931,7 +931,7 @@ export const transitService = {
         headers: {
           Accept: 'application/json',
           'Accept-Language': 'ro,en,hr',
-          'User-Agent': 'EcoMutare-UniHack8-Timisoara/1.0',
+          'User-Agent': 'BeGreen-UniHack8-Timisoara/1.0',
         },
         signal: controller.signal,
       });

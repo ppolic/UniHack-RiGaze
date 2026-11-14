@@ -1156,39 +1156,11 @@ export default function MapScreen() {
       <View style={styles.topHeader}>
         <View style={styles.brandRow}>
           <Text style={styles.brandTitle} numberOfLines={1}>
-            EcoMutare
+            BeGreen
           </Text>
-          {hasDisability && (
-            <View style={styles.accessMiniBadge}>
-              <Text style={styles.accessMiniText}>♿ Niski pod</Text>
-            </View>
-          )}
         </View>
 
         <View style={styles.headerRight}>
-          <TouchableOpacity
-            style={[
-              styles.wcagHeaderBtn,
-              (hasDisability || wcagLargeText || wcagTextRouteMode) &&
-                styles.wcagHeaderBtnActive,
-            ]}
-            onPress={() => setWcagModalVisible(true)}
-            activeOpacity={0.8}
-            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-            accessibilityRole="button"
-            accessibilityLabel="Otvori WCAG 2.1 AA i Law 232/2022 postavke pristupačnosti"
-          >
-            <Text
-              style={[
-                styles.wcagHeaderBtnText,
-                (hasDisability || wcagLargeText || wcagTextRouteMode) &&
-                  styles.wcagHeaderBtnTextActive,
-              ]}
-            >
-              ♿ AA
-            </Text>
-          </TouchableOpacity>
-
           <TouchableOpacity
             style={styles.profileSettingsBtn}
             onPress={() => {
@@ -1414,7 +1386,7 @@ export default function MapScreen() {
 
       {renderActiveNavigationHud()}
 
-      {/* EcoMutare Trip Completed Modal */}
+      {/* BeGreen Trip Completed Modal */}
       <TripCompletedModal
         visible={tripModalVisible}
         option={selectedOption}
@@ -1445,6 +1417,7 @@ export default function MapScreen() {
       >
         <View style={styles.modalBackdrop}>
           <View style={styles.connectionModalCard}>
+            <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.connectionModalHeader}>
               <Text style={styles.connectionModalTitle}>
                 👤 Profil putnika & API postavke
@@ -1452,6 +1425,9 @@ export default function MapScreen() {
               <TouchableOpacity
                 onPress={() => setSettingsModalVisible(false)}
                 style={styles.modalCloseBtn}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Zatvori postavke"
               >
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
@@ -1497,6 +1473,74 @@ export default function MapScreen() {
                 );
               })}
             </View>
+
+            <View style={styles.modalDivider} />
+
+            <Text style={styles.inputLabel}>
+              ♿ Pristupačnost (WCAG 2.1 AA • Law 232/2022)
+            </Text>
+            <View style={styles.profileGrid}>
+              <TouchableOpacity
+                onPress={() =>
+                  updatePreferences({ wcagLargeText: !wcagLargeText })
+                }
+                style={[
+                  styles.profileChip,
+                  wcagLargeText && styles.profileChipActive,
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: wcagLargeText }}
+                accessibilityLabel="Uključi ili isključi veliki tekst 120 posto"
+              >
+                <Text
+                  style={[
+                    styles.profileChipText,
+                    wcagLargeText && styles.profileChipTextActive,
+                  ]}
+                >
+                  {wcagLargeText ? '✓ ' : ''}🔤 Veliki tekst (120%)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() =>
+                  updatePreferences({ wcagTextRouteMode: !wcagTextRouteMode })
+                }
+                style={[
+                  styles.profileChip,
+                  wcagTextRouteMode && styles.profileChipActive,
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: wcagTextRouteMode }}
+                accessibilityLabel="Uključi ili isključi tekstualnu alternativu karte"
+              >
+                <Text
+                  style={[
+                    styles.profileChipText,
+                    wcagTextRouteMode && styles.profileChipTextActive,
+                  ]}
+                >
+                  {wcagTextRouteMode ? '✓ ' : ''}📜 Tekstualna karta
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.wcagModalOpenBtn}
+              onPress={() => {
+                setSettingsModalVisible(false);
+                setWcagModalVisible(true);
+              }}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Otvori izjavu o pristupačnosti Law 232/2022 i sve WCAG opcije"
+            >
+              <Text style={styles.wcagModalOpenBtnText}>
+                ♿ WCAG 2.1 AA postavke & Izjava (RO / EN)
+              </Text>
+            </TouchableOpacity>
 
             <View style={styles.modalDivider} />
 
@@ -1571,6 +1615,7 @@ export default function MapScreen() {
                 style={{ flex: 1 }}
               />
             </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
@@ -1606,46 +1651,11 @@ const styles = StyleSheet.create({
     color: colors.primaryDark,
     fontWeight: '800',
   },
-  accessMiniBadge: {
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.primary,
-  },
-  accessMiniText: {
-    ...typography.captionMedium,
-    fontSize: 10,
-    color: colors.primaryDark,
-    fontWeight: '700',
-  },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: 6,
     flexShrink: 0,
-  },
-  wcagHeaderBtn: {
-    backgroundColor: colors.surfaceMuted,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    borderWidth: 1.5,
-    borderColor: colors.primaryDark,
-  },
-  wcagHeaderBtnActive: {
-    backgroundColor: colors.primaryDark,
-    borderColor: colors.primaryDark,
-  },
-  wcagHeaderBtnText: {
-    ...typography.captionMedium,
-    fontSize: 11,
-    color: colors.primaryDark,
-    fontWeight: '800',
-  },
-  wcagHeaderBtnTextActive: {
-    color: colors.textInverse,
   },
   profileSettingsBtn: {
     backgroundColor: colors.surfaceMuted,
@@ -1924,6 +1934,7 @@ const styles = StyleSheet.create({
   connectionModalCard: {
     width: '100%',
     maxWidth: 420,
+    maxHeight: '88%',
     backgroundColor: colors.surface,
     borderRadius: borderRadius.xl,
     padding: spacing.lg,
@@ -1976,6 +1987,21 @@ const styles = StyleSheet.create({
   profileChipTextActive: {
     color: colors.textInverse,
     fontWeight: '700',
+  },
+  wcagModalOpenBtn: {
+    minHeight: 44,
+    backgroundColor: colors.primaryDark,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  wcagModalOpenBtnText: {
+    ...typography.captionMedium,
+    fontSize: 12,
+    fontWeight: '800',
+    color: colors.textInverse,
   },
   modalDivider: {
     height: 1,

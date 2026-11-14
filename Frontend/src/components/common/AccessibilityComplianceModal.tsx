@@ -78,7 +78,7 @@ const STATEMENT_COPY: Record<
     complianceStatusLabel: 'Starea de conformitate:',
     complianceStatusBadge: 'Conformitate deplină WCAG 2.1 Nivel AA',
     legalIntro:
-      'Aplicația mobilă și web EcoMutare Timișoara este concepută pentru a respecta cerințele Legii nr. 232/2022 (care completează OUG nr. 112/2018 și transpune Directiva (UE) 2016/2102 privind accesibilitatea site-urilor web și a aplicațiilor mobile ale organismelor din sectorul public) și standardul european armonizat EN 301 549 V3.2.1.',
+      'Aplicația mobilă și web BeGreen Timișoara este concepută pentru a respecta cerințele Legii nr. 232/2022 (care completează OUG nr. 112/2018 și transpune Directiva (UE) 2016/2102 privind accesibilitatea site-urilor web și a aplicațiilor mobile ale organismelor din sectorul public) și standardul european armonizat EN 301 549 V3.2.1.',
     measuresTitle: 'Măsuri tehnice implementate',
     measures: [
       'Contrast cromatic verificat (≥ 4,5:1 pentru text normal și ≥ 3:1 pentru elemente grafice și controale interactive).',
@@ -128,7 +128,7 @@ const STATEMENT_COPY: Record<
     complianceStatusLabel: 'Compliance status:',
     complianceStatusBadge: 'Fully Compliant — WCAG 2.1 Level AA',
     legalIntro:
-      'EcoMutare Timișoara is committed to making its web and mobile urban mobility services accessible in accordance with Romanian Law no. 232/2022 (transposing EU Web Accessibility Directive (EU) 2016/2102 alongside GEO 112/2018) and the harmonized European standard EN 301 549 V3.2.1.',
+      'BeGreen Timișoara is committed to making its web and mobile urban mobility services accessible in accordance with Romanian Law no. 232/2022 (transposing EU Web Accessibility Directive (EU) 2016/2102 alongside GEO 112/2018) and the harmonized European standard EN 301 549 V3.2.1.',
     measuresTitle: 'Implemented Technical Safeguards',
     measures: [
       'Verified color contrast ratios (≥ 4.5:1 for normal text and badge labels; ≥ 3:1 for interactive boundaries and essential graphics).',

@@ -35,7 +35,7 @@ export default function LoginScreen() {
         <View style={styles.logoBadge}>
           <Text style={styles.logoText}>🌱</Text>
         </View>
-        <Text style={styles.appTitle}>EcoMutare</Text>
+        <Text style={styles.appTitle}>BeGreen</Text>
         <Text style={styles.tagline}>
           Getting from A to B shouldn't cost the planet.
         </Text>
