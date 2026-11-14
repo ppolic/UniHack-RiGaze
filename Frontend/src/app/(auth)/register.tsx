@@ -13,14 +13,6 @@ import { AppCard } from '../../components/common/AppCard';
 
 type FormErrors = { fullName?: string; email?: string; password?: string; birthDate?: string; server?: string };
 
-function calculateAge(birthDate: string, today: Date): number {
-  const [year, month, day] = birthDate.split('-').map(Number);
-  const birthdayPending = today.getMonth() + 1 < month ||
-    (today.getMonth() + 1 === month && today.getDate() < day);
-  // A February 29 birthday advances on March 1 in non-leap years.
-  return today.getFullYear() - year - (birthdayPending ? 1 : 0);
-}
-
 function getBirthDateError(value: string, now = new Date()): string | undefined {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Unesite datum u obliku YYYY-MM-DD.';
   const [year, month, day] = value.split('-').map(Number);
@@ -43,7 +35,7 @@ export default function RegisterScreen() {
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Demo123!');
+  const [password, setPassword] = useState('');
   const [birthDate, setBirthDate] = useState('2004-06-15');
   const [hasDisability, setHasDisability] = useState(false);
   const [hasOwnBicycle, setHasOwnBicycle] = useState(true);
@@ -89,25 +81,7 @@ export default function RegisterScreen() {
       if (err instanceof ApiHttpError) {
         setErrors({ server: err.message || 'Registracija nije uspjela.' });
       } else {
-        setUser({
-          id: `usr_${Date.now()}`,
-          email: trimmedEmail,
-          fullName: trimmedName,
-          birthDate: trimmedBirthDate,
-          age: calculateAge(trimmedBirthDate, today),
-          preferences: {
-            hasDisability,
-            hasOwnBicycle,
-            hasOwnScooter: false,
-            hasOwnCar,
-            preferredModes: hasDisability ? ['PublicTransit'] : ['Bicycle', 'PublicTransit'],
-          },
-          totalEcoPoints: 50,
-          totalCo2SavedKg: 0,
-          completedTripsCount: 0,
-        });
-        setToken('token-registered');
-        router.replace('/(tabs)');
+        setErrors({ server: 'Nije moguće povezati se sa serverom ili potvrditi registraciju. Provjerite vezu i pokušajte ponovno.' });
       }
     } finally {
       setLoading(false);

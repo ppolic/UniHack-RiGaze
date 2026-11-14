@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { ApiHttpError } from '../../services/api';
-import { DemoUserRole } from '../../store/userStore';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -14,9 +13,9 @@ import { AppCard } from '../../components/common/AppCard';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { loginAsDemoUser, setUser, setToken } = useAuth();
-  const [email, setEmail] = useState('ana.student@upt.ro');
-  const [password, setPassword] = useState('Demo123!');
+  const { setUser, setToken } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,21 +32,8 @@ export default function LoginScreen() {
       if (err instanceof ApiHttpError) {
         setErrorMsg(err.message || 'Pogrešan email ili lozinka.');
       } else {
-        await loginAsDemoUser('student');
-        router.replace('/(tabs)');
+        setErrorMsg('Nije moguće povezati se sa serverom ili potvrditi prijavu. Provjerite vezu i pokušajte ponovno.');
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleQuickDemo = async (role: DemoUserRole) => {
-    if (loading) return;
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      await loginAsDemoUser(role);
-      router.replace('/(tabs)');
     } finally {
       setLoading(false);
     }
@@ -72,8 +58,7 @@ export default function LoginScreen() {
       <AppCard style={styles.formCard}>
         <Text style={styles.formTitle}>Prijava u BeGreen</Text>
         <Text style={styles.demoNotice}>
-          Prijavite se putem EcoMutare računa (npr. ana.student@upt.ro / Demo123!) ili
-          odaberite jedan od brzih demo profila ispod.
+          Unesite svoj email i lozinku. Za prijavu je potrebna veza sa serverom.
         </Text>
         {errorMsg && (
           <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
@@ -129,28 +114,6 @@ export default function LoginScreen() {
         </TouchableOpacity>
       </AppCard>
 
-      {/* Hackathon Quick Demo Presets */}
-      <View style={styles.demoBox}>
-        <Text style={styles.demoTitle}>⚡ Brzi Demo Pristup (za žiri i testiranje):</Text>
-        <View style={styles.demoButtonsRow}>
-          <AppButton
-            title="👤 Student (Bicikl/JPP)"
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            onPress={() => handleQuickDemo('student')}
-            style={styles.demoBtn}
-          />
-          <AppButton
-            title="♿ Pristupačnost (Kolica)"
-            variant="outline"
-            size="sm"
-            disabled={loading}
-            onPress={() => handleQuickDemo('accessibility')}
-            style={styles.demoBtn}
-          />
-        </View>
-      </View>
     </ScrollView>
   );
 }
@@ -222,25 +185,5 @@ const styles = StyleSheet.create({
   linkText: {
     color: colors.primary,
     fontWeight: '700',
-  },
-  demoBox: {
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  demoTitle: {
-    ...typography.captionMedium,
-    color: colors.textSecondary,
-    marginBottom: spacing.sm,
-  },
-  demoButtonsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  demoBtn: {
-    flex: 1,
-    backgroundColor: colors.surface,
   },
 });

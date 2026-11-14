@@ -1,4 +1,4 @@
-import { apiFetch, API_CONFIG, ApiHttpError } from './api';
+import { apiFetch } from './api';
 import { UserProfile } from '../types/user';
 import { AgeCategory } from '../types/route';
 
@@ -52,16 +52,6 @@ export interface AuthResponse {
   user: UserProfile;
 }
 
-export const DEMO_CREDENTIALS: Record<
-  'student' | 'accessibility' | 'teen_15' | 'child_12',
-  { email: string; password: string }
-> = {
-  student: { email: 'ana.student@upt.ro', password: 'Demo123!' },
-  accessibility: { email: 'marko.kolica@uvt.ro', password: 'Demo123!' },
-  teen_15: { email: 'elena.tinejdzer@tm.ro', password: 'Demo123!' },
-  child_12: { email: 'david.ucenik@tm.ro', password: 'Demo123!' },
-};
-
 function computeAge(birthDateIso?: string | null, ageCategory?: AgeCategory): number {
   if (birthDateIso) {
     const datePart = birthDateIso.split('T')[0];
@@ -113,84 +103,32 @@ export function mapAuthResponseToUserProfile(
   };
 }
 
+function authenticatedResponse(res: BackendAuthResponse): AuthResponse {
+  if (!res || typeof res.token !== 'string' || !res.token.trim() ||
+      !Number.isSafeInteger(res.userId) || res.userId <= 0) {
+    throw new Error('Server nije potvrdio autentifikaciju. Pokušajte ponovno.');
+  }
+  return { token: res.token, user: mapAuthResponseToUserProfile(res) };
+}
+
 export const authService = {
   async login(payload: LoginPayload): Promise<AuthResponse> {
-    if (API_CONFIG.USE_MOCK_FALLBACK) {
-      return {
-        token: 'mock-jwt-token-12345',
-        user: {
-          id: 'usr_1',
-          email: payload.email,
-          fullName: 'Ana Popescu (Studentica UPT)',
-          birthDate: '2003-05-14',
-          age: 23,
-          preferences: {
-            hasDisability: false,
-            hasOwnBicycle: true,
-            hasOwnScooter: false,
-            hasOwnCar: false,
-            preferredModes: ['Bicycle', 'PublicTransit'],
-          },
-          totalEcoPoints: 320,
-          totalCo2SavedKg: 0.42,
-          completedTripsCount: 2,
-        },
-      };
-    }
-
-    try {
-      const res = await apiFetch<BackendAuthResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: payload.email.trim(),
-          password: payload.password || 'Demo123!',
-        }),
-      });
-      return {
-        token: res.token,
-        user: mapAuthResponseToUserProfile(res),
-      };
-    } catch (err) {
-      if (err instanceof ApiHttpError && (err.status === 400 || err.status === 401)) {
-        throw err;
-      }
-      throw err;
-    }
+    const res = await apiFetch<BackendAuthResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({
+        email: payload.email.trim(),
+        password: payload.password ?? '',
+      }),
+    });
+    return authenticatedResponse(res);
   },
 
   async register(payload: RegisterPayload): Promise<AuthResponse> {
-    if (API_CONFIG.USE_MOCK_FALLBACK) {
-      return {
-        token: 'mock-jwt-token-registered',
-        user: {
-          id: 'usr_new',
-          email: payload.email,
-          fullName: payload.fullName,
-          birthDate: payload.birthDate,
-          age: computeAge(payload.birthDate),
-          preferences: {
-            hasDisability: payload.hasDisability,
-            hasOwnBicycle: payload.hasOwnBicycle,
-            hasOwnScooter: payload.hasOwnScooter,
-            hasOwnCar: payload.hasOwnCar,
-            preferredModes: payload.hasDisability
-              ? ['PublicTransit', 'CarWithParking']
-              : ['Bicycle', 'PublicTransit'],
-          },
-          totalEcoPoints: 50,
-          totalCo2SavedKg: 0,
-          completedTripsCount: 0,
-        },
-      };
-    }
-
-    const rawPassword = payload.password?.trim() || '';
-    const password = rawPassword.length >= 8 ? rawPassword : 'Demo123!';
     const res = await apiFetch<BackendAuthResponse>('/auth/register', {
       method: 'POST',
       body: JSON.stringify({
         email: payload.email.trim(),
-        password,
+        password: payload.password ?? '',
         displayName: payload.fullName.trim(),
         birthDate: `${payload.birthDate.trim()}T00:00:00Z`,
         hasDisability: payload.hasDisability,
@@ -199,11 +137,7 @@ export const authService = {
         ownsCar: payload.hasOwnCar,
       }),
     });
-
-    return {
-      token: res.token,
-      user: mapAuthResponseToUserProfile(res),
-    };
+    return authenticatedResponse(res);
   },
 
   async getMe(existing?: Partial<UserProfile>): Promise<AuthResponse> {
