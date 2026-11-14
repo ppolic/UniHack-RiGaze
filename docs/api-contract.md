@@ -108,22 +108,3 @@ Pogreške validacije (npr. `lat` izvan raspona, nedostaje `origin`) vraćaju `40
 3. Dopuštene su samo opcije koje prođu pravila iznad, pa je `ecoRank` 1 uvijek najzelenija *dopuštena* opcija.
 
 **Ostalo:** `ecoPoints` je nagrada za odabir te opcije (Walk 100, Bike 90, Scooter 70, PublicTransport 60, Car 0). `costRon` je u RON (0 za vlastiti bicikl/romobil). Planer prilagođava udaljenost, trajanje i geometriju prema unesenim koordinatama `origin` i `destination` te filtrira po `preferredModes` ako su zadani.
-
----
-
-## Green Intelligence – Gradski podaci (sat 24–30)
-
-### GET `/insights/gaps`
-Vraća biciklističke koridore (`bikeCorridors`) i prostornu rešetku grada (`cells`, ćelije ~500 m × 500 m) s izračunatim prazninama (`isInfrastructureGap`), brojem putovanja, udjelom automobila (`carShare`), udaljenošću do najbliže staze (`distanceToNearestBikeLaneMeters`) i stanice JPP-a (`distanceToNearestTransitStopMeters`) te rangom prioriteta (`priorityRank`, `gapScore`).
-- Opcionalni query parametar: `?onlyGaps=true` (vraća samo ćelije s infrastrukturnim deficitom).
-- Jasno označeno s `isSimulationData: true` i `simulationDisclaimer`.
-
-### GET `/insights/summary`
-Vraća tri ključna broja za gradski dashboard:
-- `totalSavedCo2Kg` – ukupno ušteđeni CO₂ u kg
-- `totalTripsCount` / `greenTripsCount` / `greenModalSplitPercent` – ukupan broj putovanja i udio zelenih opcija
-- `topInvestmentZones` – **Top 3 zone** za izgradnju nove biciklističke staze ili uvođenje linije javnog prijevoza (`rank`, `zoneName`, `gapScore`, `reason`, `proposedAction`).
-
-### GET `/insights/proximity?lat=...&lng=...`
-Helper za izračun ortogonalne udaljenosti bilo koje točke u gradu do najbliže biciklističke staze, STPT stanice, niskopodne (wheelchair-accessible) stanice i VeloTM stanice.
-
