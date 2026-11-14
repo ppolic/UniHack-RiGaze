@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,9 @@ export default function MapScreen() {
   const [parkings, setParkings] = useState<ParkingDetail[]>([]);
   const [tripModalVisible, setTripModalVisible] = useState(false);
   const [lastCo2Saved, setLastCo2Saved] = useState(0);
+  const routeRequestId = useRef(0);
+  const mounted = useRef(false);
+  const planningPending = useRef(false);
 
   // Offline Demo Safety Switch State (FE-09)
   const [useMockMode, setUseMockMode] = useState(API_CONFIG.USE_MOCK_FALLBACK);
@@ -71,10 +74,17 @@ export default function MapScreen() {
     loadTransitPois();
   }, [useMockMode]);
 
-  // Fetch routes when preset, disability status, user age, or Demo/Live mode changes
-  useEffect(() => {
+  // Start planning before interaction with a newly committed preset/profile.
+  useLayoutEffect(() => {
+    mounted.current = true;
     fetchRoutes(activePreset);
-  }, [activePreset, hasDisability, user?.age, user?.id, useMockMode]);
+    return () => {
+      mounted.current = false;
+      routeRequestId.current += 1;
+    };
+  }, [activePreset, hasDisability, user?.age, user?.id,
+    user?.preferences?.hasOwnBicycle, user?.preferences?.hasOwnScooter,
+    user?.preferences?.hasOwnCar, useMockMode]);
 
   const handleToggleMockMode = () => {
     const nextMock = !useMockMode;
@@ -103,6 +113,9 @@ export default function MapScreen() {
   };
 
   const fetchRoutes = async (preset: RoutePresetItem) => {
+    const requestId = ++routeRequestId.current;
+    const isCurrentRequest = () => mounted.current && requestId === routeRequestId.current;
+    planningPending.current = true;
     setIsLoading(true);
     try {
       const userAge = user?.age ?? 22;
@@ -121,6 +134,8 @@ export default function MapScreen() {
         },
       });
 
+      if (!isCurrentRequest()) return;
+
       setOptions(response.options);
       setWeather(response.weather);
       setIsMock(response.isMock);
@@ -128,13 +143,18 @@ export default function MapScreen() {
       // Default to recommended option
       const recommended =
         response.options.find((o) => o.isRecommended) || response.options[0];
-      if (recommended) {
-        setSelectedOptionId(recommended.id);
-      }
+      setSelectedOptionId(recommended?.id ?? null);
     } catch (err) {
+      if (!isCurrentRequest()) return;
       console.error('Greška pri planiranju rute:', err);
+      // Previous routes no longer belong to the requested preset/profile.
+      setOptions([]);
+      setSelectedOptionId(null);
     } finally {
-      setIsLoading(false);
+      if (isCurrentRequest()) {
+        planningPending.current = false;
+        setIsLoading(false);
+      }
     }
   };
 
@@ -155,7 +175,7 @@ export default function MapScreen() {
   const selectedOption = options.find((o) => o.id === selectedOptionId);
 
   const handleCompleteTrip = async () => {
-    if (!selectedOption) return;
+    if (!mounted.current || planningPending.current || isLoading || !selectedOption) return;
 
     // Calculate CO2 savings vs 390g car baseline
     const co2Saved = Math.max(0, 390 - selectedOption.co2Grams);
@@ -347,6 +367,8 @@ export default function MapScreen() {
             <AppButton
               title={`Odaberi i završi (${selectedOption.durationMinutes} min • +${selectedOption.ecoPoints} bodova)`}
               onPress={handleCompleteTrip}
+              loading={isLoading}
+              disabled={isLoading}
               size="lg"
             />
           </View>
