@@ -1,14 +1,28 @@
-import React from 'react';
-import { View, Text, StyleSheet, Switch } from 'react-native';
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Switch,
+  TouchableOpacity,
+} from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
 import { Badge } from '../common/Badge';
+import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceModal';
 
 export const ProfileDetails: React.FC = () => {
-  const { user, updatePreferences, hasDisability } = useAuth();
+  const {
+    user,
+    updatePreferences,
+    hasDisability,
+    wcagLargeText,
+    wcagTextRouteMode,
+  } = useAuth();
+  const [wcagModalVisible, setWcagModalVisible] = useState(false);
 
   if (!user) return null;
 
@@ -28,11 +42,16 @@ export const ProfileDetails: React.FC = () => {
           {hasDisability && (
             <Badge label="Pristupačnost aktivna" variant="info" />
           )}
+          {(wcagLargeText || wcagTextRouteMode) && (
+            <Badge label="WCAG 2.1 AA" variant="success" />
+          )}
         </View>
       </AppCard>
 
       {/* Mobility Preferences & Accessibility Settings */}
-      <Text style={styles.sectionTitle}>Pristupačnost i Vlastita Vozila</Text>
+      <Text style={styles.sectionTitle} accessibilityRole="header">
+        Pristupačnost i Vlastita Vozila
+      </Text>
       <AppCard style={styles.settingsCard}>
         {/* Disability Toggle */}
         <View style={styles.toggleRow}>
@@ -45,7 +64,11 @@ export const ProfileDetails: React.FC = () => {
           <Switch
             value={user.preferences.hasDisability}
             onValueChange={(val) => updatePreferences({ hasDisability: val })}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            trackColor={{ false: colors.controlBorder, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityRole="switch"
+            accessibilityLabel="Osoba s invaliditetom ili invalidska kolica"
+            accessibilityState={{ checked: user.preferences.hasDisability }}
           />
         </View>
 
@@ -62,7 +85,11 @@ export const ProfileDetails: React.FC = () => {
           <Switch
             value={user.preferences.hasOwnBicycle}
             onValueChange={(val) => updatePreferences({ hasOwnBicycle: val })}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            trackColor={{ false: colors.controlBorder, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityRole="switch"
+            accessibilityLabel="Posjedujem vlastiti bicikl"
+            accessibilityState={{ checked: user.preferences.hasOwnBicycle }}
           />
         </View>
 
@@ -79,10 +106,84 @@ export const ProfileDetails: React.FC = () => {
           <Switch
             value={user.preferences.hasOwnCar}
             onValueChange={(val) => updatePreferences({ hasOwnCar: val })}
-            trackColor={{ false: colors.border, true: colors.primary }}
+            trackColor={{ false: colors.controlBorder, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityRole="switch"
+            accessibilityLabel="Posjedujem vlastiti automobil"
+            accessibilityState={{ checked: user.preferences.hasOwnCar }}
           />
         </View>
       </AppCard>
+
+      {/* WCAG 2.1 Level AA / Romanian Law 232/2022 / EN 301 549 Section */}
+      <Text style={styles.wcagSectionTitle} accessibilityRole="header">
+        Pristupačnost (Zakon 232/2022 • WCAG 2.1 AA)
+      </Text>
+      <AppCard style={styles.settingsCard}>
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleInfo}>
+            <Text style={styles.toggleLabel}>🔤 Povećani tekst (WCAG 1.4.4)</Text>
+            <Text style={styles.toggleDesc}>
+              Povećava ključne nazive ruta, mjerenja i upute za slabovidne osobe.
+            </Text>
+          </View>
+          <Switch
+            value={wcagLargeText}
+            onValueChange={(val) => updatePreferences({ wcagLargeText: val })}
+            trackColor={{ false: colors.controlBorder, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityRole="switch"
+            accessibilityLabel="Uključi povećani tekst prema WCAG 1.4.4"
+            accessibilityState={{ checked: wcagLargeText }}
+          />
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.toggleRow}>
+          <View style={styles.toggleInfo}>
+            <Text style={styles.toggleLabel}>📋 Tekstualni prikaz karte (EN 301 549)</Text>
+            <Text style={styles.toggleDesc}>
+              Zamjenjuje vizualnu kartu dostupnim tekstualnim popisom stanica i koraka rute.
+            </Text>
+          </View>
+          <Switch
+            value={wcagTextRouteMode}
+            onValueChange={(val) => updatePreferences({ wcagTextRouteMode: val })}
+            trackColor={{ false: colors.controlBorder, true: colors.primary }}
+            thumbColor={colors.surface}
+            accessibilityRole="switch"
+            accessibilityLabel="Uključi tekstualnu alternativu karte prema normi EN 301 549"
+            accessibilityState={{ checked: wcagTextRouteMode }}
+          />
+        </View>
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity
+          style={styles.statementOpenBtn}
+          onPress={() => setWcagModalVisible(true)}
+          activeOpacity={0.85}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          accessibilityRole="button"
+          accessibilityLabel="Open Romanian Law 232/2022 and WCAG 2.1 AA Accessibility Statement in Romanian and English"
+        >
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statementBtnTitle}>
+              📜 Law 232/2022 & WCAG 2.1 AA Statement (RO / EN)
+            </Text>
+            <Text style={styles.statementBtnSub}>
+              Declarație privind accesibilitatea • EN 301 549 • ADR Feedback
+            </Text>
+          </View>
+          <Text style={styles.statementBtnArrow}>➔</Text>
+        </TouchableOpacity>
+      </AppCard>
+
+      <AccessibilityComplianceModal
+        visible={wcagModalVisible}
+        onClose={() => setWcagModalVisible(false)}
+      />
     </View>
   );
 };
@@ -154,5 +255,41 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colors.border,
     marginVertical: spacing.xs,
+  },
+  wcagSectionTitle: {
+    ...typography.bodyMedium,
+    fontWeight: '700',
+    color: colors.textPrimary,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  statementOpenBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 48,
+    backgroundColor: colors.primaryDark,
+    borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    marginTop: spacing.xs,
+    gap: spacing.sm,
+  },
+  statementBtnTitle: {
+    ...typography.captionMedium,
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.textInverse,
+  },
+  statementBtnSub: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textOnDark,
+    marginTop: 2,
+  },
+  statementBtnArrow: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: colors.textInverse,
   },
 });

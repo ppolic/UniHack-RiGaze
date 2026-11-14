@@ -5,6 +5,7 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { Badge } from '../common/Badge';
+import { useAuth } from '../../hooks/useAuth';
 
 interface RouteOptionCardProps {
   option: RouteOptionDto;
@@ -18,6 +19,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
   onSelect,
 }) => {
   const desktop = useWindowDimensions().width >= 768;
+  const { wcagLargeText } = useAuth();
   const getModeColor = (mode: string) => {
     switch (mode) {
       case 'Bike':
@@ -53,11 +55,22 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
   const modeColor = getModeColor(option.mode);
   const cardTitle = option.title || getModeLabel(option.mode);
+  const priceLabel = option.costRon === 0 ? 'Besplatno' : `${option.costRon} RON`;
+  const a11ySummary = `${cardTitle}${isSelected ? ', odabrano' : ''}${
+    option.isRecommended ? ', najzelenije' : ''
+  }. Trajanje ${option.durationMinutes} min, udaljenost ${option.distanceKm.toFixed(
+    1
+  )} km, emisije ${option.co2Grams} grama CO2, cijena ${priceLabel}, nagrada ${
+    option.ecoPoints
+  } eko bodova.`;
 
   return (
     <TouchableOpacity
       activeOpacity={0.88}
       onPress={onSelect}
+      accessibilityRole="button"
+      accessibilityState={{ selected: isSelected }}
+      accessibilityLabel={a11ySummary}
       style={[
         styles.card,
         desktop && styles.desktopCard,
@@ -69,14 +82,23 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
         },
       ]}
     >
-      {/* Top Header: Mode indicator & Badges */}
+      {/* Top Header: Mode indicator & Non-color Badges (WCAG 1.4.1) */}
       <View style={[styles.headerRow, desktop && styles.desktopHeader]}>
         <View style={[styles.modeIndicatorRow, desktop && styles.desktopMode]}>
           <View style={[styles.modeDot, { backgroundColor: modeColor }]} />
-          <Text style={[styles.modeTitle, desktop && styles.desktopHeading]}>{cardTitle}</Text>
+          <Text
+            style={[
+              styles.modeTitle,
+              desktop && styles.desktopHeading,
+              wcagLargeText && styles.largeTitle,
+            ]}
+          >
+            {cardTitle}
+          </Text>
         </View>
 
         <View style={[styles.badgesRow, desktop && styles.desktopBadges]}>
+          {isSelected && <Badge label="✓ Odabrano" variant="success" />}
           {option.isRecommended && (
             <Badge label="Najzelenije" variant="success" />
           )}
@@ -91,17 +113,24 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       {/* Metrics Row: Duration, Distance, CO2, Price */}
       <View style={[styles.metricsRow, desktop && styles.desktopMetrics]}>
         <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
-          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>{option.durationMinutes} min</Text>
-          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Trajanje</Text>
-        </View>
-
-        <View style={[styles.divider, desktop && styles.hidden]} />
-
-        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
-          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>
-            {option.distanceKm.toFixed(1)} km
+          <Text
+            style={[
+              styles.metricValue,
+              desktop && styles.desktopHeading,
+              wcagLargeText && styles.largeMetricVal,
+            ]}
+          >
+            {option.durationMinutes} min
           </Text>
-          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Udaljenost</Text>
+          <Text
+            style={[
+              styles.metricLabel,
+              desktop && styles.desktopBody,
+              wcagLargeText && styles.largeCaption,
+            ]}
+          >
+            Trajanje
+          </Text>
         </View>
 
         <View style={[styles.divider, desktop && styles.hidden]} />
@@ -111,6 +140,30 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
             style={[
               styles.metricValue,
               desktop && styles.desktopHeading,
+              wcagLargeText && styles.largeMetricVal,
+            ]}
+          >
+            {option.distanceKm.toFixed(1)} km
+          </Text>
+          <Text
+            style={[
+              styles.metricLabel,
+              desktop && styles.desktopBody,
+              wcagLargeText && styles.largeCaption,
+            ]}
+          >
+            Udaljenost
+          </Text>
+        </View>
+
+        <View style={[styles.divider, desktop && styles.hidden]} />
+
+        <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
+          <Text
+            style={[
+              styles.metricValue,
+              desktop && styles.desktopHeading,
+              wcagLargeText && styles.largeMetricVal,
               option.co2Grams === 0
                 ? { color: colors.primary }
                 : { color: colors.textPrimary },
@@ -118,22 +171,51 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
           >
             {option.co2Grams}g CO₂
           </Text>
-          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Emisije</Text>
+          <Text
+            style={[
+              styles.metricLabel,
+              desktop && styles.desktopBody,
+              wcagLargeText && styles.largeCaption,
+            ]}
+          >
+            Emisije
+          </Text>
         </View>
 
         <View style={[styles.divider, desktop && styles.hidden]} />
 
         <View style={[styles.metricItem, desktop && styles.desktopMetric]}>
-          <Text style={[styles.metricValue, desktop && styles.desktopHeading]}>
-            {option.costRon === 0 ? 'Besplatno' : `${option.costRon} RON`}
+          <Text
+            style={[
+              styles.metricValue,
+              desktop && styles.desktopHeading,
+              wcagLargeText && styles.largeMetricVal,
+            ]}
+          >
+            {priceLabel}
           </Text>
-          <Text style={[styles.metricLabel, desktop && styles.desktopBody]}>Cijena</Text>
+          <Text
+            style={[
+              styles.metricLabel,
+              desktop && styles.desktopBody,
+              wcagLargeText && styles.largeCaption,
+            ]}
+          >
+            Cijena
+          </Text>
         </View>
       </View>
 
       {/* Segments summary */}
       {option.segments && option.segments.length > 0 && (
-        <Text style={[styles.stepsText, desktop && styles.desktopBody]} numberOfLines={desktop ? undefined : 2}>
+        <Text
+          style={[
+            styles.stepsText,
+            desktop && styles.desktopBody,
+            wcagLargeText && styles.largeBody,
+          ]}
+          numberOfLines={desktop || wcagLargeText ? undefined : 2}
+        >
           {option.segments.map((s) => s.description).filter(Boolean).join(' ➔ ')}
         </Text>
       )}
@@ -143,7 +225,13 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
         <View style={styles.warningsList}>
           {option.warnings.map((w, index) => (
             <View key={index} style={[styles.warningBox, desktop && styles.desktopWarning]}>
-              <Text style={[styles.warningText, desktop && styles.desktopBody]}>
+              <Text
+                style={[
+                  styles.warningText,
+                  desktop && styles.desktopBody,
+                  wcagLargeText && styles.largeCaption,
+                ]}
+              >
                 ⚠️ {w.message}
               </Text>
             </View>
@@ -248,5 +336,21 @@ const styles = StyleSheet.create({
     ...typography.caption,
     color: colors.warning,
     fontWeight: '600',
+  },
+  largeTitle: {
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  largeMetricVal: {
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  largeBody: {
+    fontSize: 15,
+    lineHeight: 21,
+  },
+  largeCaption: {
+    fontSize: 14,
+    lineHeight: 19,
   },
 });

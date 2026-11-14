@@ -8,6 +8,8 @@ export interface UserPreferences {
   hasOwnScooter: boolean;
   hasOwnCar: boolean;
   preferredModes: string[];
+  wcagLargeText?: boolean;
+  wcagTextRouteMode?: boolean;
 }
 
 export interface UserProfile {

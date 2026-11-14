@@ -27,5 +27,7 @@ export function useAuth() {
     addEcoPoints,
     isStudentDemo: user?.email.includes('student'),
     hasDisability: !!user?.preferences?.hasDisability,
+    wcagLargeText: !!user?.preferences?.wcagLargeText,
+    wcagTextRouteMode: !!user?.preferences?.wcagTextRouteMode,
   };
 }

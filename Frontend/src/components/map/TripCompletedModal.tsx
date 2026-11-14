@@ -19,6 +19,7 @@ interface TripCompletedModalProps {
   totalPoints: number;
   originName: string;
   destinationName: string;
+  earlyFinish?: boolean;
   onClose: () => void;
   onViewRewards: () => void;
 }
@@ -32,12 +33,14 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
   totalPoints,
   originName,
   destinationName,
+  earlyFinish = false,
   onClose,
   onViewRewards,
 }) => {
   if (!option) return null;
 
-  const isZeroPoints = option.ecoPoints === 0;
+  const effectivePoints = earlyFinish ? 0 : option.ecoPoints;
+  const isZeroPoints = effectivePoints === 0;
   const progressPercent = Math.min(100, Math.round((totalPoints / NEXT_REWARD_TARGET) * 100));
   const pointsRemaining = Math.max(0, NEXT_REWARD_TARGET - totalPoints);
 
@@ -53,12 +56,14 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
           {/* Top Icon & Header */}
           <View style={styles.headerBadgeCircle}>
             <Text style={styles.headerEmoji}>
-              {isZeroPoints ? '🚗' : '🌱'}
+              {earlyFinish ? '⚠️' : isZeroPoints ? '🚗' : '🌱'}
             </Text>
           </View>
 
           <Text style={styles.title}>
-            {isZeroPoints
+            {earlyFinish
+              ? 'Vožnja završena prerano'
+              : isZeroPoints
               ? 'Putovanje završeno'
               : 'Zeleno putovanje završeno!'}
           </Text>
@@ -80,10 +85,12 @@ export const TripCompletedModal: React.FC<TripCompletedModalProps> = ({
                 isZeroPoints && styles.rewardPointsValueNeutral,
               ]}
             >
-              +{option.ecoPoints} Eco-bodova
+              +{effectivePoints} Eco-bodova
             </Text>
             <Text style={styles.rewardSubtext}>
-              {isZeroPoints
+              {earlyFinish
+                ? 'Vožnja je završena prije dolaska na odredište (unutar 60 m od točke B), stoga bodovi nisu dodijeljeni.'
+                : isZeroPoints
                 ? 'Vožnja osobnim automobilom ne donosi eko-bodove. Idući put odaberite VeloTM ili STPT tramvaj za +90 bodova!'
                 : 'Hvala što čuvate čist zrak i smanjujete gužve u Timișoari!'}
             </Text>

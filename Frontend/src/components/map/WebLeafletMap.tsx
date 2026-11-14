@@ -14,6 +14,8 @@ interface WebLeafletMapProps {
   destination?: GeoPoint | null;
   originName?: string;
   destinationName?: string;
+  userLocation?: GeoPoint | null;
+  isNavigating?: boolean;
   stations: StationLocation[];
   parkings: ParkingDetail[];
   landmarks: CityLandmarkPoi[];
@@ -42,6 +44,8 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
   destination,
   originName = 'Polazište',
   destinationName = 'Odredište',
+  userLocation,
+  isNavigating = false,
   stations,
   parkings,
   landmarks,
@@ -144,6 +148,14 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       background: ${colors.surface};
       border: 3px solid ${colors.primary};
       box-shadow: 0 2px 4px ${colors.overlay};
+    }
+    .gps-user-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: ${colors.mapRouteTransit};
+      border: 3.5px solid ${colors.surface};
+      box-shadow: 0 0 0 6px ${colors.primary}55, 0 2px 8px ${colors.overlay};
     }
   </style>
 </head>
@@ -254,8 +266,9 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         }
       }
 
-      // 3. Render Origin A & Destination B Markers (draggable)
+      // 3. Render Origin A (fixed to user location) & Destination B Markers + Live GPS User Marker
       abLayer.clearLayers();
+      var canDragPins = !payload.isNavigating;
       if (payload.origin) {
         boundsPoints.push([payload.origin.lat, payload.origin.lng]);
         var iconA = L.divIcon({
@@ -263,15 +276,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
           html: '<div class="ab-pin"><div class="ab-circle" style="background:${colors.primary}">A</div><div class="ab-label">' + escapeHtml(payload.originName) + '</div></div>',
           iconSize: [0, 0]
         });
-        var markerA = L.marker([payload.origin.lat, payload.origin.lng], { icon: iconA, draggable: true }).addTo(abLayer);
-        markerA.on('dragend', function(ev) {
-          var p = ev.target.getLatLng();
-          window.parent.postMessage(JSON.stringify({
-            type: 'DRAG_ORIGIN',
-            lat: Number(p.lat.toFixed(6)),
-            lng: Number(p.lng.toFixed(6))
-          }), '*');
-        });
+        L.marker([payload.origin.lat, payload.origin.lng], { icon: iconA, draggable: false }).addTo(abLayer);
       }
 
       if (payload.destination) {
@@ -281,7 +286,7 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
           html: '<div class="ab-pin"><div class="ab-circle" style="background:${colors.danger}">B</div><div class="ab-label">' + escapeHtml(payload.destinationName) + '</div></div>',
           iconSize: [0, 0]
         });
-        var markerB = L.marker([payload.destination.lat, payload.destination.lng], { icon: iconB, draggable: true }).addTo(abLayer);
+        var markerB = L.marker([payload.destination.lat, payload.destination.lng], { icon: iconB, draggable: canDragPins }).addTo(abLayer);
         markerB.on('dragend', function(ev) {
           var p = ev.target.getLatLng();
           window.parent.postMessage(JSON.stringify({
@@ -290,6 +295,20 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
             lng: Number(p.lng.toFixed(6))
           }), '*');
         });
+      }
+
+      if (payload.userLocation) {
+        var gpsIcon = L.divIcon({
+          className: '',
+          html: '<div class="gps-user-dot"></div>',
+          iconSize: [22, 22],
+          iconAnchor: [11, 11]
+        });
+        L.marker([payload.userLocation.lat, payload.userLocation.lng], {
+          icon: gpsIcon,
+          interactive: false,
+          zIndexOffset: 1000
+        }).addTo(abLayer);
       }
 
       // 4. Render Filtered POIs
@@ -340,8 +359,13 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
         });
       });
 
-      // 5. Fit map bounds when endpoints/route change
-      if (payload.fitSignature && payload.fitSignature !== lastFitSignature && boundsPoints.length >= 2) {
+      // 5. Follow user during navigation or fit bounds when endpoints/route change
+      if (!payload.destination) {
+        lastFitSignature = '';
+      }
+      if (payload.isNavigating && payload.userLocation) {
+        map.panTo([payload.userLocation.lat, payload.userLocation.lng], { animate: true });
+      } else if (payload.fitSignature && payload.fitSignature !== lastFitSignature && boundsPoints.length >= 2) {
         lastFitSignature = payload.fitSignature;
         map.fitBounds(boundsPoints, { padding: [95, 50], maxZoom: 16 });
       }
@@ -386,13 +410,13 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
           onDragDestination({ lat: msg.lat, lng: msg.lng });
         } else if (msg.type === 'SELECT_POI') {
           if (msg.kind === 'station') {
-            const found = stations.find((s) => s.id === msg.id);
+            const found = stations.find((s) => String(s.id) === String(msg.id));
             if (found) onSelectStation(found);
           } else if (msg.kind === 'parking') {
-            const found = parkings.find((p) => p.id === msg.id);
+            const found = parkings.find((p) => String(p.id) === String(msg.id));
             if (found) onSelectParking(found);
           } else if (msg.kind === 'landmark') {
-            const found = landmarks.find((l) => l.id === msg.id);
+            const found = landmarks.find((l) => String(l.id) === String(msg.id));
             if (found) onSelectLandmark(found);
           }
         }
@@ -427,6 +451,8 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
       originName,
       destination,
       destinationName,
+      userLocation,
+      isNavigating,
       selectedPoiKey,
       selectedParkingPolygon,
       fitSignature,
@@ -472,6 +498,8 @@ export const WebLeafletMap: React.FC<WebLeafletMapProps> = ({
     selectedOption,
     selectedPoiKey,
     selectedParkingPolygon,
+    userLocation,
+    isNavigating,
   ]);
 
   // Center / pan Leaflet map on explicit button clicks

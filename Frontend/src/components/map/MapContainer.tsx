@@ -196,6 +196,8 @@ interface MapContainerProps {
   destination?: GeoPoint | null;
   originName?: string;
   destinationName?: string;
+  userLocation?: GeoPoint | null;
+  isNavigating?: boolean;
   stations?: StationLocation[];
   parkings?: ParkingDetail[];
   landmarks?: CityLandmarkPoi[];
@@ -222,6 +224,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   destination,
   originName = 'Polazište',
   destinationName = 'Odredište',
+  userLocation,
+  isNavigating = false,
   stations = [],
   parkings = [],
   landmarks = [],
@@ -250,6 +254,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const [loadingTimetable, setLoadingTimetable] = useState(false);
   const [internalTapTarget, setInternalTapTarget] = useState<'origin' | 'destination'>('destination');
   const lastMarkerPressTime = useRef<number>(0);
+  const prevNavigatingRef = useRef<boolean>(false);
 
   const mapTapTarget = externalTapTarget ?? internalTapTarget;
   const setMapTapTarget = (next: 'origin' | 'destination') => {
@@ -307,6 +312,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
   const handleSelectStation = async (st: StationLocation) => {
     lastMarkerPressTime.current = Date.now();
     setSelectedPoi({ kind: 'station', data: st });
+    if (!isNavigating && onSelectPoiAsDestination) {
+      onSelectPoiAsDestination({ lat: st.lat, lng: st.lng }, st.name);
+    }
     if (st.type === 'tram' || st.type === 'bus' || st.type === 'trolleybus') {
       setLoadingTimetable(true);
       try {
@@ -335,23 +343,42 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     }
   };
 
-  const handlePointPress = (rawPt: GeoPoint) => {
+  const handleSelectParking = (prk: ParkingDetail) => {
+    lastMarkerPressTime.current = Date.now();
+    setSelectedPoi({ kind: 'parking', data: prk });
+    if (!isNavigating && onSelectPoiAsDestination) {
+      onSelectPoiAsDestination({ lat: prk.lat, lng: prk.lng }, prk.name);
+    }
+  };
+
+  const handleSelectLandmark = (lm: CityLandmarkPoi) => {
+    lastMarkerPressTime.current = Date.now();
+    setSelectedPoi({ kind: 'landmark', data: lm });
+    if (!isNavigating && onSelectPoiAsDestination) {
+      onSelectPoiAsDestination({ lat: lm.lat, lng: lm.lng }, lm.name);
+    }
+  };
+
+  const handlePointPress = (rawPt: GeoPoint, customName?: string) => {
+    if (isNavigating) {
+      return;
+    }
     if (Date.now() - lastMarkerPressTime.current < 250) {
       return;
     }
     if (selectedPoi) {
       setSelectedPoi(null);
-      return;
     }
     const pt: GeoPoint = {
       lat: Number(rawPt.lat.toFixed(6)),
       lng: Number(rawPt.lng.toFixed(6)),
     };
-    const resolvedName = transitService.resolveNearestPointName(pt);
-    if (mapTapTarget === 'origin' && onSelectPoiAsOrigin) {
-      onSelectPoiAsOrigin(pt, resolvedName);
-      setMapTapTarget('destination');
-    } else if (onSelectPoiAsDestination) {
+    const cleanedName =
+      typeof customName === 'string'
+        ? customName.replace(/\s+/g, ' ').trim()
+        : '';
+    const resolvedName = cleanedName || transitService.resolveNearestPointName(pt);
+    if (onSelectPoiAsDestination) {
       onSelectPoiAsDestination(pt, resolvedName);
     }
   };
@@ -364,22 +391,25 @@ export const MapContainer: React.FC<MapContainerProps> = ({
     handlePointPress({ lat: coord.latitude, lng: coord.longitude });
   };
 
+  const handleGooglePoiClick = (e: any) => {
+    const coord = e?.nativeEvent?.coordinate;
+    if (!coord || typeof coord.latitude !== 'number' || typeof coord.longitude !== 'number') {
+      return;
+    }
+    handlePointPress(
+      { lat: coord.latitude, lng: coord.longitude },
+      e?.nativeEvent?.name
+    );
+  };
+
   const renderPoiActionButtons = (point: GeoPoint, name: string) => (
     <View style={styles.poiActionsRow}>
-      {onSelectPoiAsOrigin && (
-        <TouchableOpacity
-          style={styles.poiOriginBtn}
-          onPress={() => {
-            onSelectPoiAsOrigin(point, name);
-            setSelectedPoi(null);
-          }}
-        >
-          <Text style={styles.poiOriginBtnText}>📍 Polazište (A)</Text>
-        </TouchableOpacity>
-      )}
       {onSelectPoiAsDestination && (
         <TouchableOpacity
           style={styles.poiRouteBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityRole="button"
+          accessibilityLabel={`Postavi ${name} kao Odredište B`}
           onPress={() => {
             onSelectPoiAsDestination(point, name);
             setSelectedPoi(null);
@@ -438,7 +468,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       });
     }
 
-    if (coordinatesToFit.length >= 2) {
+    if (coordinatesToFit.length >= 2 && !isNavigating) {
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(coordinatesToFit, {
           edgePadding: { top: 115, right: 50, bottom: 165, left: 50 },
@@ -446,7 +476,34 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         });
       }, 300);
     }
-  }, [origin, destination, selectedOption]);
+  }, [origin, destination, selectedOption, isNavigating]);
+
+  // Follow live GPS position while navigation is active
+  useEffect(() => {
+    const justStarted = isNavigating && !prevNavigatingRef.current;
+    prevNavigatingRef.current = isNavigating;
+
+    if (!isNavigating || !userLocation) return;
+
+    mapRef.current?.animateToRegion(
+      {
+        latitude: userLocation.lat,
+        longitude: userLocation.lng,
+        latitudeDelta: 0.008,
+        longitudeDelta: 0.008,
+      },
+      500
+    );
+
+    if (justStarted) {
+      setWebFocusTarget({
+        lat: userLocation.lat,
+        lng: userLocation.lng,
+        zoom: 16,
+        nonce: Date.now(),
+      });
+    }
+  }, [isNavigating, userLocation?.lat, userLocation?.lng]);
 
   const handleCenterOnUser = async () => {
     setIsLocating(true);
@@ -600,6 +657,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               !anyActive && styles.poiFilterChipCleanActive,
             ]}
             activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityState={{ selected: anyActive }}
+            accessibilityLabel={anyActive ? 'Sakrij sve ikone s karte' : 'Prikaži sve kategorije na karti'}
           >
             <Text
               style={[
@@ -619,6 +680,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 onPress={() => toggleCategoryFilter(f.id)}
                 style={[styles.poiFilterChip, isActive && styles.poiFilterChipActive]}
                 activeOpacity={0.8}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
+                accessibilityLabel={`Filter karte: ${f.label}`}
               >
                 <Text
                   style={[
@@ -671,6 +736,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             <TouchableOpacity
               onPress={() => setSelectedPoi(null)}
               style={styles.poiCloseBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Zatvori karticu točke na karti"
             >
               <Text style={styles.poiCloseText}>✕</Text>
             </TouchableOpacity>
@@ -714,6 +782,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             <TouchableOpacity
               onPress={() => setSelectedPoi(null)}
               style={styles.poiCloseBtn}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Zatvori karticu točke na karti"
             >
               <Text style={styles.poiCloseText}>✕</Text>
             </TouchableOpacity>
@@ -755,6 +826,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           <TouchableOpacity
             onPress={() => setSelectedPoi(null)}
             style={styles.poiCloseBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Zatvori karticu parkirališta"
           >
             <Text style={styles.poiCloseText}>✕</Text>
           </TouchableOpacity>
@@ -782,6 +856,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       destination={destination}
       originName={originName}
       destinationName={destinationName}
+      userLocation={userLocation}
+      isNavigating={isNavigating}
       stations={filteredStations}
       parkings={filteredParkings}
       landmarks={filteredLandmarks}
@@ -807,14 +883,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
         }
       }}
       onSelectStation={(st) => handleSelectStation(st)}
-      onSelectParking={(prk) => {
-        lastMarkerPressTime.current = Date.now();
-        setSelectedPoi({ kind: 'parking', data: prk });
-      }}
-      onSelectLandmark={(lm) => {
-        lastMarkerPressTime.current = Date.now();
-        setSelectedPoi({ kind: 'landmark', data: lm });
-      }}
+      onSelectParking={(prk) => handleSelectParking(prk)}
+      onSelectLandmark={(lm) => handleSelectLandmark(lm)}
     />
   );
 
@@ -833,24 +903,15 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           showsMyLocationButton={false}
           showsCompass={true}
           onPress={handleMapCoordinatePress}
+          onPoiClick={handleGooglePoiClick}
         >
-          {/* Origin Marker A (draggable) */}
+          {/* Origin Marker A (always locked to user's live GPS location) */}
           {origin && (
             <Marker
               coordinate={{ latitude: origin.lat, longitude: origin.lng }}
               title={originName}
-              description="Polazište putovanja (povuci za promjenu)"
-              draggable
-              onDragEnd={(e: any) => {
-                const c = e?.nativeEvent?.coordinate;
-                if (c && onSelectPoiAsOrigin) {
-                  const pt = {
-                    lat: Number(c.latitude.toFixed(6)),
-                    lng: Number(c.longitude.toFixed(6)),
-                  };
-                  onSelectPoiAsOrigin(pt, transitService.resolveNearestPointName(pt));
-                }
-              }}
+              description="Tvoja trenutna GPS lokacija (Polazište A)"
+              draggable={false}
             >
               <View style={styles.markerAnchor}>
                 <View style={styles.pinCircleGreen}>
@@ -863,13 +924,13 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             </Marker>
           )}
 
-          {/* Destination Marker B (draggable) */}
+          {/* Destination Marker B (draggable when not navigating) */}
           {destination && (
             <Marker
               coordinate={{ latitude: destination.lat, longitude: destination.lng }}
               title={destinationName}
               description="Odredište (povuci za promjenu)"
-              draggable
+              draggable={!isNavigating}
               onDragEnd={(e: any) => {
                 const c = e?.nativeEvent?.coordinate;
                 if (c && onSelectPoiAsDestination) {
@@ -925,10 +986,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 key={prk.id}
                 coordinate={{ latitude: prk.lat, longitude: prk.lng }}
                 tracksViewChanges={isSelected}
-                onPress={() => {
-                  lastMarkerPressTime.current = Date.now();
-                  setSelectedPoi({ kind: 'parking', data: prk });
-                }}
+                onPress={() => handleSelectParking(prk)}
               >
                 <View
                   style={[
@@ -965,10 +1023,7 @@ export const MapContainer: React.FC<MapContainerProps> = ({
                 key={`lm_${lm.id}`}
                 coordinate={{ latitude: lm.lat, longitude: lm.lng }}
                 tracksViewChanges={isSelected}
-                onPress={() => {
-                  lastMarkerPressTime.current = Date.now();
-                  setSelectedPoi({ kind: 'landmark', data: lm });
-                }}
+                onPress={() => handleSelectLandmark(lm)}
               >
                 <View
                   style={[
@@ -1026,6 +1081,19 @@ export const MapContainer: React.FC<MapContainerProps> = ({
               );
             })}
 
+          {/* Live User GPS Location Marker */}
+          {userLocation && (
+            <Marker
+              coordinate={{ latitude: userLocation.lat, longitude: userLocation.lng }}
+              title="Moja GPS lokacija"
+              anchor={{ x: 0.5, y: 0.5 }}
+            >
+              <View style={styles.gpsDotOuter}>
+                <View style={styles.gpsDotInner} />
+              </View>
+            </Marker>
+          )}
+
           {/* Multimodal Transfer Junction Markers */}
           {selectedOption?.segments &&
             selectedOption.segments.slice(0, -1).map((seg, idx) => {
@@ -1057,10 +1125,10 @@ export const MapContainer: React.FC<MapContainerProps> = ({
       )}
 
       {/* Individual Category Filter Chips below the Top Search Bar */}
-      {renderPoiFilterBar()}
+      {!isNavigating && renderPoiFilterBar()}
 
       {/* Selected POI Info Card or Active Route Segments Legend Overlay */}
-      {selectedPoi ? renderSelectedPoiCard() : renderSegmentsOverlay()}
+      {selectedPoi ? renderSelectedPoiCard() : !isNavigating && renderSegmentsOverlay()}
 
       {/* Floating Map Action Controls */}
       <View style={styles.mapControls}>
@@ -1068,6 +1136,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={styles.controlButton}
           onPress={handleCenterOnUser}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
           accessibilityLabel="Centriraj na moju GPS lokaciju"
         >
           {isLocating ? (
@@ -1081,6 +1151,8 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           style={styles.controlButton}
           onPress={handleCenterOnTimisoara}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
           accessibilityLabel="Centriraj na centar Temišvara"
         >
           <Text style={styles.controlIcon}>📍</Text>
@@ -1094,6 +1166,9 @@ export const MapContainer: React.FC<MapContainerProps> = ({
           ]}
           onPress={() => setIsDarkMap((prev) => !prev)}
           activeOpacity={0.8}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityRole="button"
+          accessibilityState={{ selected: isDarkMap }}
           accessibilityLabel="Prebaci između standardnog Dark i Light prikaza karte"
         >
           <Text
@@ -1103,23 +1178,6 @@ export const MapContainer: React.FC<MapContainerProps> = ({
             ]}
           >
             {isDarkMap ? '🌙' : '☀️'}
-          </Text>
-        </TouchableOpacity>
-
-        {/* Map Tap Target Toggle (A vs B) */}
-        <TouchableOpacity
-          style={[
-            styles.controlButton,
-            mapTapTarget === 'origin' ? styles.controlBtnOrigin : styles.controlBtnDest,
-          ]}
-          onPress={() =>
-            setMapTapTarget(mapTapTarget === 'origin' ? 'destination' : 'origin')
-          }
-          activeOpacity={0.8}
-          accessibilityLabel="Odaberi postavlja li klik na kartu Polazište (A) ili Odredište (B)"
-        >
-          <Text style={styles.tapTargetText}>
-            {mapTapTarget === 'origin' ? '👆A' : '👆B'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -1466,5 +1524,24 @@ const styles = StyleSheet.create({
     color: colors.textInverse,
     fontWeight: '800',
     fontSize: 12,
+  },
+  gpsDotOuter: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    ...shadows.md,
+  },
+  gpsDotInner: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: colors.mapRouteTransit,
+    borderWidth: 2.5,
+    borderColor: colors.surface,
   },
 });
