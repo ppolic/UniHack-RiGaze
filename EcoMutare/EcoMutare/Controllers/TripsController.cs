@@ -42,38 +42,79 @@ public class TripsController : ControllerBase
         skip = Math.Max(0, skip);
         take = Math.Clamp(take, 1, 200);
 
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
-        if (user is null) return Unauthorized();
+        User? user;
+        int totalCount;
+        double totalKm;
+        double totalCo2Grams;
+        List<TripResponse> rows;
 
-        var q = _db.TripHistories.AsNoTracking().Where(t => t.UserId == userId.Value);
-        int totalCount = await q.CountAsync(ct);
-        double totalKm = Math.Round(await q.SumAsync(t => (double?)t.DistanceKm, ct) ?? 0.0, 2);
-        double totalCo2Grams = await q.SumAsync(t => (double?)t.Co2SavedGrams, ct) ?? 0.0;
+        try
+        {
+            user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+            if (user is null) return Unauthorized();
 
-        var rows = await q
-            .OrderByDescending(t => t.StartedAt)
-            .ThenByDescending(t => t.Id)
-            .Skip(skip)
-            .Take(take)
-            .Select(t => new TripResponse
-            {
-                Id = t.Id,
-                Mode = t.Mode,
-                OriginName = t.OriginName,
-                DestinationName = t.DestinationName,
-                OriginLatitude = t.OriginLatitude,
-                OriginLongitude = t.OriginLongitude,
-                DestinationLatitude = t.DestinationLatitude,
-                DestinationLongitude = t.DestinationLongitude,
-                DistanceKm = t.DistanceKm,
-                DurationMinutes = t.DurationMinutes,
-                Co2SavedGrams = t.Co2SavedGrams,
-                PointsEarned = t.PointsEarned,
-                NewBalance = user.PointsBalance,
-                StartedAt = t.StartedAt,
-                EndedAt = t.EndedAt
-            })
-            .ToListAsync(ct);
+            var q = _db.TripHistories.AsNoTracking().Where(t => t.UserId == userId.Value);
+            totalCount = await q.CountAsync(ct);
+            totalKm = Math.Round(await q.SumAsync(t => (double?)t.DistanceKm, ct) ?? 0.0, 2);
+            totalCo2Grams = await q.SumAsync(t => (double?)t.Co2SavedGrams, ct) ?? 0.0;
+
+            rows = await q
+                .OrderByDescending(t => t.StartedAt)
+                .ThenByDescending(t => t.Id)
+                .Skip(skip)
+                .Take(take)
+                .Select(t => new TripResponse
+                {
+                    Id = t.Id,
+                    Mode = t.Mode,
+                    OriginName = t.OriginName,
+                    DestinationName = t.DestinationName,
+                    OriginLatitude = t.OriginLatitude,
+                    OriginLongitude = t.OriginLongitude,
+                    DestinationLatitude = t.DestinationLatitude,
+                    DestinationLongitude = t.DestinationLongitude,
+                    DistanceKm = t.DistanceKm,
+                    DurationMinutes = t.DurationMinutes,
+                    Co2SavedGrams = t.Co2SavedGrams,
+                    PointsEarned = t.PointsEarned,
+                    NewBalance = user.PointsBalance,
+                    StartedAt = t.StartedAt,
+                    EndedAt = t.EndedAt
+                })
+                .ToListAsync(ct);
+        }
+        catch
+        {
+            user = InMemoryFallbackStore.FindUserById(userId.Value);
+            if (user is null) return Unauthorized();
+
+            var allTrips = InMemoryFallbackStore.GetTripsForUser(userId.Value);
+            totalCount = allTrips.Count;
+            totalKm = Math.Round(allTrips.Sum(t => t.DistanceKm), 2);
+            totalCo2Grams = allTrips.Sum(t => t.Co2SavedGrams);
+            rows = allTrips
+                .Skip(skip)
+                .Take(take)
+                .Select(t => new TripResponse
+                {
+                    Id = t.Id,
+                    Mode = t.Mode,
+                    OriginName = t.OriginName,
+                    DestinationName = t.DestinationName,
+                    OriginLatitude = t.OriginLatitude,
+                    OriginLongitude = t.OriginLongitude,
+                    DestinationLatitude = t.DestinationLatitude,
+                    DestinationLongitude = t.DestinationLongitude,
+                    DistanceKm = t.DistanceKm,
+                    DurationMinutes = t.DurationMinutes,
+                    Co2SavedGrams = t.Co2SavedGrams,
+                    PointsEarned = t.PointsEarned,
+                    NewBalance = user.PointsBalance,
+                    StartedAt = t.StartedAt,
+                    EndedAt = t.EndedAt
+                })
+                .ToList();
+        }
 
         return Ok(new TripHistorySummaryResponse
         {
@@ -120,11 +161,7 @@ public class TripsController : ControllerBase
         var co2 = CarbonCalculator.SavedGrams(mode, req.DistanceKm);
         var points = CarbonCalculator.Points(co2);
 
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-
-        if (!await _db.Users.AnyAsync(u => u.Id == userId, ct)) return Unauthorized();
-
-        var trip = new TripHistory
+        TripHistory trip = new()
         {
             UserId = userId.Value,
             Mode = mode,
@@ -141,27 +178,46 @@ public class TripsController : ControllerBase
             StartedAt = started,
             EndedAt = ended,
         };
-        _db.TripHistories.Add(trip);
 
-        if (points > 0)
+        int balance;
+        try
         {
-            _db.PointTransactions.Add(new PointTransaction
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+            if (!await _db.Users.AnyAsync(u => u.Id == userId, ct)) return Unauthorized();
+
+            _db.TripHistories.Add(trip);
+
+            if (points > 0)
             {
-                UserId = userId.Value,
-                Points = points,
-                Type = PointTransactionType.Earned,
-                Description = $"Putovanje: {mode}, {req.DistanceKm:0.##} km",
-                TripHistory = trip,
-            });
-        }
-        await _db.SaveChangesAsync(ct);
+                _db.PointTransactions.Add(new PointTransaction
+                {
+                    UserId = userId.Value,
+                    Points = points,
+                    Type = PointTransactionType.Earned,
+                    Description = $"Putovanje: {mode}, {req.DistanceKm:0.##} km",
+                    TripHistory = trip,
+                });
+            }
+            await _db.SaveChangesAsync(ct);
 
-        if (points > 0)
-        {
-            await _db.Users.Where(u => u.Id == userId)
-                .ExecuteUpdateAsync(s => s.SetProperty(u => u.PointsBalance, u => u.PointsBalance + points), ct);
+            if (points > 0)
+            {
+                await _db.Users.Where(u => u.Id == userId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(u => u.PointsBalance, u => u.PointsBalance + points), ct);
+            }
+            await tx.CommitAsync(ct);
+
+            balance = await _db.Users.AsNoTracking().Where(u => u.Id == userId)
+                .Select(u => u.PointsBalance).FirstAsync(ct);
         }
-        await tx.CommitAsync(ct);
+        catch
+        {
+            var (savedTrip, newBalance) = InMemoryFallbackStore.AddTrip(trip);
+            if (savedTrip is null) return Unauthorized();
+            trip = savedTrip;
+            balance = newBalance;
+        }
 
         // Anonimno proslijedi putovanje u Green Intelligence 500m mrežu za izračun GapCells!
         _insights.RecordTrip(new CityTripRecordDto
@@ -174,9 +230,6 @@ public class TripsController : ControllerBase
             Co2SavedGrams = co2,
             IsSynthetic = false
         });
-
-        var balance = await _db.Users.AsNoTracking().Where(u => u.Id == userId)
-            .Select(u => u.PointsBalance).FirstAsync(ct);
 
         var response = new TripResponse
         {
@@ -206,6 +259,7 @@ public class TripsController : ControllerBase
         TransportMode.Scooter => EcoMutare.Domain.TransportMode.Scooter,
         TransportMode.Car => EcoMutare.Domain.TransportMode.Car,
         TransportMode.Carpool => EcoMutare.Domain.TransportMode.Carpool,
+        TransportMode.Combined => EcoMutare.Domain.TransportMode.Combined,
         _ => EcoMutare.Domain.TransportMode.PublicTransport
     };
 

@@ -23,9 +23,17 @@ public class RewardsController : ControllerBase
     [ProducesResponseType(typeof(List<RewardDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<List<RewardDto>>> GetAll([FromQuery] bool includeInactive = false, CancellationToken ct = default)
     {
-        var q = _db.Rewards.AsNoTracking().AsQueryable();
-        if (!includeInactive) q = q.Where(r => r.IsActive);
-        var rewards = await q.OrderBy(r => r.PointsCost).ToListAsync(ct);
+        List<Reward> rewards;
+        try
+        {
+            var q = _db.Rewards.AsNoTracking().AsQueryable();
+            if (!includeInactive) q = q.Where(r => r.IsActive);
+            rewards = await q.OrderBy(r => r.PointsCost).ToListAsync(ct);
+        }
+        catch
+        {
+            rewards = InMemoryFallbackStore.GetRewards(includeInactive);
+        }
         return Ok(rewards.Select(ToDto).ToList());
     }
 
@@ -34,7 +42,15 @@ public class RewardsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<RewardDto>> GetById(int id, CancellationToken ct)
     {
-        var r = await _db.Rewards.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        Reward? r;
+        try
+        {
+            r = await _db.Rewards.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id, ct);
+        }
+        catch
+        {
+            r = InMemoryFallbackStore.GetRewardById(id);
+        }
         return r is null ? NotFound() : Ok(ToDto(r));
     }
 
@@ -53,52 +69,79 @@ public class RewardsController : ControllerBase
         var userId = User.GetUserId();
         if (userId is null) return Unauthorized();
 
-        var reward = await _db.Rewards.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
-        if (reward is null) return NotFound();
-        if (!reward.IsActive)
-            return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada nije aktivna." });
-
-        var since = DateTime.UtcNow - DuplicateWindow;
-        var duplicate = await _db.PointTransactions.AnyAsync(t =>
-            t.UserId == userId && t.RewardId == id && t.Type == PointTransactionType.Redeemed && t.CreatedAt > since, ct);
-        if (duplicate)
-            return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada je upravo otkupljena. Pričekaj nekoliko sekundi." });
-
-        var cost = reward.PointsCost;
-        await using var tx = await _db.Database.BeginTransactionAsync(ct);
-
-        var updated = await _db.Users.Where(u => u.Id == userId && u.PointsBalance >= cost)
-            .ExecuteUpdateAsync(s => s.SetProperty(u => u.PointsBalance, u => u.PointsBalance - cost), ct);
-        if (updated == 0)
+        try
         {
-            await tx.RollbackAsync(ct);
-            if (!await _db.Users.AnyAsync(u => u.Id == userId, ct)) return Unauthorized();
-            return BadRequest(new ProblemDetails { Status = 400, Title = "Nedovoljno bodova.", Detail = $"Potrebno: {cost}." });
+            var reward = await _db.Rewards.AsNoTracking().FirstOrDefaultAsync(r => r.Id == id, ct);
+            if (reward is null) return NotFound();
+            if (!reward.IsActive)
+                return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada nije aktivna." });
+
+            var since = DateTime.UtcNow - DuplicateWindow;
+            var duplicate = await _db.PointTransactions.AnyAsync(t =>
+                t.UserId == userId && t.RewardId == id && t.Type == PointTransactionType.Redeemed && t.CreatedAt > since, ct);
+            if (duplicate)
+                return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada je upravo otkupljena. Pričekaj nekoliko sekundi." });
+
+            var cost = reward.PointsCost;
+            await using var tx = await _db.Database.BeginTransactionAsync(ct);
+
+            var updated = await _db.Users.Where(u => u.Id == userId && u.PointsBalance >= cost)
+                .ExecuteUpdateAsync(s => s.SetProperty(u => u.PointsBalance, u => u.PointsBalance - cost), ct);
+            if (updated == 0)
+            {
+                await tx.RollbackAsync(ct);
+                if (!await _db.Users.AnyAsync(u => u.Id == userId, ct)) return Unauthorized();
+                return BadRequest(new ProblemDetails { Status = 400, Title = "Nedovoljno bodova.", Detail = $"Potrebno: {cost}." });
+            }
+
+            var txn = new PointTransaction
+            {
+                UserId = userId.Value,
+                Points = -cost,
+                Type = PointTransactionType.Redeemed,
+                RewardId = reward.Id,
+                Description = $"Otkup: {reward.Name}",
+            };
+            _db.PointTransactions.Add(txn);
+            await _db.SaveChangesAsync(ct);
+            await tx.CommitAsync(ct);
+
+            var balance = await _db.Users.AsNoTracking().Where(u => u.Id == userId)
+                .Select(u => u.PointsBalance).FirstAsync(ct);
+            return Ok(new RedeemResponse
+            {
+                RewardId = reward.Id,
+                RewardName = reward.Name,
+                PointsSpent = cost,
+                NewBalance = balance,
+                TransactionId = txn.Id,
+                DiscountCode = $"ECOMUTARE-TM-{reward.Id:D2}-{txn.Id:D4}"
+            });
         }
-
-        var txn = new PointTransaction
+        catch
         {
-            UserId = userId.Value,
-            Points = -cost,
-            Type = PointTransactionType.Redeemed,
-            RewardId = reward.Id,
-            Description = $"Otkup: {reward.Name}",
-        };
-        _db.PointTransactions.Add(txn);
-        await _db.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
+            var reward = InMemoryFallbackStore.GetRewardById(id);
+            if (reward is null) return NotFound();
+            if (!reward.IsActive)
+                return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada nije aktivna." });
 
-        var balance = await _db.Users.AsNoTracking().Where(u => u.Id == userId)
-            .Select(u => u.PointsBalance).FirstAsync(ct);
-        return Ok(new RedeemResponse
-        {
-            RewardId = reward.Id,
-            RewardName = reward.Name,
-            PointsSpent = cost,
-            NewBalance = balance,
-            TransactionId = txn.Id,
-            DiscountCode = $"ECOMUTARE-TM-{reward.Id:D2}-{txn.Id:D4}"
-        });
+            var (status, balance, txn) = InMemoryFallbackStore.RedeemReward(userId.Value, reward, DuplicateWindow);
+            if (status == "unauthorized") return Unauthorized();
+            if (status == "duplicate")
+                return Conflict(new ProblemDetails { Status = 409, Title = "Nagrada je upravo otkupljena. Pričekaj nekoliko sekundi." });
+            if (status == "insufficient")
+                return BadRequest(new ProblemDetails { Status = 400, Title = "Nedovoljno bodova.", Detail = $"Potrebno: {reward.PointsCost}." });
+
+            return Ok(new RedeemResponse
+            {
+                RewardId = reward.Id,
+                RewardName = reward.Name,
+                PointsSpent = reward.PointsCost,
+                NewBalance = balance,
+                TransactionId = txn!.Id,
+                DiscountCode = $"ECOMUTARE-TM-{reward.Id:D2}-{txn.Id:D4}"
+            });
+        }
     }
 
     private static RewardDto ToDto(Reward r) => new()

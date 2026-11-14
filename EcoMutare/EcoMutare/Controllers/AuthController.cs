@@ -44,35 +44,58 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Register([FromBody] AuthRegisterRequest req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
-        if (await _db.Users.AnyAsync(u => u.Email == email, ct))
-            return Conflict(new ProblemDetails { Status = 409, Title = "Email je već registriran." });
-
         var ageCat = CalculateAgeCategory(req.BirthDate);
 
-        var user = new User
+        User user;
+        try
         {
-            Email = email,
-            DisplayName = req.DisplayName.Trim(),
-            PasswordHash = PasswordHelper.Hash(req.Password),
-            BirthDate = req.BirthDate,
-            AgeCategory = ageCat,
-            HasDisability = req.HasDisability,
-            OwnsBike = req.OwnsBike,
-            OwnsScooter = req.OwnsScooter,
-            OwnsCar = req.OwnsCar,
-            PointsBalance = 50,
-        };
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync(ct);
+            if (await _db.Users.AnyAsync(u => u.Email == email, ct))
+                return Conflict(new ProblemDetails { Status = 409, Title = "Email je već registriran." });
 
-        _db.PointTransactions.Add(new PointTransaction
+            user = new User
+            {
+                Email = email,
+                DisplayName = req.DisplayName.Trim(),
+                PasswordHash = PasswordHelper.Hash(req.Password),
+                BirthDate = req.BirthDate,
+                AgeCategory = ageCat,
+                HasDisability = req.HasDisability,
+                OwnsBike = req.OwnsBike,
+                OwnsScooter = req.OwnsScooter,
+                OwnsCar = req.OwnsCar,
+                PointsBalance = 50,
+            };
+            _db.Users.Add(user);
+            await _db.SaveChangesAsync(ct);
+
+            _db.PointTransactions.Add(new PointTransaction
+            {
+                UserId = user.Id,
+                Points = 50,
+                Type = PointTransactionType.Bonus,
+                Description = "Bonus dobrodošlice za registraciju u BeGreen Timișoara"
+            });
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
         {
-            UserId = user.Id,
-            Points = 50,
-            Type = PointTransactionType.Bonus,
-            Description = "Bonus dobrodošlice za registraciju u BeGreen Timișoara"
-        });
-        await _db.SaveChangesAsync(ct);
+            if (InMemoryFallbackStore.FindUserByEmail(email) is not null)
+                return Conflict(new ProblemDetails { Status = 409, Title = "Email je već registriran." });
+
+            user = InMemoryFallbackStore.CreateUser(new User
+            {
+                Email = email,
+                DisplayName = req.DisplayName.Trim(),
+                PasswordHash = PasswordHelper.Hash(req.Password),
+                BirthDate = req.BirthDate,
+                AgeCategory = ageCat,
+                HasDisability = req.HasDisability,
+                OwnsBike = req.OwnsBike,
+                OwnsScooter = req.OwnsScooter,
+                OwnsCar = req.OwnsCar,
+                PointsBalance = 50,
+            });
+        }
 
         return StatusCode(StatusCodes.Status201Created, ToResponse(user));
     }
@@ -83,7 +106,16 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<AuthResponse>> Login([FromBody] AuthLoginRequest req, CancellationToken ct)
     {
         var email = req.Email.Trim().ToLowerInvariant();
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        User? user;
+        try
+        {
+            user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+        }
+        catch
+        {
+            user = InMemoryFallbackStore.FindUserByEmail(email);
+        }
+
         if (user is null || !PasswordHelper.Verify(req.Password, user.PasswordHash))
             return Unauthorized(new ProblemDetails { Status = 401, Title = "Pogrešan email ili lozinka." });
         return Ok(ToResponse(user));
@@ -197,70 +229,110 @@ public class AuthController : ControllerBase
         bool isZeroKnowledgeAge = zkAgeCategory.HasValue && !req.BirthDate.HasValue;
         var resolvedAgeCategory = zkAgeCategory ?? CalculateAgeCategory(req.BirthDate);
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
-        if (user is null)
+        User? user;
+        try
         {
-            string marker = usedPasskey ? "Auth0::Passkey::" : "Auth0::";
-            user = new User
+            user = await _db.Users.FirstOrDefaultAsync(u => u.Email == email, ct);
+            if (user is null)
             {
-                Email = email,
-                DisplayName = displayName,
-                PasswordHash = PasswordHelper.Hash($"{marker}{sub ?? Guid.NewGuid().ToString("N")}"),
-                BirthDate = isZeroKnowledgeAge ? null : req.BirthDate,
-                AgeCategory = resolvedAgeCategory,
-                HasDisability = req.HasDisability ?? false,
-                OwnsBike = req.OwnsBike ?? false,
-                OwnsScooter = req.OwnsScooter ?? false,
-                OwnsCar = req.OwnsCar ?? false,
-                PointsBalance = usedPasskey ? 75 : 50
-            };
+                string marker = usedPasskey ? "Auth0::Passkey::" : "Auth0::";
+                user = new User
+                {
+                    Email = email,
+                    DisplayName = displayName,
+                    PasswordHash = PasswordHelper.Hash($"{marker}{sub ?? Guid.NewGuid().ToString("N")}"),
+                    BirthDate = isZeroKnowledgeAge ? null : req.BirthDate,
+                    AgeCategory = resolvedAgeCategory,
+                    HasDisability = req.HasDisability ?? false,
+                    OwnsBike = req.OwnsBike ?? false,
+                    OwnsScooter = req.OwnsScooter ?? false,
+                    OwnsCar = req.OwnsCar ?? false,
+                    PointsBalance = usedPasskey ? 75 : 50
+                };
 
-            _db.Users.Add(user);
-            await _db.SaveChangesAsync(ct);
-
-            _db.PointTransactions.Add(new PointTransaction
-            {
-                UserId = user.Id,
-                Points = user.PointsBalance,
-                Type = PointTransactionType.Bonus,
-                Description = usedPasskey
-                    ? "Bonus dobrodošlice za Auth0 Passkey (1-Tap Accessible) prijavu u BeGreen Timișoara"
-                    : "Bonus dobrodošlice za Auth0 prijavu u BeGreen Timișoara"
-            });
-            await _db.SaveChangesAsync(ct);
-        }
-        else
-        {
-            bool changed = false;
-            if (!string.IsNullOrWhiteSpace(req.DisplayName) && user.DisplayName != displayName)
-            {
-                user.DisplayName = displayName;
-                changed = true;
-            }
-            if (zkAgeCategory.HasValue)
-            {
-                user.AgeCategory = zkAgeCategory.Value;
-                if (!req.BirthDate.HasValue) user.BirthDate = null; // GDPR Zero-Knowledge brisanje nepotrebnog datuma rođenja
-                changed = true;
-            }
-            else if (req.BirthDate.HasValue)
-            {
-                user.BirthDate = req.BirthDate;
-                user.AgeCategory = CalculateAgeCategory(req.BirthDate);
-                changed = true;
-            }
-            if (req.HasDisability.HasValue) { user.HasDisability = req.HasDisability.Value; changed = true; }
-            if (req.OwnsBike.HasValue) { user.OwnsBike = req.OwnsBike.Value; changed = true; }
-            if (req.OwnsScooter.HasValue) { user.OwnsScooter = req.OwnsScooter.Value; changed = true; }
-            if (req.OwnsCar.HasValue) { user.OwnsCar = req.OwnsCar.Value; changed = true; }
-
-            if (changed)
-            {
+                _db.Users.Add(user);
                 await _db.SaveChangesAsync(ct);
+
+                _db.PointTransactions.Add(new PointTransaction
+                {
+                    UserId = user.Id,
+                    Points = user.PointsBalance,
+                    Type = PointTransactionType.Bonus,
+                    Description = usedPasskey
+                        ? "Bonus dobrodošlice za Auth0 Passkey (1-Tap Accessible) prijavu u BeGreen Timișoara"
+                        : "Bonus dobrodošlice za Auth0 prijavu u BeGreen Timișoara"
+                });
+                await _db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                bool changed = ApplyAuth0Updates(user, req, displayName, zkAgeCategory, isZeroKnowledgeAge);
+                if (changed)
+                {
+                    await _db.SaveChangesAsync(ct);
+                }
+            }
+        }
+        catch
+        {
+            user = InMemoryFallbackStore.FindUserByEmail(email);
+            if (user is null)
+            {
+                string marker = usedPasskey ? "Auth0::Passkey::" : "Auth0::";
+                user = InMemoryFallbackStore.CreateUser(new User
+                {
+                    Email = email,
+                    DisplayName = displayName,
+                    PasswordHash = PasswordHelper.Hash($"{marker}{sub ?? Guid.NewGuid().ToString("N")}"),
+                    BirthDate = isZeroKnowledgeAge ? null : req.BirthDate,
+                    AgeCategory = resolvedAgeCategory,
+                    HasDisability = req.HasDisability ?? false,
+                    OwnsBike = req.OwnsBike ?? false,
+                    OwnsScooter = req.OwnsScooter ?? false,
+                    OwnsCar = req.OwnsCar ?? false,
+                    PointsBalance = usedPasskey ? 75 : 50
+                });
+            }
+            else
+            {
+                ApplyAuth0Updates(user, req, displayName, zkAgeCategory, isZeroKnowledgeAge);
             }
         }
 
         return Ok(ToResponse(user, usedPasskey, isZeroKnowledgeAge, orgClaim));
+    }
+
+    private static bool ApplyAuth0Updates(
+        User user,
+        Auth0LoginRequest req,
+        string displayName,
+        AgeCategory? zkAgeCategory,
+        bool isZeroKnowledgeAge)
+    {
+        bool changed = false;
+        if (!string.IsNullOrWhiteSpace(req.DisplayName) && user.DisplayName != displayName)
+        {
+            user.DisplayName = displayName;
+            changed = true;
+        }
+        if (zkAgeCategory.HasValue)
+        {
+            user.AgeCategory = zkAgeCategory.Value;
+            if (!req.BirthDate.HasValue) user.BirthDate = null;
+            changed = true;
+        }
+        else if (req.BirthDate.HasValue)
+        {
+            user.BirthDate = req.BirthDate;
+            user.AgeCategory = CalculateAgeCategory(req.BirthDate);
+            changed = true;
+        }
+        if (req.HasDisability.HasValue) { user.HasDisability = req.HasDisability.Value; changed = true; }
+        if (req.OwnsBike.HasValue) { user.OwnsBike = req.OwnsBike.Value; changed = true; }
+        if (req.OwnsScooter.HasValue) { user.OwnsScooter = req.OwnsScooter.Value; changed = true; }
+        if (req.OwnsCar.HasValue) { user.OwnsCar = req.OwnsCar.Value; changed = true; }
+        _ = isZeroKnowledgeAge;
+        return changed;
     }
 
     /// <summary>
@@ -271,27 +343,43 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<object>> EnrollPasskey([FromQuery] int? userId = null, CancellationToken ct = default)
     {
         int effectiveUserId = User.GetUserId() ?? userId ?? 2; // Default Marko (osoba u kolicima) za brz demo
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == effectiveUserId, ct);
-        if (user is null)
-        {
-            return NotFound(new { error = "Korisnik nije pronađen." });
-        }
+        User? user;
+        bool alreadyEnrolled;
 
-        const string passkeyTag = "[PasskeyEnrolled]";
-        bool alreadyEnrolled = await _db.PointTransactions
-            .AnyAsync(p => p.UserId == user.Id && p.Description != null && p.Description.Contains(passkeyTag), ct);
-
-        if (!alreadyEnrolled)
+        try
         {
-            user.PointsBalance += 25;
-            _db.PointTransactions.Add(new PointTransaction
+            user = await _db.Users.FirstOrDefaultAsync(u => u.Id == effectiveUserId, ct);
+            if (user is null)
             {
-                UserId = user.Id,
-                Points = 25,
-                Type = PointTransactionType.Bonus,
-                Description = $"{passkeyTag} Aktivirana Auth0 Passkey (WebAuthn) biometrijska prijava bez lozinke"
-            });
-            await _db.SaveChangesAsync(ct);
+                return NotFound(new { error = "Korisnik nije pronađen." });
+            }
+
+            const string passkeyTag = "[PasskeyEnrolled]";
+            alreadyEnrolled = await _db.PointTransactions
+                .AnyAsync(p => p.UserId == user.Id && p.Description != null && p.Description.Contains(passkeyTag), ct);
+
+            if (!alreadyEnrolled)
+            {
+                user.PointsBalance += 25;
+                _db.PointTransactions.Add(new PointTransaction
+                {
+                    UserId = user.Id,
+                    Points = 25,
+                    Type = PointTransactionType.Bonus,
+                    Description = $"{passkeyTag} Aktivirana Auth0 Passkey (WebAuthn) biometrijska prijava bez lozinke"
+                });
+                await _db.SaveChangesAsync(ct);
+            }
+        }
+        catch
+        {
+            var enrolled = InMemoryFallbackStore.EnrollPasskey(effectiveUserId);
+            if (enrolled is null)
+            {
+                return NotFound(new { error = "Korisnik nije pronađen." });
+            }
+            user = enrolled.Value.user;
+            alreadyEnrolled = enrolled.Value.alreadyEnrolled;
         }
 
         var response = ToResponse(user, usedPasskey: true, zeroKnowledgeAge: !user.BirthDate.HasValue);
@@ -400,7 +488,16 @@ exports.onExecutePostLogin = async (event, api) => {
         var userId = User.GetUserId();
         if (userId is null) return Unauthorized();
 
-        var user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+        User? user;
+        try
+        {
+            user = await _db.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+        }
+        catch
+        {
+            user = InMemoryFallbackStore.FindUserById(userId.Value);
+        }
+
         if (user is null) return Unauthorized();
 
         return Ok(ToResponse(user));
@@ -417,9 +514,26 @@ exports.onExecutePostLogin = async (event, api) => {
         var userId = User.GetUserId();
         if (userId is null) return Unauthorized();
 
-        var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
-        if (user is null) return Unauthorized();
+        User? user;
+        try
+        {
+            user = await _db.Users.FirstOrDefaultAsync(u => u.Id == userId.Value, ct);
+            if (user is null) return Unauthorized();
 
+            ApplyProfileUpdate(user, req);
+            await _db.SaveChangesAsync(ct);
+        }
+        catch
+        {
+            user = InMemoryFallbackStore.UpdateUser(userId.Value, u => ApplyProfileUpdate(u, req));
+            if (user is null) return Unauthorized();
+        }
+
+        return Ok(ToResponse(user));
+    }
+
+    private static void ApplyProfileUpdate(User user, UpdateUserProfileRequest req)
+    {
         if (!string.IsNullOrWhiteSpace(req.DisplayName))
             user.DisplayName = req.DisplayName.Trim();
         if (req.BirthDate.HasValue)
@@ -431,18 +545,23 @@ exports.onExecutePostLogin = async (event, api) => {
         if (req.OwnsBike.HasValue) user.OwnsBike = req.OwnsBike.Value;
         if (req.OwnsScooter.HasValue) user.OwnsScooter = req.OwnsScooter.Value;
         if (req.OwnsCar.HasValue) user.OwnsCar = req.OwnsCar.Value;
-
-        await _db.SaveChangesAsync(ct);
-        return Ok(ToResponse(user));
     }
 
     /// <summary>Vraća popis spremnih demo računa u bazi (lozinka za sve: Demo123!) s njihovim Auth0 bedževima i Trust Scoreom.</summary>
     [HttpGet("demo-accounts")]
     public async Task<ActionResult<object>> GetDemoAccounts(CancellationToken ct)
     {
-        var users = await _db.Users.AsNoTracking()
-            .OrderBy(u => u.Id)
-            .ToListAsync(ct);
+        List<User> users;
+        try
+        {
+            users = await _db.Users.AsNoTracking()
+                .OrderBy(u => u.Id)
+                .ToListAsync(ct);
+        }
+        catch
+        {
+            users = InMemoryFallbackStore.GetAllUsers();
+        }
 
         var result = users.Select(u =>
         {

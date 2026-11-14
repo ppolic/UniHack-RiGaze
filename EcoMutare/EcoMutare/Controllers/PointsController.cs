@@ -27,21 +27,45 @@ public class PointsController : ControllerBase
         skip = Math.Max(0, skip);
         take = Math.Clamp(take, 1, 200);
 
-        var q = _db.PointTransactions.AsNoTracking().Where(t => t.UserId == userId);
-        var balance = await q.SumAsync(t => (int?)t.Points, ct) ?? 0;
-        var count = await q.CountAsync(ct);
-        var items = await q.OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
-            .Skip(skip).Take(take)
-            .Select(t => new PointTransactionDto
-            {
-                Id = t.Id,
-                Points = t.Points,
-                Type = t.Type,
-                Description = t.Description,
-                TripHistoryId = t.TripHistoryId,
-                RewardId = t.RewardId,
-                CreatedAt = t.CreatedAt,
-            }).ToListAsync(ct);
+        int balance;
+        int count;
+        List<PointTransactionDto> items;
+
+        try
+        {
+            var q = _db.PointTransactions.AsNoTracking().Where(t => t.UserId == userId);
+            balance = await q.SumAsync(t => (int?)t.Points, ct) ?? 0;
+            count = await q.CountAsync(ct);
+            items = await q.OrderByDescending(t => t.CreatedAt).ThenByDescending(t => t.Id)
+                .Skip(skip).Take(take)
+                .Select(t => new PointTransactionDto
+                {
+                    Id = t.Id,
+                    Points = t.Points,
+                    Type = t.Type,
+                    Description = t.Description,
+                    TripHistoryId = t.TripHistoryId,
+                    RewardId = t.RewardId,
+                    CreatedAt = t.CreatedAt,
+                }).ToListAsync(ct);
+        }
+        catch
+        {
+            var (fallbackBalance, allTxns) = InMemoryFallbackStore.GetPointsForUser(userId.Value);
+            balance = fallbackBalance;
+            count = allTxns.Count;
+            items = allTxns.Skip(skip).Take(take)
+                .Select(t => new PointTransactionDto
+                {
+                    Id = t.Id,
+                    Points = t.Points,
+                    Type = t.Type,
+                    Description = t.Description,
+                    TripHistoryId = t.TripHistoryId,
+                    RewardId = t.RewardId,
+                    CreatedAt = t.CreatedAt,
+                }).ToList();
+        }
 
         return Ok(new PointsResponse { Balance = balance, TotalCount = count, Transactions = items });
     }

@@ -25,6 +25,8 @@ public static class CarbonCalculator
         TransportMode.Tram => 30,
         TransportMode.Trolleybus => 30,
         TransportMode.Bus => 70,
+        TransportMode.PublicTransport => 45,
+        TransportMode.Combined => 35,
         TransportMode.Carpool => 60,
         TransportMode.Car => 120,
         _ => 120,
