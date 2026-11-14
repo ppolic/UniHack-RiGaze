@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface TravelOptionsPanelProps {
   topSlot?: React.ReactNode;
@@ -41,6 +42,7 @@ export function TravelOptionsPanel({
 }: TravelOptionsPanelProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [internalExpanded, setInternalExpanded] = useState(false);
 
   const expanded = isOpen !== undefined ? isOpen : internalExpanded;
@@ -203,7 +205,7 @@ export function TravelOptionsPanel({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              expanded ? 'Spusti opcije putovanja' : 'Podigni opcije putovanja'
+              expanded ? t.collapseOptionsA11y : t.expandOptionsA11y
             }
             accessibilityState={{ expanded }}
             hitSlop={{ top: 8, bottom: 8, left: 24, right: 24 }}
@@ -216,13 +218,13 @@ export function TravelOptionsPanel({
             <View style={styles.handle} accessible={false} />
           </Pressable>
 
-          {/* Polazište (A) & Odredište (B) Bar at the very top of the bottom sheet */}
+          {/* Origin (A) & Destination (B) Bar at the very top of the bottom sheet */}
           {topSlot ? <View style={styles.topSlotContainer}>{topSlot}</View> : null}
 
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              expanded ? 'Spusti opcije putovanja' : 'Podigni opcije putovanja'
+              expanded ? t.collapseOptionsA11y : t.expandOptionsA11y
             }
             onPress={() => setExpanded(!expanded)}
             style={({ pressed }) => [
@@ -233,16 +235,15 @@ export function TravelOptionsPanel({
             <View style={styles.headerRow}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.title} numberOfLines={1}>
-                  Opcije putovanja A ➔ B
+                  {t.travelOptionsTitle}
                 </Text>
                 <Text style={styles.subtitle} numberOfLines={1}>
-                  {summaryText ||
-                    'Rangirano po ekološkoj održivosti (CO₂ & bodovi)'}
+                  {summaryText || t.travelOptionsDefaultSub}
                 </Text>
               </View>
               <View style={styles.togglePill}>
                 <Text style={styles.togglePillText}>
-                  {expanded ? 'Spusti ⌄' : 'Opcije ⌃'}
+                  {expanded ? t.optionsCollapse : t.optionsExpand}
                 </Text>
               </View>
             </View>

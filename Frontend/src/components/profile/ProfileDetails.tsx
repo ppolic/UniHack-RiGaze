@@ -13,8 +13,11 @@ import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
 import { Badge } from '../common/Badge';
 import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceModal';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?: number | null }> = ({ children, verifiedAge }) => {
+  const { language, t } = useTranslation();
+  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const {
     user,
     updatePreferences,
@@ -41,24 +44,24 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           </View>
         </View>
         <View style={styles.badgesRow}>
-          <Badge label={verifiedAge === undefined || verifiedAge === null ? 'Vârstă neconfirmată' : verifiedAge + ' ani'} variant="neutral" />
-          {hasDisability && <Badge label="Rute accesibile" variant="info" />}
-          {(wcagLargeText || wcagTextRouteMode) && <Badge label="Opțiuni vizuale active" variant="success" />}
+          <Badge label={verifiedAge === undefined || verifiedAge === null ? localize('Vârstă neconfirmată', 'Age unconfirmed') : t.ageBadge(verifiedAge)} variant="neutral" />
+          {hasDisability && <Badge label={t.accessibilityActiveBadge} variant="info" />}
+          {(wcagLargeText || wcagTextRouteMode) && <Badge label={localize('Opțiuni vizuale active', 'Visual options enabled')} variant="success" />}
         </View>
         {children && <View style={styles.editor}>{children}</View>}
       </AppCard>
 
       {/* Mobility Preferences & Accessibility Settings */}
       <Text style={styles.sectionTitle} accessibilityRole="header">
-        Preferințe de mobilitate
+        {t.accessibilityAndVehicles}
       </Text>
       <AppCard style={styles.settingsCard}>
         {/* Disability Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Am nevoie de rute accesibile</Text>
+            <Text style={styles.toggleLabel}>{t.disabilityLabel}</Text>
             <Text style={styles.toggleDesc}>
-              Ține cont de accesibilitate când sunt propuse opțiunile de transport.
+              {localize('Ține cont de accesibilitate când sunt propuse opțiunile de transport.', 'Consider accessibility when suggesting transport options.')}
             </Text>
           </View>
           <Switch
@@ -67,7 +70,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Am nevoie de rute accesibile"
+            accessibilityLabel={t.disabilityLabel}
             accessibilityState={{ checked: user.preferences.hasDisability }}
           />
         </View>
@@ -77,9 +80,9 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
         {/* Own Bicycle Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Am bicicletă proprie</Text>
+            <Text style={styles.toggleLabel}>{t.ownBikeLabel}</Text>
             <Text style={styles.toggleDesc}>
-              Folosește bicicleta proprie la planificarea călătoriilor.
+              {localize('Folosește bicicleta proprie la planificarea călătoriilor.', 'Use your own bicycle when planning journeys.')}
             </Text>
           </View>
           <Switch
@@ -88,7 +91,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Am bicicletă proprie"
+            accessibilityLabel={t.ownBikeLabel}
             accessibilityState={{ checked: user.preferences.hasOwnBicycle }}
           />
         </View>
@@ -98,9 +101,9 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
         {/* Own Car Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Am mașină proprie</Text>
+            <Text style={styles.toggleLabel}>{t.ownCarLabel}</Text>
             <Text style={styles.toggleDesc}>
-              Include opțiunile de călătorie cu mașina proprie.
+              {localize('Include opțiunile de călătorie cu mașina proprie.', 'Include travel options using your own car.')}
             </Text>
           </View>
           <Switch
@@ -109,7 +112,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Am mașină proprie"
+            accessibilityLabel={t.ownCarLabel}
             accessibilityState={{ checked: user.preferences.hasOwnCar }}
           />
         </View>
@@ -117,14 +120,14 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
 
       {/* WCAG 2.1 Level AA / Romanian Law 232/2022 / EN 301 549 Section */}
       <Text style={styles.wcagSectionTitle} accessibilityRole="header">
-        Accesibilitate vizuală
+        {t.wcagSectionHeader}
       </Text>
       <AppCard style={styles.settingsCard}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Text mărit</Text>
+            <Text style={styles.toggleLabel}>{t.wcagLargeTextLabel}</Text>
             <Text style={styles.toggleDesc}>
-              Mărește textele importante din opțiunile și instrucțiunile de traseu.
+              {t.wcagLargeTextDesc}
             </Text>
           </View>
           <Switch
@@ -133,7 +136,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Activează textul mărit pentru trasee"
+            accessibilityLabel={t.wcagLargeTextLabel}
             accessibilityState={{ checked: wcagLargeText }}
           />
         </View>
@@ -142,9 +145,9 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
 
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Alternativă textuală pentru hartă</Text>
+            <Text style={styles.toggleLabel}>{t.wcagTextMapLabel}</Text>
             <Text style={styles.toggleDesc}>
-              Afișează stațiile și pașii călătoriei într-un format textual.
+              {t.wcagTextMapDesc}
             </Text>
           </View>
           <Switch
@@ -153,7 +156,7 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Activează alternativa textuală pentru hartă"
+            accessibilityLabel={t.wcagTextMapLabel}
             accessibilityState={{ checked: wcagTextRouteMode }}
           />
         </View>
@@ -166,14 +169,14 @@ export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?
           activeOpacity={0.85}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           accessibilityRole="button"
-          accessibilityLabel="Deschide declarația de accesibilitate în română și engleză"
+          accessibilityLabel={t.statementModalA11y}
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.statementBtnTitle}>
-              Declarație de accesibilitate
+              {t.statementModalTitleBtn}
             </Text>
             <Text style={styles.statementBtnSub}>
-              Informații despre accesibilitate și feedback
+              {t.statementModalSubBtn}
             </Text>
           </View>
           <Text style={styles.statementBtnArrow}>➔</Text>

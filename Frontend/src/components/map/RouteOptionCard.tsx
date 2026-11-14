@@ -6,6 +6,7 @@ import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { Badge } from '../common/Badge';
 import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface RouteOptionCardProps {
   option: RouteOptionDto;
@@ -20,6 +21,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 }) => {
   const desktop = useWindowDimensions().width >= 768;
   const { wcagLargeText } = useAuth();
+  const { t } = useTranslation();
   const getModeColor = (mode: string) => {
     switch (mode) {
       case 'Bike':
@@ -39,15 +41,15 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
   const getModeLabel = (mode: string) => {
     switch (mode) {
       case 'Bike':
-        return 'Bicikl';
+        return t.modeBikeLabel;
       case 'PublicTransport':
-        return 'Javni Prijevoz (STPT)';
+        return t.modeTransitLabel;
       case 'Walk':
-        return 'Pješke';
+        return t.modeWalkLabel;
       case 'Scooter':
-        return 'Romobil';
+        return t.modeScooterLabel;
       case 'Car':
-        return 'Automobil';
+        return t.modeCarLabel;
       default:
         return mode;
     }
@@ -55,14 +57,14 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
   const modeColor = getModeColor(option.mode);
   const cardTitle = option.title || getModeLabel(option.mode);
-  const priceLabel = option.costRon === 0 ? 'Besplatno' : `${option.costRon} RON`;
-  const a11ySummary = `${cardTitle}${isSelected ? ', odabrano' : ''}${
-    option.isRecommended ? ', najzelenije' : ''
-  }. Trajanje ${option.durationMinutes} min, udaljenost ${option.distanceKm.toFixed(
+  const priceLabel = option.costRon === 0 ? t.free : `${option.costRon} RON`;
+  const a11ySummary = `${cardTitle}${isSelected ? t.selectedComma : ''}${
+    option.isRecommended ? t.recommendedComma : ''
+  }. ${t.durationShort} ${option.durationMinutes} min, ${t.distanceShort} ${option.distanceKm.toFixed(
     1
-  )} km, emisije ${option.co2Grams} grama CO2, cijena ${priceLabel}, nagrada ${
+  )} km, ${option.co2Grams}g CO2, ${t.priceShort} ${priceLabel}, +${
     option.ecoPoints
-  } eko bodova.`;
+  } ${t.points}.`;
 
   return (
     <TouchableOpacity
@@ -98,14 +100,14 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
         </View>
 
         <View style={[styles.badgesRow, desktop && styles.desktopBadges]}>
-          {isSelected && <Badge label="✓ Odabrano" variant="success" />}
+          {isSelected && <Badge label={t.selected} variant="success" />}
           {option.isRecommended && (
-            <Badge label="Najzelenije" variant="success" />
+            <Badge label={t.recommended} variant="success" />
           )}
           {option.ecoPoints > 0 ? (
-            <Badge label={`+${option.ecoPoints} bodova`} variant="reward" />
+            <Badge label={`+${option.ecoPoints} ${t.points}`} variant="reward" />
           ) : (
-            <Badge label="0 bodova" variant="neutral" />
+            <Badge label={t.zeroPointsBadge} variant="neutral" />
           )}
         </View>
       </View>
@@ -129,7 +131,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               wcagLargeText && styles.largeCaption,
             ]}
           >
-            Trajanje
+            {t.durationShort}
           </Text>
         </View>
 
@@ -152,7 +154,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               wcagLargeText && styles.largeCaption,
             ]}
           >
-            Udaljenost
+            {t.distanceShort}
           </Text>
         </View>
 
@@ -178,7 +180,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               wcagLargeText && styles.largeCaption,
             ]}
           >
-            Emisije
+            {t.emissionsShort}
           </Text>
         </View>
 
@@ -201,7 +203,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               wcagLargeText && styles.largeCaption,
             ]}
           >
-            Cijena
+            {t.priceShort}
           </Text>
         </View>
       </View>

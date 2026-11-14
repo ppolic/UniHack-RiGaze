@@ -1,4 +1,5 @@
 import { apiFetch, API_CONFIG } from './api';
+import { getTranslations } from '../hooks/useTranslation';
 import {
   StationLocation,
   ParkingDetail,
@@ -507,7 +508,10 @@ async function fetchPmtTransitNetwork(): Promise<{
           }
         }
 
-        const stationName = String(s.name || `Stanica ${s.code || s.id}`).trim();
+        const tr = getTranslations();
+        const stationName = String(
+          s.name || `${tr.svcStationFallback} ${s.code || s.id}`
+        ).trim();
         const existingNearby = parsedStops.find(
           (ex) =>
             ex.name.toLowerCase() === stationName.toLowerCase() &&
@@ -654,7 +658,7 @@ async function fetchPmtParkings(): Promise<ParkingDetail[]> {
           id: String(feat.id),
           name: feat.name
             ? `TimPark ${feat.name}`
-            : `TimPark Parkiralište (${feat.id.toUpperCase()})`,
+            : `${getTranslations().svcTimParkFallback} (${feat.id.toUpperCase()})`,
           lat: centerLat,
           lng: centerLng,
           spotsAvailable: null, // Honest data: TimPark open API does not report live sensor occupancy
@@ -859,13 +863,14 @@ export const transitService = {
       }
     }
 
+    const tr = getTranslations();
     if (bestName && bestDist <= 120) {
       return bestName;
     }
     if (bestName && bestDist <= 450) {
-      return `Blizu ${bestName}`;
+      return tr.svcNearPrefix(bestName);
     }
-    return `Točka (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`;
+    return `${tr.svcPointFallback} (${point.lat.toFixed(4)}, ${point.lng.toFixed(4)})`;
   },
 
   /**

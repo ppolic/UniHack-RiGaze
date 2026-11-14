@@ -5,19 +5,21 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export const PointsSummaryCard: React.FC<{ balance: number }> = ({ balance }) => {
   const { user } = useAuth();
+  const { language, t } = useTranslation();
   if (!user) return null;
 
   return (
     <AppCard style={styles.card}>
-      <Text style={styles.label}>PUNCTELE TALE ECO</Text>
+      <Text style={styles.label}>{t.myEcoPoints}</Text>
       <View style={styles.balanceRow}>
         <Text style={styles.points}>{balance}</Text>
-        <Text style={styles.unit}>puncte disponibile</Text>
+        <Text style={styles.unit}>{language === 'en' ? 'available points' : 'puncte disponibile'}</Text>
       </View>
-      <Text style={styles.description}>Un pas mai aproape de următoarea recompensă.</Text>
+      <Text style={styles.description}>{language === 'en' ? 'One step closer to your next reward.' : 'Un pas mai aproape de următoarea recompensă.'}</Text>
     </AppCard>
   );
 };

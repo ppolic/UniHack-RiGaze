@@ -24,6 +24,7 @@ import { TravelOptionsPanel } from '../../components/map/TravelOptionsPanel';
 import { TripCompletedModal } from '../../components/map/TripCompletedModal';
 import { AppButton } from '../../components/common/AppButton';
 import { AccessibilityComplianceModal } from '../../components/common/AccessibilityComplianceModal';
+import { useTranslation, getTranslations } from '../../hooks/useTranslation';
 import {
   API_CONFIG,
   setUseMockFallback,
@@ -54,7 +55,7 @@ interface ActiveRouteEndpoints {
 
 const INITIAL_ENDPOINTS: ActiveRouteEndpoints = {
   origin: { lat: TIMISOARA_CENTER.latitude, lng: TIMISOARA_CENTER.longitude },
-  originName: '🎯 Moja lokacija',
+  originName: `🎯 ${getTranslations().myLocation}`,
   destination: null,
   destinationName: '',
 };
@@ -70,6 +71,7 @@ interface SearchSuggestionItem {
 
 export default function MapScreen() {
   const router = useRouter();
+  const { language, setLanguage, toggleLanguage, t } = useTranslation();
   const {
     user,
     addEcoPoints,
@@ -174,7 +176,20 @@ export default function MapScreen() {
     };
   }, [searchQuery]);
 
-  // Re-plan route whenever Point A, Point B, or User Profile changes (paused while navigating)
+  // Sync default origin label ("My location") when switching RO/EN language
+  useEffect(() => {
+    setEndpoints((prev) => {
+      const normalized = prev.originName.trim();
+      const isDefaultOrigin =
+        normalized === '🎯 Locația mea' || normalized === '🎯 My location';
+      if (!isDefaultOrigin) return prev;
+      const nextOriginName = `🎯 ${t.myLocation}`;
+      if (prev.originName === nextOriginName) return prev;
+      return { ...prev, originName: nextOriginName };
+    });
+  }, [language, t.myLocation]);
+
+  // Re-plan route whenever Point A, Point B, Profile, or Language changes (paused while navigating)
   useLayoutEffect(() => {
     mounted.current = true;
     if (!isNavigatingRef.current) {
@@ -193,12 +208,13 @@ export default function MapScreen() {
     user?.preferences?.hasOwnScooter,
     user?.preferences?.hasOwnCar,
     useMockMode,
+    language,
   ]);
 
   const handleTestConnection = async () => {
     setApiBaseUrl(apiUrlInput);
     setHealthStatus('checking');
-    setHealthMessage('Provjera veze s backendom...');
+    setHealthMessage(t.checkingBackendMsg);
     const res = await checkBackendHealth();
     setHealthStatus(res.ok ? 'ok' : 'error');
     setHealthMessage(res.message);
@@ -255,7 +271,7 @@ export default function MapScreen() {
       setSelectedOptionId(recommended?.id ?? null);
     } catch (err) {
       if (!isCurrentRequest()) return;
-      console.error('Greška pri planiranju rute:', err);
+      console.error('Route planning error:', err);
       setOptions([]);
       setSelectedOptionId(null);
     } finally {
@@ -272,7 +288,7 @@ export default function MapScreen() {
       setEndpoints((prev) => ({
         ...prev,
         origin: pt,
-        originName: '🎯 Moja lokacija',
+        originName: `🎯 ${t.myLocation}`,
       }));
     }
   };
@@ -301,7 +317,7 @@ export default function MapScreen() {
     Keyboard.dismiss();
     setEndpoints((prev) => ({
       origin: userGpsLocation || prev.origin,
-      originName: '🎯 Moja lokacija',
+      originName: `🎯 ${t.myLocation}`,
       destination: null,
       destinationName: '',
     }));
@@ -402,7 +418,7 @@ export default function MapScreen() {
         backendNewBalance = tripResult.newPointsTotal;
       }
     } catch (err) {
-      console.warn('Greška pri spremanju vožnje, nastavljamo lokalno:', err);
+      console.warn('Error saving trip remotely, continuing locally:', err);
     }
 
     setLastCo2Saved(co2Saved);
@@ -459,9 +475,7 @@ export default function MapScreen() {
       if (!isNavigatingRef.current) return;
 
       if (status !== 'granted') {
-        setGpsErrorMsg(
-          'GPS dozvola je odbijena — bodovi se dodjeljuju tek unutar 60 m od točke B.'
-        );
+        setGpsErrorMsg(t.gpsDeniedMsg);
         return;
       }
 
@@ -495,9 +509,7 @@ export default function MapScreen() {
       );
     } catch {
       if (isNavigatingRef.current) {
-        setGpsErrorMsg(
-          'GPS signal trenutno nije dostupan — bodovi se dodjeljuju tek unutar 60 m od cilja.'
-        );
+        setGpsErrorMsg(t.gpsUnavailableMsg);
       }
     }
   };
@@ -540,11 +552,11 @@ export default function MapScreen() {
   };
 
   const getActiveProfileBadge = () => {
-    if (hasDisability) return '♿ Kolica';
+    if (hasDisability) return t.profileAccessBadge;
     const age = user?.age ?? 22;
-    if (age < 14) return '🧒 <14g';
-    if (age < 16) return '🪖 14–15g';
-    return '🎓 Student';
+    if (age < 14) return t.profileChildBadge;
+    if (age < 16) return t.profileTeenBadge;
+    return t.profileStudentBadge;
   };
 
   // Combined local + live OpenStreetMap address autocomplete suggestions
@@ -555,7 +567,7 @@ export default function MapScreen() {
       localItems.push({
         id: `lm_${lm.id}`,
         name: lm.name,
-        subtitle: lm.address || 'Znamenitost • Temišvar',
+        subtitle: lm.address || `${t.filterLandmarks.replace(/^🏛️\s*/, '')} • Timișoara`,
         icon: '🏛️',
         lat: lm.lat,
         lng: lm.lng,
@@ -568,8 +580,8 @@ export default function MapScreen() {
         name: st.name,
         subtitle:
           st.type === 'bike_station'
-            ? `VeloTM stanica (${st.availableBikes ?? 6} bicikala)`
-            : `Stanica (${st.type === 'tram' ? 'Tramvaj' : st.type === 'trolleybus' ? 'Trolejbus' : 'Autobus'}) • Linije: ${st.lines?.slice(0, 5).join(', ') || '-'}`,
+            ? t.bikesFreeLabel(st.availableBikes ?? 6, st.totalDocks ?? 15)
+            : `${st.type === 'tram' ? t.filterTram : st.type === 'trolleybus' ? t.filterTrolleybus : t.filterBus} • ${t.linesPrefix}: ${st.lines?.slice(0, 5).join(', ') || '-'}`,
         icon:
           st.type === 'bike_station'
             ? '🚲'
@@ -622,12 +634,12 @@ export default function MapScreen() {
   }, [landmarks, stations, parkings, searchQuery, externalResults]);
 
   const panelSummaryText = !endpoints.destination
-    ? 'Klikni na kartu ili upiši odredište za izračun eco-rute'
+    ? t.panelPromptEmpty
     : isDestinationTooClose
-    ? `⚠️ Odredište preblizu (${directDistanceMeters} m < ${MIN_TRIP_DISTANCE_METERS} m)`
+    ? t.tooCloseWarning(directDistanceMeters, MIN_TRIP_DISTANCE_METERS)
     : selectedOption
-    ? `Preporučeno: ${selectedOption.title} (${selectedOption.durationMinutes} min • ${selectedOption.distanceKm} km • +${selectedOption.ecoPoints} bodova)`
-    : 'Računam najoptimalnije eco-opcije...';
+    ? `${selectedOption.title} (${selectedOption.durationMinutes} min • ${selectedOption.distanceKm} km • +${selectedOption.ecoPoints} ${t.ptsShort})`
+    : t.calculatingRoutes;
 
   const showAutocomplete =
     searchFocused || searchQuery.trim().length > 0;
@@ -647,18 +659,18 @@ export default function MapScreen() {
           activeOpacity={0.85}
           hitSlop={abHitSlop}
           accessibilityRole="button"
-          accessibilityLabel="Odaberi svoje odredište. Polazište A je uvijek tvoja GPS lokacija."
+          accessibilityLabel={t.chooseDestinationA11y}
         >
           <Text style={styles.selectDestPromptIcon}>🏁</Text>
           <View style={{ flex: 1 }}>
             <Text style={[styles.selectDestPromptTitle, { fontSize: fs(14) }]}>
-              Odaberi svoje odredište
+              {t.chooseDestinationTitle}
             </Text>
             <Text
               style={[styles.selectDestPromptSub, { fontSize: fs(10) }]}
               numberOfLines={1}
             >
-              Klikni na kartu ili pretraži adresu (A je uvijek tvoja lokacija)
+              {t.chooseDestinationSub}
             </Text>
           </View>
           <Text style={styles.selectDestPromptArrow}>🔍</Text>
@@ -668,27 +680,27 @@ export default function MapScreen() {
 
     return (
       <View style={styles.bottomAbContainer}>
-        {/* Fixed Origin A = Moja lokacija */}
+        {/* Fixed Origin A = My location */}
         <TouchableOpacity
           style={[styles.abBox, styles.abBoxActiveOrigin, { flex: 0.95 }]}
           onPress={handleRefreshMyLocation}
           activeOpacity={0.85}
           hitSlop={abHitSlop}
           accessibilityRole="button"
-          accessibilityLabel={`Osvježi moju trenutnu GPS lokaciju (Polazište A): ${
-            isLocatingOrigin ? 'Tražim GPS' : endpoints.originName
-          }`}
+          accessibilityLabel={t.refreshOriginA11y(
+            isLocatingOrigin ? t.locatingGps : endpoints.originName
+          )}
         >
           <View style={styles.abDotOrigin} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.abLabel, { fontSize: fs(10) }]}>
-              Polazište (A)
+              {t.originLabel}
             </Text>
             <Text
               style={[styles.abValue, { fontSize: fs(12) }]}
               numberOfLines={1}
             >
-              {isLocatingOrigin ? 'Tražim GPS...' : endpoints.originName}
+              {isLocatingOrigin ? t.locatingGps : endpoints.originName}
             </Text>
           </View>
         </TouchableOpacity>
@@ -705,12 +717,12 @@ export default function MapScreen() {
           activeOpacity={0.85}
           hitSlop={abHitSlop}
           accessibilityRole="button"
-          accessibilityLabel={`Promijeni Odredište (B): ${endpoints.destinationName}`}
+          accessibilityLabel={t.changeDestA11y(endpoints.destinationName)}
         >
           <View style={styles.abDotDest} />
           <View style={{ flex: 1 }}>
             <Text style={[styles.abLabel, { fontSize: fs(10) }]}>
-              Odredište (B)
+              {t.destLabel}
             </Text>
             <Text
               style={[styles.abValue, { fontSize: fs(12) }]}
@@ -728,10 +740,10 @@ export default function MapScreen() {
           activeOpacity={0.8}
           hitSlop={abHitSlop}
           accessibilityRole="button"
-          accessibilityLabel="Resetiraj odredište i lokacije"
+          accessibilityLabel={t.reset}
         >
           <Text style={styles.abResetIcon}>🔄</Text>
-          <Text style={[styles.abResetText, { fontSize: fs(10) }]}>Reset</Text>
+          <Text style={[styles.abResetText, { fontSize: fs(10) }]}>{t.reset}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -748,7 +760,7 @@ export default function MapScreen() {
     if (!isNavigating || !selectedOption) return null;
     const primaryStep =
       selectedOption.segments?.[0]?.description ||
-      `Prati označenu rutu prema: ${endpoints.destinationName}`;
+      t.followRouteTo(endpoints.destinationName || t.destination);
 
     return (
       <View
@@ -763,14 +775,14 @@ export default function MapScreen() {
             🛰️ {selectedOption.title || selectedOption.mode}
           </Text>
           <View style={styles.navLivePill}>
-            <Text style={styles.navLivePillText}>GPS UŽIVO</Text>
+            <Text style={styles.navLivePillText}>{t.gpsLive}</Text>
           </View>
         </View>
         <Text
           style={[styles.navTopStepText, { fontSize: fs(12) }]}
           numberOfLines={2}
         >
-          🏁 Cilj: {endpoints.destinationName} • {primaryStep}
+          🏁 {endpoints.destinationName} • {primaryStep}
         </Text>
         {gpsErrorMsg && (
           <View style={styles.navWarningBox} accessibilityLiveRegion="polite">
@@ -798,7 +810,7 @@ export default function MapScreen() {
         <View style={styles.navHudHeader}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.navHudStatusLabel, { fontSize: fs(10) }]}>
-              AUTOMATSKI ZAVRŠETAK UNUTAR {ARRIVAL_RADIUS_METERS} m OD CILJA
+              {t.autoFinishLabel(ARRIVAL_RADIUS_METERS)}
             </Text>
             <Text
               style={[styles.navHudRouteTitle, { fontSize: fs(14) }]}
@@ -809,7 +821,7 @@ export default function MapScreen() {
           </View>
           <View style={styles.navHudPointsBadge}>
             <Text style={styles.navHudPointsText}>
-              +{selectedOption.ecoPoints} bod.
+              +{selectedOption.ecoPoints} {t.ptsShort}
             </Text>
           </View>
         </View>
@@ -820,7 +832,7 @@ export default function MapScreen() {
               {formatRemainingDistance(distanceToDestMeters, selectedOption.distanceKm)}
             </Text>
             <Text style={[styles.navHudMetricLbl, { fontSize: fs(10) }]}>
-              Preostalo do B
+              {t.remainingToB}
             </Text>
           </View>
 
@@ -831,7 +843,7 @@ export default function MapScreen() {
               ~{estMinutesLeft} min
             </Text>
             <Text style={[styles.navHudMetricLbl, { fontSize: fs(10) }]}>
-              Procjena
+              {t.estimate}
             </Text>
           </View>
 
@@ -842,7 +854,7 @@ export default function MapScreen() {
               {progressPct}%
             </Text>
             <Text style={[styles.navHudMetricLbl, { fontSize: fs(10) }]}>
-              Napredak
+              {t.progress}
             </Text>
           </View>
         </View>
@@ -858,15 +870,15 @@ export default function MapScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
             accessibilityRole="button"
-            accessibilityLabel="Prekini aktivnu navigaciju bez bodova"
+            accessibilityLabel={t.cancelNavBtn}
           >
             <Text style={[styles.navCancelBtnText, { fontSize: fs(13) }]}>
-              ✕ Prekini
+              {t.cancelNavBtn}
             </Text>
           </TouchableOpacity>
 
           <AppButton
-            title={`🏁 Završi vožnju (+${selectedOption.ecoPoints})`}
+            title={t.finishTripBtn(selectedOption.ecoPoints)}
             onPress={handleManualFinishNavigation}
             size="md"
             style={{ flex: 1 }}
@@ -889,11 +901,11 @@ export default function MapScreen() {
         id: `st_${s.id}`,
         category: 'stations' as const,
         title: `🚋 ${s.name}`,
-        subtitle: `Linije: ${s.lines?.join(', ') || 'STPT javni prijevoz'}${
-          s.isWheelchairAccessible ? ' • ♿ Niskopodni pristup' : ''
+        subtitle: `${t.linesPrefix}: ${s.lines?.join(', ') || t.stptPublicTransit}${
+          s.isWheelchairAccessible ? t.lowFloorTag : ''
         }`,
         isAccessibleHighlight: Boolean(s.isWheelchairAccessible),
-        accessibleTag: s.isWheelchairAccessible ? '♿ Pristupačno' : null,
+        accessibleTag: s.isWheelchairAccessible ? t.accessibleChip : null,
         lat: s.lat,
         lng: s.lng,
         selectName: s.name,
@@ -909,13 +921,13 @@ export default function MapScreen() {
         title: `🅿️ ${p.name}`,
         subtitle: `${p.zone ? `Zona ${p.zone} • ` : ''}${p.hourlyRateRon} RON/h${
           p.isAccessible
-            ? ` • ♿ Mjesta za invalide${
+            ? `${t.pmrSpacesTag}${
                 p.accessibleSpots != null ? `: ${p.accessibleSpots}` : ''
               }`
             : ''
         }`,
         isAccessibleHighlight: p.isAccessible,
-        accessibleTag: p.isAccessible ? '♿ PMR parking' : null,
+        accessibleTag: p.isAccessible ? t.pmrParkingChip : null,
         lat: p.lat,
         lng: p.lng,
         selectName: p.name,
@@ -944,16 +956,16 @@ export default function MapScreen() {
       key: 'all' | 'stations' | 'parking' | 'landmarks';
       label: string;
     }> = [
-      { key: 'all', label: `Sve (${allTextPois.length})` },
-      { key: 'stations', label: `🚋 STPT (${stationItems.length})` },
-      { key: 'parking', label: `🅿️ Parking (${parkingItems.length})` },
-      { key: 'landmarks', label: `📍 Lokacije (${landmarkItems.length})` },
+      { key: 'all', label: t.textAltFilterAll(allTextPois.length) },
+      { key: 'stations', label: t.textAltFilterStations(stationItems.length) },
+      { key: 'parking', label: t.textAltFilterParking(parkingItems.length) },
+      { key: 'landmarks', label: t.textAltFilterLandmarks(landmarkItems.length) },
     ];
 
     return (
       <View
         style={styles.textAltOverlay}
-        accessibilityLabel="Tekstualna alternativa karte prema zakonu 232/2022 i normi EN 301 549"
+        accessibilityLabel={t.textAltTitle}
       >
         <ScrollView
           contentContainerStyle={styles.textAltScrollContent}
@@ -967,11 +979,10 @@ export default function MapScreen() {
                 style={[styles.textAltBannerTitle, { fontSize: fs(13) }]}
                 accessibilityRole="header"
               >
-                📜 Tekstualna alternativa karte (EN 301 549)
+                {t.textAltTitle}
               </Text>
               <Text style={[styles.textAltBannerSub, { fontSize: fs(11) }]}>
-                Pristupačna navigacija bez vizualne karte (Law 232/2022 Art.
-                1(4)(d)). Pretraži gore ili odaberi točku B ispod.
+                {t.textAltSub}
               </Text>
             </View>
             <View style={styles.textAltBannerActions}>
@@ -980,10 +991,10 @@ export default function MapScreen() {
                 onPress={() => updatePreferences({ wcagTextRouteMode: false })}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel="Vrati vizualni prikaz karte"
+                accessibilityLabel={t.showMapBtn}
               >
                 <Text style={[styles.textAltMapBtnText, { fontSize: fs(12) }]}>
-                  🗺️ Prikaz karte
+                  {t.showMapBtn}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -991,12 +1002,12 @@ export default function MapScreen() {
                 onPress={() => setWcagModalVisible(true)}
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel="Otvori izjavu pristupačnosti WCAG 2.1 AA"
+                accessibilityLabel={t.statementSettingsBtn}
               >
                 <Text
                   style={[styles.textAltStatementBtnText, { fontSize: fs(11) }]}
                 >
-                  ♿ Izjava / Postavke
+                  {t.statementSettingsBtn}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1008,31 +1019,31 @@ export default function MapScreen() {
               style={[styles.textAltSectionTitle, { fontSize: fs(14) }]}
               accessibilityRole="header"
             >
-              🧭 Koraci trenutne rute
+              {t.routeStepsTitle}
             </Text>
             <Text style={[styles.textAltRouteEndpoints, { fontSize: fs(12) }]}>
-              Polazište (A): {endpoints.originName}
+              {t.originLabel}: {endpoints.originName}
               {'\n'}
-              Odredište (B):{' '}
+              {t.destLabel}:{' '}
               {endpoints.destination
                 ? endpoints.destinationName
-                : 'Nije odabrano — odaberi lokaciju ispod ili u tražilici'}
+                : t.notSelectedPrompt}
             </Text>
 
             {endpoints.destination && selectedOption ? (
               <View style={styles.textAltStepsList}>
                 <Text style={[styles.textAltRouteSummary, { fontSize: fs(12) }]}>
-                  ✓ Odabrano: {selectedOption.title || selectedOption.mode} •{' '}
+                  {t.selected}: {selectedOption.title || selectedOption.mode} •{' '}
                   {selectedOption.durationMinutes} min •{' '}
                   {selectedOption.distanceKm.toFixed(2)} km • +
-                  {selectedOption.ecoPoints} bodova
+                  {selectedOption.ecoPoints} {t.points}
                 </Text>
                 {(selectedOption.segments && selectedOption.segments.length > 0
                   ? selectedOption.segments
                   : [
                       {
                         mode: selectedOption.mode,
-                        description: `Nastavi rutom prema ${endpoints.destinationName}`,
+                        description: t.followRouteTo(endpoints.destinationName || t.destination),
                         durationMinutes: selectedOption.durationMinutes,
                         distanceKm: selectedOption.distanceKm,
                       },
@@ -1067,7 +1078,7 @@ export default function MapScreen() {
             style={[styles.textAltSectionTitle, { fontSize: fs(14) }]}
             accessibilityRole="header"
           >
-            📍 Stanice, PMR parking i odredišta u Timișoari
+            {t.poisTitle}
           </Text>
 
           <ScrollView
@@ -1088,7 +1099,7 @@ export default function MapScreen() {
                   activeOpacity={0.85}
                   accessibilityRole="button"
                   accessibilityState={{ selected: active }}
-                  accessibilityLabel={`Filtriraj popis: ${opt.label}`}
+                  accessibilityLabel={opt.label}
                 >
                   <Text
                     style={[
@@ -1108,8 +1119,7 @@ export default function MapScreen() {
             style={[styles.textAltCountLabel, { fontSize: fs(11) }]}
             accessibilityLiveRegion="polite"
           >
-            Prikazano {filteredTextPois.length} lokacija
-            {hasDisability ? ' (pristupačne lokacije su na vrhu)' : ''}
+            {t.textAltCount(filteredTextPois.length, hasDisability)}
           </Text>
 
           {filteredTextPois.slice(0, 45).map((item) => (
@@ -1153,12 +1163,12 @@ export default function MapScreen() {
                 }
                 activeOpacity={0.85}
                 accessibilityRole="button"
-                accessibilityLabel={`Odaberi ${item.selectName} kao cilj B`}
+                accessibilityLabel={t.setAsDestBA11y(item.selectName)}
               >
                 <Text
                   style={[styles.textAltSelectBtnText, { fontSize: fs(12) }]}
                 >
-                  🏁 Odaberi kao cilj (B)
+                  {t.chooseAsDestB}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1180,6 +1190,23 @@ export default function MapScreen() {
 
         <View style={styles.headerRight}>
           <TouchableOpacity
+            style={styles.langHeaderBtn}
+            onPress={toggleLanguage}
+            activeOpacity={0.8}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+            accessibilityRole="button"
+            accessibilityLabel={
+              language === 'ro'
+                ? 'Schimbă limba în engleză'
+                : 'Switch language to Romanian'
+            }
+          >
+            <Text style={styles.langHeaderBtnText}>
+              {language === 'ro' ? '🇷🇴 RO' : '🇬🇧 EN'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
             style={styles.profileSettingsBtn}
             onPress={() => {
               setApiUrlInput(API_CONFIG.BASE_URL);
@@ -1188,7 +1215,7 @@ export default function MapScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
             accessibilityRole="button"
-            accessibilityLabel="Otvori postavke profila i API načina rada"
+            accessibilityLabel={t.openSettingsA11y}
           >
             <Text style={styles.profileSettingsText} numberOfLines={1}>
               {getActiveProfileBadge()} •{' '}
@@ -1203,9 +1230,7 @@ export default function MapScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 2, right: 2 }}
             accessibilityRole="button"
-            accessibilityLabel={`Otvori eco nagrade, trenutno ${
-              user?.totalEcoPoints ?? 0
-            } bodova`}
+            accessibilityLabel={t.openRewardsA11y(user?.totalEcoPoints ?? 0)}
           >
             <Text style={styles.pointsBadgeText}>
               ⭐ {user?.totalEcoPoints ?? 0}
@@ -1218,7 +1243,7 @@ export default function MapScreen() {
             activeOpacity={0.8}
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
             accessibilityRole="button"
-            accessibilityLabel="Otvori gradski eko dashboard"
+            accessibilityLabel={t.openDashboardA11y}
           >
             <Text style={styles.dashboardLinkText}>🏛️</Text>
           </TouchableOpacity>
@@ -1237,7 +1262,7 @@ export default function MapScreen() {
             origin={endpoints.origin}
             destination={endpoints.destination}
             originName={endpoints.originName}
-            destinationName={endpoints.destinationName || 'Odredište'}
+            destinationName={endpoints.destinationName || t.destination}
             userLocation={userGpsLocation}
             isNavigating={isNavigating}
             stations={stations}
@@ -1268,12 +1293,12 @@ export default function MapScreen() {
                 setSearchQuery(text);
                 if (!searchFocused) setSearchFocused(true);
               }}
-              placeholder="Upiši adresu, ulicu ili stanicu za Odredište (B)..."
+              placeholder={t.searchPlaceholder}
               placeholderTextColor={colors.textMuted}
               autoCapitalize="none"
               autoCorrect={false}
               returnKeyType="search"
-              accessibilityLabel="Pretraži adresu, ulicu ili stanicu za odredište B"
+              accessibilityLabel={t.searchInputA11y}
             />
             {isSearchingAddress && (
               <ActivityIndicator
@@ -1292,7 +1317,7 @@ export default function MapScreen() {
                 style={styles.clearSearchBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel="Očisti i zatvori pretragu adrese"
+                accessibilityLabel={t.clearSearchA11y}
               >
                 <Text style={styles.clearSearchText}>✕</Text>
               </TouchableOpacity>
@@ -1333,7 +1358,7 @@ export default function MapScreen() {
                           handleSelectPoiAsDestination(pt, item.name)
                         }
                       >
-                        <Text style={styles.setBBadgeText}>🏁 Cilj B</Text>
+                        <Text style={styles.setBBadgeText}>{t.setAsDestBadge}</Text>
                       </TouchableOpacity>
                     </View>
                   );
@@ -1345,7 +1370,7 @@ export default function MapScreen() {
         )}
       </View>
 
-      {/* Collapsible Route Options Panel with "Odaberi svoje odredište" / A➔B + Reset */}
+      {/* Collapsible Route Options Panel (A➔B + Reset) */}
       {!isNavigating && (
       <TravelOptionsPanel
         topSlot={renderBottomSheetAbSlot()}
@@ -1364,12 +1389,18 @@ export default function MapScreen() {
                   <Text
                     style={[styles.antiCheatWarningText, { fontSize: fs(11) }]}
                   >
-                    ⚠️ Odredište je preblizu tvojoj lokaciji ({directDistanceMeters} m). Odaberi točku B udaljenu barem {MIN_TRIP_DISTANCE_METERS} m za pokretanje vožnje.
+                    {t.tooCloseWarning(
+                      directDistanceMeters,
+                      MIN_TRIP_DISTANCE_METERS
+                    )}
                   </Text>
                 </View>
               )}
               <AppButton
-                title={`🚀 Kreni (${selectedOption.durationMinutes} min • +${selectedOption.ecoPoints} bodova)`}
+                title={t.startTripBtn(
+                  selectedOption.durationMinutes,
+                  selectedOption.ecoPoints
+                )}
                 onPress={handleStartNavigation}
                 loading={isLoading}
                 disabled={isLoading || isDestinationTooClose}
@@ -1384,7 +1415,7 @@ export default function MapScreen() {
             <Text
               style={[styles.emptyRoutePromptText, { fontSize: fs(13) }]}
             >
-              Odaberi odredište (točku B) klikom na kartu ili putem tražilice gore kako bismo prikazali najbolje eco-opcije iz tvoje trenutne lokacije.
+              {t.panelEmptyBody}
             </Text>
           </View>
         ) : (
@@ -1411,7 +1442,7 @@ export default function MapScreen() {
         co2SavedGrams={lastCo2Saved}
         totalPoints={user?.totalEcoPoints ?? 0}
         originName={endpoints.originName}
-        destinationName={endpoints.destinationName || 'Odredište'}
+        destinationName={endpoints.destinationName || t.destination}
         earlyFinish={lastTripEarlyFinish}
         onClose={() => setTripModalVisible(false)}
         onViewRewards={() => {
@@ -1438,27 +1469,27 @@ export default function MapScreen() {
             <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.connectionModalHeader}>
               <Text style={styles.connectionModalTitle}>
-                👤 Profil putnika & API postavke
+                {t.settingsTitle}
               </Text>
               <TouchableOpacity
                 onPress={() => setSettingsModalVisible(false)}
                 style={styles.modalCloseBtn}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 accessibilityRole="button"
-                accessibilityLabel="Zatvori postavke"
+                accessibilityLabel={t.close}
               >
                 <Text style={styles.modalCloseText}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.inputLabel}>Brzi odabir demo profila (FE-08)</Text>
+            <Text style={styles.inputLabel}>{t.quickDemoProfile}</Text>
             <View style={styles.profileGrid}>
               {(
                 [
-                  { role: 'student', label: '🎓 Student (18+)' },
-                  { role: 'accessibility', label: '♿ Kolica (Niski pod)' },
-                  { role: 'teen_15', label: '🪖 Mlađi (14–15g)' },
-                  { role: 'child_12', label: '🧒 Dijete (<14g)' },
+                  { role: 'student', label: t.demoProfileStudent },
+                  { role: 'accessibility', label: t.demoProfileAccess },
+                  { role: 'teen_15', label: t.demoProfileTeen },
+                  { role: 'child_12', label: t.demoProfileChild },
                 ] as { role: DemoUserRole; label: string }[]
               ).map((item) => {
                 const isActive =
@@ -1494,8 +1525,53 @@ export default function MapScreen() {
 
             <View style={styles.modalDivider} />
 
+            <Text style={styles.inputLabel}>{t.languageSection}</Text>
+            <View style={styles.profileGrid}>
+              <TouchableOpacity
+                onPress={() => setLanguage('ro')}
+                style={[
+                  styles.profileChip,
+                  language === 'ro' && styles.profileChipActive,
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: language === 'ro' }}
+              >
+                <Text
+                  style={[
+                    styles.profileChipText,
+                    language === 'ro' && styles.profileChipTextActive,
+                  ]}
+                >
+                  {language === 'ro' ? '✓ ' : ''}🇷🇴 Română
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setLanguage('en')}
+                style={[
+                  styles.profileChip,
+                  language === 'en' && styles.profileChipActive,
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="button"
+                accessibilityState={{ selected: language === 'en' }}
+              >
+                <Text
+                  style={[
+                    styles.profileChipText,
+                    language === 'en' && styles.profileChipTextActive,
+                  ]}
+                >
+                  {language === 'en' ? '✓ ' : ''}🇬🇧 English
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.modalDivider} />
+
             <Text style={styles.inputLabel}>
-              ♿ Pristupačnost (WCAG 2.1 AA • Law 232/2022)
+              {t.accessibilitySection}
             </Text>
             <View style={styles.profileGrid}>
               <TouchableOpacity
@@ -1509,7 +1585,7 @@ export default function MapScreen() {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityState={{ selected: wcagLargeText }}
-                accessibilityLabel="Uključi ili isključi veliki tekst 120 posto"
+                accessibilityLabel={t.largeTextChip}
               >
                 <Text
                   style={[
@@ -1517,7 +1593,7 @@ export default function MapScreen() {
                     wcagLargeText && styles.profileChipTextActive,
                   ]}
                 >
-                  {wcagLargeText ? '✓ ' : ''}🔤 Veliki tekst (120%)
+                  {wcagLargeText ? '✓ ' : ''}{t.largeTextChip}
                 </Text>
               </TouchableOpacity>
 
@@ -1532,7 +1608,7 @@ export default function MapScreen() {
                 activeOpacity={0.8}
                 accessibilityRole="button"
                 accessibilityState={{ selected: wcagTextRouteMode }}
-                accessibilityLabel="Uključi ili isključi tekstualnu alternativu karte"
+                accessibilityLabel={t.textualMapChip}
               >
                 <Text
                   style={[
@@ -1540,7 +1616,7 @@ export default function MapScreen() {
                     wcagTextRouteMode && styles.profileChipTextActive,
                   ]}
                 >
-                  {wcagTextRouteMode ? '✓ ' : ''}📜 Tekstualna karta
+                  {wcagTextRouteMode ? '✓ ' : ''}{t.textualMapChip}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1553,24 +1629,23 @@ export default function MapScreen() {
               }}
               activeOpacity={0.85}
               accessibilityRole="button"
-              accessibilityLabel="Otvori izjavu o pristupačnosti Law 232/2022 i sve WCAG opcije"
+              accessibilityLabel={t.wcagModalBtn}
             >
               <Text style={styles.wcagModalOpenBtnText}>
-                ♿ WCAG 2.1 AA postavke & Izjava (RO / EN)
+                {t.wcagModalBtn}
               </Text>
             </TouchableOpacity>
 
             <View style={styles.modalDivider} />
 
             <Text style={styles.inputLabel}>
-              Način rada: {useMockMode ? '🛡️ Samostalni cestovni ruter' : isMock ? '⚠️ Live Fallback' : '🌐 Live Backend API'}
+              {t.workModeLabel} {useMockMode ? t.modeLocalRouter : isMock ? t.modeLiveFallback : t.modeLiveApi}
             </Text>
             <Text style={styles.connectionModalDesc}>
-              Podaci o stanicama, parkinzima i znamenitostima vuku se izravno s
-              otvorenih API-ja Grada Temišvara (cont.primariatm.ro).
+              {t.openDataNotice}
             </Text>
 
-            <Text style={styles.inputLabel}>Backend Base URL</Text>
+            <Text style={styles.inputLabel}>{t.backendUrlLabel}</Text>
             <TextInput
               style={styles.urlInput}
               value={apiUrlInput}
@@ -1589,8 +1664,8 @@ export default function MapScreen() {
             >
               <Text style={styles.testConnBtnText}>
                 {healthStatus === 'checking'
-                  ? 'Provjeravam vezu...'
-                  : '🔌 Testiraj vezu s backendom'}
+                  ? t.checkingConnection
+                  : t.testConnection}
               </Text>
             </TouchableOpacity>
 
@@ -1619,14 +1694,14 @@ export default function MapScreen() {
 
             <View style={styles.modalModeButtonsRow}>
               <AppButton
-                title="🛡️ Samostalni ruter"
+                title={t.standaloneRouter}
                 variant={useMockMode ? 'primary' : 'outline'}
                 size="sm"
                 onPress={() => handleApplyConnectionSettings(false)}
                 style={{ flex: 1 }}
               />
               <AppButton
-                title="🌐 Live Backend"
+                title={t.liveBackend}
                 variant={!useMockMode ? 'secondary' : 'outline'}
                 size="sm"
                 onPress={() => handleApplyConnectionSettings(true)}
@@ -1674,6 +1749,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     flexShrink: 0,
+  },
+  langHeaderBtn: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  langHeaderBtnText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    color: colors.primaryDark,
+    fontWeight: '800',
   },
   profileSettingsBtn: {
     backgroundColor: colors.surfaceMuted,

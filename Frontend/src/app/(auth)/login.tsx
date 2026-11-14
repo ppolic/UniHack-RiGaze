@@ -10,9 +10,12 @@ import { typography } from '../../theme/typography';
 import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { language, toggleLanguage, t } = useTranslation();
+  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const { setUser, setToken } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -30,9 +33,9 @@ export default function LoginScreen() {
       router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
-        setErrorMsg(err.message || 'Pogrešan email ili lozinka.');
+        setErrorMsg(err.message || localize('Email sau parolă incorectă.', 'Incorrect email or password.'));
       } else {
-        setErrorMsg('Nije moguće povezati se sa serverom ili potvrditi prijavu. Provjerite vezu i pokušajte ponovno.');
+        setErrorMsg(localize('Nu am putut contacta serverul sau confirma autentificarea. Verifică conexiunea și încearcă din nou.', 'Could not connect to the server or confirm sign-in. Check your connection and try again.'));
       }
     } finally {
       setLoading(false);
@@ -45,20 +48,38 @@ export default function LoginScreen() {
       keyboardShouldPersistTaps="handled"
       automaticallyAdjustKeyboardInsets
     >
+      <View style={styles.langRow}>
+        <TouchableOpacity
+          style={styles.langToggleBtn}
+          onPress={toggleLanguage}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel={
+            language === 'ro'
+              ? 'Schimbă limba în engleză'
+              : 'Switch language to Romanian'
+          }
+        >
+          <Text style={styles.langToggleText}>
+            {language === 'ro' ? '🇷🇴 Română (Schimbă în EN)' : '🇬🇧 English (Switch to RO)'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.header}>
         <View style={styles.logoBadge}>
           <Text style={styles.logoText}>🌱</Text>
         </View>
         <Text style={styles.appTitle}>BeGreen</Text>
         <Text style={styles.tagline}>
-          Getting from A to B shouldn't cost the planet.
+          {t.loginTagline}
         </Text>
       </View>
 
       <AppCard style={styles.formCard}>
-        <Text style={styles.formTitle}>Prijava u BeGreen</Text>
+        <Text style={styles.formTitle}>{localize('Autentificare în BeGreen', 'Sign in to BeGreen')}</Text>
         <Text style={styles.demoNotice}>
-          Unesite svoj email i lozinku. Za prijavu je potrebna veza sa serverom.
+          {localize('Introdu emailul și parola. Autentificarea necesită o conexiune la server.', 'Enter your email and password. Sign-in requires a server connection.')}
         </Text>
         {errorMsg && (
           <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
@@ -66,14 +87,14 @@ export default function LoginScreen() {
           </Text>
         )}
         <AppInput
-          label="Email adresa"
-          accessibilityLabel="Email adresa"
+          label={t.emailAddressLabel}
+          accessibilityLabel={t.emailAddressLabel}
           value={email}
           onChangeText={(v) => {
             setEmail(v);
             setErrorMsg(null);
           }}
-          placeholder="ana.student@upt.ro"
+          placeholder={t.emailPlaceholder}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -81,8 +102,8 @@ export default function LoginScreen() {
           returnKeyType="next"
         />
         <AppInput
-          label="Lozinka"
-          accessibilityLabel="Lozinka"
+          label={t.passwordLabel}
+          accessibilityLabel={t.passwordLabel}
           value={password}
           onChangeText={(v) => {
             setPassword(v);
@@ -98,7 +119,7 @@ export default function LoginScreen() {
         />
 
         <AppButton
-          title="Prijavi se"
+          title={localize('Autentifică-te', 'Sign in')}
           loading={loading}
           onPress={handleLogin}
           style={styles.submitBtn}
@@ -109,7 +130,7 @@ export default function LoginScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            Nemate račun? <Text style={styles.linkText}>Registrirajte se</Text>
+            {localize('Nu ai cont? ', 'No account? ')}<Text style={styles.linkText}>{localize('Creează un cont', 'Create an account')}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>
@@ -124,6 +145,25 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     backgroundColor: colors.background,
     justifyContent: 'center',
+  },
+  langRow: {
+    alignItems: 'flex-end',
+    marginBottom: spacing.sm,
+  },
+  langToggleBtn: {
+    minHeight: 44,
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  langToggleText: {
+    ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
   },
   header: {
     alignItems: 'center',

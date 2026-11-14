@@ -1,3 +1,5 @@
+import { getAppLanguage, getTranslations } from '../hooks/useTranslation';
+
 /**
  * Base API Client for EcoMutare
  * Supports dynamic IP switching for physical devices on local network.
@@ -56,15 +58,17 @@ export async function checkBackendHealth(): Promise<{
   latencyMs?: number;
   message: string;
 }> {
+  const tr = getTranslations();
   const startedAt = Date.now();
   try {
     const health = await apiFetch<{ status?: string; mySqlConnected?: boolean }>('/health');
     const latencyMs = Date.now() - startedAt;
-    const modeLabel = health?.mySqlConnected === false ? ' (In-Memory Fallback)' : '';
+    const modeLabel = health?.mySqlConnected === false
+      ? (getAppLanguage() === 'en' ? ' (In-Memory Fallback)' : ' (Fallback în memorie)') : '';
     return {
       ok: true,
       latencyMs,
-      message: `Backend aktivan (${latencyMs} ms)${modeLabel}`,
+      message: tr.svcApiHealthy(latencyMs) + modeLabel,
     };
   } catch {
     try {
@@ -86,15 +90,15 @@ export async function checkBackendHealth(): Promise<{
       return {
         ok: true,
         latencyMs,
-        message: `Backend aktivan (${latencyMs} ms)`,
+        message: tr.svcApiHealthy(latencyMs),
       };
     } catch (err: any) {
       return {
         ok: false,
         message:
           err?.name === 'AbortError'
-            ? `Timeout (${API_CONFIG.TIMEOUT_MS} ms) — koristite Offline Demo`
-            : `Nedostupno (${API_CONFIG.BASE_URL}) — siguran Offline Demo je spreman`,
+            ? tr.svcApiTimeout(API_CONFIG.TIMEOUT_MS)
+            : tr.svcApiUnreachable(API_CONFIG.BASE_URL),
       };
     }
   }

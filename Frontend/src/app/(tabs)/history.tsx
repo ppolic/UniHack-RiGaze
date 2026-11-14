@@ -13,19 +13,23 @@ import { FavoritesList } from '../../components/favorites/FavoritesList';
 import { fe2ErrorMessage } from '../../services/fe2Session';
 import { rewardsService } from '../../services/rewardsService';
 import { TripHistoryItem } from '../../types/rewards';
+import { useTranslation } from '../../hooks/useTranslation';
 
 type HistoryState =
   | { status: 'loading' }
   | { status: 'error'; message: string }
   | { status: 'success'; trips: TripHistoryItem[] };
 
-const modeLabels: Record<string, string> = {
-  Walk: 'Pe jos', Walking: 'Pe jos', Bicycle: 'Bicicletă', Bike: 'Bicicletă', Scooter: 'Trotinetă',
-  Bus: 'Autobuz', Tram: 'Tramvai', Trolleybus: 'Troleibuz', Car: 'Mașină', PublicTransport: 'Transport public', PublicTransit: 'Transport public', Carpooling: 'Mașină partajată', CarWithParking: 'Mașină și parcare',
-};
-
 export default function HistoryScreen() {
   const router = useRouter();
+  const { language, t } = useTranslation();
+  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
+  const modeLabels: Record<string, string> = {
+    Walk: t.modeWalk, Walking: t.modeWalk, Bicycle: t.modeBike, Bike: t.modeBike, Scooter: t.modeScooter,
+    Bus: t.svcVehicleBus, Tram: t.svcVehicleTram, Trolleybus: t.svcVehicleTrolleybus,
+    Car: t.modeCar, PublicTransport: t.modePublicTransport, PublicTransit: t.modePublicTransport,
+    Carpool: t.modeCarpool, Carpooling: t.modeCarpool, CarWithParking: t.modeCar, Combined: t.modeCombined,
+  };
   const { user, token } = useAuth();
   const loading = useRef(false);
   const { section } = useLocalSearchParams<{ section?: string }>();
@@ -43,7 +47,7 @@ export default function HistoryScreen() {
         const trips = await rewardsService.getTripHistory();
         if (active) setState({ status: 'success', trips });
       } catch (error) {
-        if (active) setState({ status: 'error', message: fe2ErrorMessage(error, 'Nu am putut încărca istoricul. Verifică conexiunea și încearcă din nou.') });
+        if (active) setState({ status: 'error', message: fe2ErrorMessage(error, t.historyError) });
       } finally {
         if (active) loading.current = false;
       }
@@ -51,7 +55,7 @@ export default function HistoryScreen() {
 
     void loadHistory();
     return () => { active = false; };
-  }, [requestVersion, user?.id, token]));
+  }, [requestVersion, user?.id, token, language]));
 
   const handleRetry = () => {
     if (loading.current) return;
@@ -65,9 +69,9 @@ export default function HistoryScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>DRUMURILE TALE</Text>
-            <Text style={styles.title} accessibilityRole="header">Favorite și istoric</Text>
-            <Text style={styles.description}>Alegerile de azi, într-un oraș mai verde mâine.</Text>
+            <Text style={styles.eyebrow}>{localize('DRUMURILE TALE', 'YOUR JOURNEYS')}</Text>
+            <Text style={styles.title} accessibilityRole="header">{localize('Favorite și istoric', 'Favorites & History')}</Text>
+            <Text style={styles.description}>{localize('Alegerile de azi, într-un oraș mai verde mâine.', 'Today’s choices, a greener city tomorrow.')}</Text>
           </View>
 
           <View style={styles.sections} accessibilityRole="tablist">
@@ -82,7 +86,7 @@ export default function HistoryScreen() {
                   style={({ pressed }) => [styles.sectionButton, selected && styles.activeSection, pressed && styles.pressedSection]}
                 >
                   <Text style={[styles.sectionLabel, selected && styles.activeLabel]}>
-                    {value === 'favorites' ? '♡  Favorite' : '↺  Istoric'}
+                    {value === 'favorites' ? localize('♡  Favorite', '♡  Favorites') : '↺  ' + t.tabHistory}
                   </Text>
                 </Pressable>
               );
@@ -94,32 +98,32 @@ export default function HistoryScreen() {
           ) : (
             <View style={styles.list}>
               <View style={styles.listHeading}>
-                <Text style={styles.sectionTitle} accessibilityRole="header">Călătorii returnate de server</Text>
-                {state.status === 'success' && <Badge label={state.trips.length + ' în listă'} />}
+                <Text style={styles.sectionTitle} accessibilityRole="header">{t.historyTitle}</Text>
+                {state.status === 'success' && <Badge label={state.trips.length + localize(' în listă', ' in list')} />}
               </View>
-              <Text style={styles.description}>Serviciul poate returna date inițializate și nu confirmă păstrarea lor după repornirea serverului.</Text>
+              <Text style={styles.description}>{localize('Serviciul poate returna date inițializate și nu confirmă păstrarea lor după repornirea serverului.', 'The service may return seeded data and does not confirm retention after a server restart.')}</Text>
               {state.status === 'loading' && (
                 <View style={styles.statusCard} accessible accessibilityRole="progressbar"
-                  accessibilityLabel="Se încarcă istoricul călătoriilor" accessibilityState={{ busy: true }}>
+                  accessibilityLabel={t.historyLoading} accessibilityState={{ busy: true }}>
                   <ActivityIndicator size="large" color={colors.primary} accessible={false} />
-                  <Text style={styles.description}>Se încarcă istoricul călătoriilor…</Text>
+                  <Text style={styles.description}>{t.historyLoading}</Text>
                 </View>
               )}
               {state.status === 'error' && (
                 <AppCard style={styles.statusCard}>
-                  <Text style={styles.sectionTitle}>Istoricul nu este disponibil</Text>
+                  <Text style={styles.sectionTitle}>{localize('Istoricul nu este disponibil', 'History is unavailable')}</Text>
                   <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
                     {state.message}
                   </Text>
-                  <AppButton title="Încearcă din nou" onPress={handleRetry} />
+                  <AppButton title={t.retry} onPress={handleRetry} />
                 </AppCard>
               )}
               {state.status === 'success' && state.trips.length === 0 && (
                 <AppCard style={styles.statusCard}>
                   <Text style={styles.emptyIcon} accessible={false}>↺</Text>
-                  <Text style={styles.sectionTitle}>Fiecare drum are un început</Text>
+                  <Text style={styles.sectionTitle}>{t.historyEmptyTitle}</Text>
                   <Text style={styles.description} accessibilityLiveRegion="polite">
-                    Nu există încă nicio călătorie înregistrată. După finalizarea unei călătorii, aici vei putea vedea traseul și punctele obținute.
+                    {t.historyEmptySub}
                   </Text>
                 </AppCard>
               )}
@@ -127,15 +131,15 @@ export default function HistoryScreen() {
                 <AppCard key={trip.id} style={styles.tripCard}>
                   <View style={styles.listHeading}>
                     <Text style={styles.date}>{trip.date}</Text>
-                    <Badge label={(trip.pointsEarned > 0 ? '+' : '') + trip.pointsEarned + ' puncte'} variant="reward" />
+                    <Badge label={(trip.pointsEarned > 0 ? '+' : '') + trip.pointsEarned + ' ' + t.points} variant="reward" />
                   </View>
                   <Text style={styles.route}>{trip.originName} → {trip.destinationName}</Text>
                   <Text style={styles.mode}>{modeLabels[trip.mode] ?? trip.mode}</Text>
                   <View style={styles.metrics}>
                     {[
-                      { label: 'Distanță', value: trip.distanceKm + ' km' },
-                      { label: 'Durată', value: trip.durationMinutes + ' min' },
-                      { label: 'CO₂ economisit', value: trip.co2SavedGrams + ' g' },
+                      { label: t.distancePrefix, value: trip.distanceKm + ' km' },
+                      { label: t.durationLabel, value: trip.durationMinutes + ' min' },
+                      { label: t.co2Saved, value: trip.co2SavedGrams + ' g' },
                     ].map((metric) => (
                       <View key={metric.label} style={styles.metric}>
                         <Text style={styles.metricValue}>{metric.value}</Text>

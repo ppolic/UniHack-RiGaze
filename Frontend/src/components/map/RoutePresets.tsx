@@ -4,6 +4,7 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { GeoPoint } from '../../types/route';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export interface RoutePresetItem {
   id: string;
@@ -17,7 +18,7 @@ export interface RoutePresetItem {
 export const DEMO_PRESETS: RoutePresetItem[] = [
   {
     id: 'pr_1',
-    label: 'Centar ➔ UPT Politehnica',
+    label: 'Centru ➔ UPT Politehnica',
     originName: 'Piața Victoriei',
     destinationName: 'UPT Electro',
     origin: { lat: 45.7538, lng: 21.2257 },
@@ -51,7 +52,12 @@ export const RoutePresets: React.FC<RoutePresetsProps> = ({
   activePresetId,
 }) => {
   const { width } = useWindowDimensions();
+  const { t } = useTranslation();
   const narrow = width < 768;
+
+  const presets: RoutePresetItem[] = DEMO_PRESETS.map((preset) =>
+    preset.id === 'pr_1' ? { ...preset, label: t.routePresetCenter } : preset
+  );
 
   return (
     <ScrollView
@@ -60,7 +66,7 @@ export const RoutePresets: React.FC<RoutePresetsProps> = ({
       style={styles.scroll}
       contentContainerStyle={styles.container}
     >
-      {DEMO_PRESETS.map((preset) => {
+      {presets.map((preset) => {
         const isActive = activePresetId === preset.id;
         return (
           <TouchableOpacity

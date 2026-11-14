@@ -14,10 +14,13 @@ import { authService } from '../../services/authService';
 import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { captureSession, verifyAccount } from '../../services/fe2Session';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export default function ProfileScreen() {
   const { user, token, setUser, logout } = useAuth();
   const router = useRouter();
+  const { language, t } = useTranslation();
+  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
   const [verifiedAge, setVerifiedAge] = useState<number | null>(null);
@@ -59,7 +62,7 @@ export default function ProfileScreen() {
 
     const fullName = draft.name.trim();
     if (!fullName) {
-      setNameError('Introdu un nume pentru afișare. Numele nu poate fi gol.');
+      setNameError(t.displayNameEmptyError);
       return;
     }
 
@@ -88,9 +91,9 @@ export default function ProfileScreen() {
       >
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>CONTUL TĂU</Text>
-            <Text style={styles.title} accessibilityRole="header">Profil</Text>
-            <Text style={styles.description}>Preferințele tale, pentru călătorii care ți se potrivesc.</Text>
+            <Text style={styles.eyebrow}>{localize('CONTUL TĂU', 'YOUR ACCOUNT')}</Text>
+            <Text style={styles.title} accessibilityRole="header">{t.tabProfile}</Text>
+            <Text style={styles.description}>{localize('Preferințele tale, pentru călătorii care ți se potrivesc.', 'Your preferences, for journeys that suit you.')}</Text>
           </View>
 
           <ProfileDetails verifiedAge={verifiedAge}>
@@ -98,8 +101,8 @@ export default function ProfileScreen() {
               <View style={styles.editor}>
                 <View accessibilityLiveRegion="polite">
                   <AppInput
-                    label="Nume afișat"
-                    accessibilityLabel="Nume afișat"
+                    label={t.displayNameLabel}
+                    accessibilityLabel={t.displayNameLabel}
                     accessibilityHint={nameError}
                     value={draft.name}
                     onChangeText={(name) => {
@@ -119,22 +122,22 @@ export default function ProfileScreen() {
                   />
                 </View>
                 <Text style={styles.caption}>
-                  Numele se actualizează imediat în aplicație. Dacă serverul nu este disponibil, modificarea poate să nu se păstreze la următoarea autentificare.
+                  {localize('Numele se actualizează imediat în aplicație. Dacă serverul nu este disponibil, modificarea poate să nu se păstreze la următoarea autentificare.', 'Your name updates immediately in the app. If the server is unavailable, the change may not be retained the next time you sign in.')}
                 </Text>
                 <View style={styles.editActions}>
-                  <AppButton title="Salvează" onPress={handleSave} style={styles.editButton} />
-                  <AppButton title="Renunță" variant="outline" onPress={handleCancel} style={styles.editButton} />
+                  <AppButton title={t.save} onPress={handleSave} style={styles.editButton} />
+                  <AppButton title={t.cancel} variant="outline" onPress={handleCancel} style={styles.editButton} />
                 </View>
               </View>
             ) : (
-              <AppButton title="Editează numele" variant="outline" onPress={handleEdit} style={styles.actionButton} />
+              <AppButton title={t.editProfileBtn} variant="outline" onPress={handleEdit} style={styles.actionButton} />
             ))}
           </ProfileDetails>
 
           <AppCard style={styles.sessionCard}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">Sesiunea ta</Text>
-            <Text style={styles.description}>Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.</Text>
-            <AppButton title="Deconectează-te" variant="outline" onPress={handleLogout} style={styles.actionButton} />
+            <Text style={styles.sectionTitle} accessibilityRole="header">{localize('Sesiunea ta', 'Your session')}</Text>
+            <Text style={styles.description}>{localize('Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.', 'Signing out ends your current session. You will need to sign in again to return to your account.')}</Text>
+            <AppButton title={t.logoutBtn} variant="outline" onPress={handleLogout} style={styles.actionButton} />
           </AppCard>
         </View>
       </ScrollView>

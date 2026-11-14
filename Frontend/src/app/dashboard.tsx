@@ -9,6 +9,7 @@ import { AppButton } from '../components/common/AppButton';
 import { Badge } from '../components/common/Badge';
 import { insightsService } from '../services/insightsService';
 import { CityInsightsSummary, GapCell } from '../types/insights';
+import { useTranslation } from '../hooks/useTranslation';
 
 type RequestState<T> =
   | { status: 'loading' }
@@ -63,6 +64,7 @@ function SectionLoading({ message }: { message: string }) {
 }
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const summary = useDashboardRequest<CityInsightsSummary>(insightsService.getSummary);
   const gaps = useDashboardRequest<GapCell[]>(insightsService.getGapCells);
 
@@ -73,32 +75,30 @@ export default function DashboardScreen() {
           {/* Banner with Simulation notice required by track evaluation */}
           <View style={styles.banner}>
             <Text style={styles.bannerTitle}>
-              🌱 BeGreen Green Intelligence — Timișoara DEMO
+              {t.dashboardBannerTitle}
             </Text>
             <Text style={styles.bannerSubtitle}>
-              Svi prikazani pokazatelji, infrastrukturne ocjene i preporuke ulaganja simulirani
-              su demo podaci, a ne provjerena gradska statistika. Prikaz ne predstavlja
-              službene preporuke niti odobrenje Grada Timișoare.
+              {t.dashboardBannerSubtitle}
             </Text>
             <View style={styles.simulationBadgeRow}>
               <Badge
-                label="DEMO — simulirani podaci"
+                label={t.dashboardSimBadge}
                 variant="info"
               />
             </View>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionHeading}>Simulirani gradski pokazatelji i prioritetne zone</Text>
+            <Text style={styles.sectionHeading}>{t.dashboardMetricsHeading}</Text>
             {summary.state.status === 'loading' && (
-              <SectionLoading message="Učitavanje simuliranih pokazatelja i prioritetnih zona…" />
+              <SectionLoading message={t.dashboardMetricsLoading} />
             )}
             {summary.state.status === 'error' && (
               <AppCard style={styles.feedback}>
                 <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-                  Nije moguće učitati gradske pokazatelje i prioritetne zone. Pokušajte ponovno.
+                  {t.dashboardMetricsError}
                 </Text>
-                <AppButton title="Ponovno učitaj pokazatelje" onPress={summary.retry} />
+                <AppButton title={t.dashboardMetricsRetry} onPress={summary.retry} />
               </AppCard>
             )}
           </View>
@@ -110,7 +110,7 @@ export default function DashboardScreen() {
             <View style={styles.section}>
               <AppCard>
                 <Text style={styles.feedbackText} accessibilityLiveRegion="polite">
-                  U ovom demo skupu nema prioritetnih zona za ulaganje.
+                  {t.dashboardNoZones}
                 </Text>
               </AppCard>
             </View>
@@ -119,24 +119,24 @@ export default function DashboardScreen() {
           {/* Identified Infrastructure Gaps */}
           <View style={styles.section}>
             <Text style={styles.sectionHeading}>
-              Simulirane praznine u mreži (auto-udio i biciklističke staze)
+              {t.dashboardGapsHeading}
             </Text>
 
             {gaps.state.status === 'loading' && (
-              <SectionLoading message="Učitavanje simuliranih infrastrukturnih praznina…" />
+              <SectionLoading message={t.dashboardGapsLoading} />
             )}
             {gaps.state.status === 'error' && (
               <AppCard style={styles.feedback}>
                 <Text style={styles.errorText} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-                  Nije moguće učitati infrastrukturne praznine. Pokušajte ponovno.
+                  {t.dashboardGapsError}
                 </Text>
-                <AppButton title="Ponovno učitaj praznine" onPress={gaps.retry} />
+                <AppButton title={t.dashboardGapsRetry} onPress={gaps.retry} />
               </AppCard>
             )}
             {gaps.state.status === 'success' && gaps.state.data.length === 0 && (
               <AppCard>
                 <Text style={styles.feedbackText} accessibilityLiveRegion="polite">
-                  U ovom demo skupu nema infrastrukturnih praznina za prikaz.
+                  {t.dashboardNoGaps}
                 </Text>
               </AppCard>
             )}
@@ -145,20 +145,20 @@ export default function DashboardScreen() {
                 <AppCard key={gap.id} style={styles.gapCard}>
                   <View style={styles.gapHeader}>
                     <Text style={styles.gapZoneName}>{gap.zoneName}</Text>
-                    <Text style={styles.priorityBadge}>Demo prioritet: {gap.priorityScore}/100</Text>
+                    <Text style={styles.priorityBadge}>{t.demoPriorityLabel} {gap.priorityScore}/100</Text>
                   </View>
 
                   <View style={styles.gapStatsRow}>
                     <Text style={styles.gapStat}>
-                      🚗 Udio automobila: <Text style={styles.bold}>{gap.carSharePercentage}%</Text>
+                      {t.carShareLabel} <Text style={styles.bold}>{gap.carSharePercentage}%</Text>
                     </Text>
                     <Text style={styles.gapStat}>
-                      🚲 Do bike lanea: <Text style={styles.bold}>{gap.distanceToNearestBikeLaneMeters}m</Text>
+                      {t.toBikeLaneLabel} <Text style={styles.bold}>{gap.distanceToNearestBikeLaneMeters}m</Text>
                     </Text>
                   </View>
 
                   <Text style={styles.gapStat}>
-                    🚏 Do prve stanice JPP-a: <Text style={styles.bold}>{gap.distanceToNearestTransitStopMeters}m</Text>
+                    {t.toFirstStopLabel} <Text style={styles.bold}>{gap.distanceToNearestTransitStopMeters}m</Text>
                   </Text>
                 </AppCard>
               ))}

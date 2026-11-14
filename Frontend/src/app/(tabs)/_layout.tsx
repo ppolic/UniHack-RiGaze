@@ -4,6 +4,7 @@ import { Text, View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { borderRadius } from '../../theme/spacing';
+import { useTranslation } from '../../hooks/useTranslation';
 
 export const unstable_settings = { initialRouteName: 'home' };
 
@@ -17,6 +18,7 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
+  const { language, t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
@@ -45,35 +47,35 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Hartă',
+          title: t.tabMap,
           tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Favorite și istoric',
+          title: language === 'en' ? 'Favorites & History' : 'Favorite și istoric',
           tabBarIcon: ({ focused }) => <TabIcon emoji="♡" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="home"
         options={{
-          title: 'Acasă',
+          title: language === 'en' ? 'Home' : 'Acasă',
           tabBarIcon: ({ focused }) => <TabIcon emoji="⌂" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="rewards"
         options={{
-          title: 'Puncte',
+          title: t.points.charAt(0).toUpperCase() + t.points.slice(1),
           tabBarIcon: ({ focused }) => <TabIcon emoji="✧" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
-          title: 'Profil',
+          title: t.tabProfile,
           tabBarIcon: ({ focused }) => <TabIcon emoji="👤" focused={focused} />,
         }}
       />

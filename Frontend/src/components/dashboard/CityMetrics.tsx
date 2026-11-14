@@ -5,6 +5,7 @@ import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { AppCard } from '../common/AppCard';
+import { useTranslation } from '../../hooks/useTranslation';
 
 interface CityMetricsProps {
   summary?: CityInsightsSummary;
@@ -12,6 +13,7 @@ interface CityMetricsProps {
 }
 
 export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) => {
+  const { t } = useTranslation();
   if (!summary && gapCount === undefined) return null;
 
   return (
@@ -24,21 +26,21 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
               <Text style={styles.metricNumber}>
                 {summary.totalCo2SavedCityKg.toLocaleString()} kg
               </Text>
-              <Text style={styles.metricLabel}>Simulirana ušteda CO₂</Text>
+              <Text style={styles.metricLabel}>{t.simCo2Saved}</Text>
             </AppCard>
 
             <AppCard style={styles.metricCard}>
               <Text style={styles.metricNumber}>
                 {summary.totalSimulatedTrips.toLocaleString()}
               </Text>
-              <Text style={styles.metricLabel}>Simulirana održiva putovanja</Text>
+              <Text style={styles.metricLabel}>{t.simTrips}</Text>
             </AppCard>
           </>
         )}
         {gapCount !== undefined && (
           <AppCard style={styles.metricCard}>
             <Text style={styles.metricNumber}>{gapCount.toLocaleString()}</Text>
-            <Text style={styles.metricLabel}>Identificirane DEMO infrastrukturne ćelije</Text>
+            <Text style={styles.metricLabel}>{t.identifiedCells}</Text>
           </AppCard>
         )}
       </View>
@@ -46,7 +48,7 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
       {/* Top 3 Investment Zones */}
       {summary && (
         <>
-          <Text style={styles.sectionTitle}>Prioritetne zone za ulaganje — simulacija</Text>
+          <Text style={styles.sectionTitle}>{t.topGapZonesHeading}</Text>
           <View style={styles.zonesList}>
             {summary.topGapZones.map((zone) => (
               <AppCard key={zone.rank} style={styles.zoneCard}>
@@ -63,7 +65,7 @@ export const CityMetrics: React.FC<CityMetricsProps> = ({ summary, gapCount }) =
                     zone.recommendation === 'New Bike Corridor' && styles.bikeRecommendation,
                   ]}>{zone.recommendation}</Text>
                   <Text style={styles.co2Potential}>
-                    Simulirani potencijal: -{(zone.estimatedCo2ReductionYearKg / 1000).toFixed(1)}t CO₂/god
+                    {t.simPotentialPrefix} -{(zone.estimatedCo2ReductionYearKg / 1000).toFixed(1)}t {t.perYearSuffix}
                   </Text>
                 </View>
               </AppCard>

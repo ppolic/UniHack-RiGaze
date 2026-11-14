@@ -2,6 +2,9 @@ import { apiFetch } from './api';
 import { assertSession, captureSession, isRecord, nonnegative, nonnegativeInteger, positiveId, verifyAccount } from './fe2Session';
 import { RewardCoupon, RewardRedemption, RedemptionRecord, TripHistoryItem } from '../types/rewards';
 import { useUserStore } from '../store/userStore';
+import { getAppLanguage, getTranslations } from '../hooks/useTranslation';
+
+const localize = (ro: string, en: string) => getAppLanguage() === 'en' ? en : ro;
 
 let redeeming = false;
 let mutationVersion = 0;
@@ -33,13 +36,13 @@ export const rewardsService = {
     const session = captureSession();
     const response = await apiFetch<unknown>('/rewards', {}, session.token);
     assertSession(session);
-    if (!Array.isArray(response)) throw new Error('Catalogul returnat de server nu este valid.');
+    if (!Array.isArray(response)) throw new Error(localize("Catalogul returnat de server nu este valid.", "The server returned an invalid reward catalog."));
     const ids = new Set<number>();
     return response.flatMap((item: unknown) => {
       if (!isRecord(item) || !positiveId(item.id) || ids.has(item.id) || typeof item.name !== 'string' || !item.name.trim() ||
           !(item.description === null || item.description === undefined || typeof item.description === 'string') ||
           !nonnegativeInteger(item.pointsCost) || typeof item.isActive !== 'boolean') {
-        throw new Error('O recompensă din catalog nu poate fi verificată.');
+        throw new Error(localize("O recompensă din catalog nu poate fi verificată.", "A reward in the catalog could not be verified."));
       }
       ids.add(item.id);
       return item.isActive ? [{
@@ -50,9 +53,9 @@ export const rewardsService = {
 
   async redeemCoupon(couponId: string): Promise<RewardRedemption> {
     if (!/^[1-9]\d*$/.test(couponId) || !Number.isSafeInteger(Number(couponId))) {
-      throw new Error('Identificatorul recompensei nu este valid.');
+      throw new Error(localize("Identificatorul recompensei nu este valid.", "The reward identifier is invalid."));
     }
-    if (redeeming) throw new Error('O activare este deja în curs. Așteaptă confirmarea serverului.');
+    if (redeeming) throw new Error(localize("O activare este deja în curs. Așteaptă confirmarea serverului.", "A redemption is already pending. Wait for the server confirmation."));
     const session = captureSession();
     redeeming = true;
     mutationVersion += 1;
@@ -62,7 +65,7 @@ export const rewardsService = {
       if (!isRecord(response) || response.rewardId !== Number(couponId) || !positiveId(response.transactionId) ||
           !nonnegativeInteger(response.pointsSpent) || !nonnegativeInteger(response.newBalance) ||
           typeof response.discountCode !== 'string' || !response.discountCode.trim()) {
-        throw new Error('Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul înainte de a reîncerca.');
+        throw new Error(localize("Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul înainte de a reîncerca.", "Redemption could not be confirmed. Reload your balance and history before retrying."));
       }
       return {
         success: true, rewardId: couponId, transactionId: String(response.transactionId),
@@ -88,22 +91,22 @@ export const rewardsService = {
       if (!isRecord(response) || !nonnegativeInteger(response.totalCount) || !Array.isArray(response.transactions) ||
           !Number.isSafeInteger(response.balance) || response.totalCount < response.transactions.length ||
           (expectedCount !== undefined && response.totalCount !== expectedCount)) {
-        throw new Error('Istoricul activărilor s-a schimbat sau nu este valid. Reîncarcă datele.');
+        throw new Error(localize("Istoricul activărilor s-a schimbat sau nu este valid. Reîncarcă datele.", "Redemption history changed or is invalid. Reload the data."));
       }
       expectedCount = response.totalCount;
       if (response.transactions.length === 0 && offset < expectedCount) {
-        throw new Error('Istoricul activărilor este incomplet. Încearcă din nou.');
+        throw new Error(localize("Istoricul activărilor este incomplet. Încearcă din nou.", "Redemption history is incomplete. Please retry."));
       }
       for (const item of response.transactions) {
         if (!isRecord(item) || !positiveId(item.id) || ids.has(item.id) || !Number.isSafeInteger(item.points) ||
             typeof item.type !== 'string' || !validDate(item.createdAt) ||
             !(item.description === null || item.description === undefined || typeof item.description === 'string')) {
-          throw new Error('O tranzacție nu poate fi verificată. Reîncarcă istoricul.');
+          throw new Error(localize("O tranzacție nu poate fi verificată. Reîncarcă istoricul.", "A transaction could not be verified. Reload the history."));
         }
         ids.add(item.id);
         if (item.type === 'Redeemed') {
           if ((item.points as number) > 0 || !(item.rewardId === null || positiveId(item.rewardId))) {
-            throw new Error('Datele unei activări nu sunt valide.');
+            throw new Error(localize("Datele unei activări nu sunt valide.", "A redemption record is invalid."));
           }
           records.push({
             transactionId: String(item.id), rewardId: item.rewardId === null ? null : String(item.rewardId),
@@ -113,9 +116,9 @@ export const rewardsService = {
       }
       offset += response.transactions.length;
       if (offset === expectedCount) return records;
-      if (offset > expectedCount) throw new Error('Istoricul activărilor este inconsistent. Reîncarcă datele.');
+      if (offset > expectedCount) throw new Error(localize("Istoricul activărilor este inconsistent. Reîncarcă datele.", "Redemption history is inconsistent. Reload the data."));
     }
-    throw new Error('Istoricul contului este prea mare pentru încărcarea completă. Este necesară filtrarea activărilor pe server.');
+    throw new Error(localize("Istoricul contului este prea mare pentru încărcarea completă. Este necesară filtrarea activărilor pe server.", "The account history is too large to load completely. Redemption filtering is required on the server."));
   },
 
   async getTripHistory(): Promise<TripHistoryItem[]> {
@@ -127,7 +130,7 @@ export const rewardsService = {
     if (!isRecord(summary) || summary.userId !== session.userId || !Array.isArray(summary.trips) ||
         !nonnegativeInteger(summary.totalTripsCount) || !nonnegative(summary.totalCo2SavedKg) ||
         !nonnegativeInteger(summary.currentPointsBalance)) {
-      throw new Error('Istoricul călătoriilor returnat de server nu este valid.');
+      throw new Error(localize("Istoricul călătoriilor returnat de server nu este valid.", "The server returned invalid trip history."));
     }
     const ids = new Set<number>();
     const trips = summary.trips.map((item: unknown): TripHistoryItem => {
@@ -136,13 +139,13 @@ export const rewardsService = {
           !(item.destinationName === null || item.destinationName === undefined || typeof item.destinationName === 'string') ||
           !nonnegative(item.distanceKm) || !nonnegative(item.durationMinutes) || !nonnegative(item.co2SavedGrams) ||
           !nonnegativeInteger(item.pointsEarned) || !validDate(item.startedAt)) {
-        throw new Error('Datele unei călătorii nu pot fi verificate.');
+        throw new Error(localize("Datele unei călătorii nu pot fi verificate.", "A trip record could not be verified."));
       }
       ids.add(item.id);
       return {
-        id: String(item.id), date: new Date(item.startedAt).toLocaleString('ro-RO'),
-        originName: item.originName?.trim() || 'Plecare neprecizată',
-        destinationName: item.destinationName?.trim() || 'Destinație neprecizată',
+        id: String(item.id), date: new Date(item.startedAt).toLocaleString(getAppLanguage() === 'en' ? 'en-GB' : 'ro-RO'),
+        originName: item.originName?.trim() || getTranslations().svcDefaultStopA,
+        destinationName: item.destinationName?.trim() || getTranslations().svcDefaultStopB,
         mode: item.mode, distanceKm: item.distanceKm, durationMinutes: item.durationMinutes,
         co2SavedGrams: Math.round(item.co2SavedGrams), pointsEarned: item.pointsEarned,
       };

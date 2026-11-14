@@ -10,11 +10,13 @@ import { typography } from '../../theme/typography';
 import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
+import { getTranslations, useTranslation } from '../../hooks/useTranslation';
 
 type FormErrors = { fullName?: string; email?: string; password?: string; birthDate?: string; server?: string };
 
 function getBirthDateError(value: string, now = new Date()): string | undefined {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Unesite datum u obliku YYYY-MM-DD.';
+  const tr = getTranslations();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return tr.regDateFormatError;
   const [year, month, day] = value.split('-').map(Number);
   // Round-trip the calendar fields to reject normalization such as February 30.
   // setFullYear also avoids the Date constructor's special handling of years 0–99.
@@ -22,15 +24,17 @@ function getBirthDateError(value: string, now = new Date()): string | undefined 
   date.setHours(0, 0, 0, 0);
   date.setFullYear(year, month - 1, day);
   if (year < 1 || date.getFullYear() !== year || date.getMonth() + 1 !== month || date.getDate() !== day) {
-    return 'Unesite stvarni kalendarski datum.';
+    return tr.regDateInvalidError;
   }
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (date > today) return 'Datum rođenja ne može biti u budućnosti.';
+  if (date > today) return tr.regDateFutureError;
   return undefined;
 }
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { language, t } = useTranslation();
+  const localize = (ro: string, en: string) => language === 'en' ? en : ro;
   const { setUser, setToken } = useAuth();
 
   const [fullName, setFullName] = useState('');
@@ -51,11 +55,11 @@ export default function RegisterScreen() {
     const trimmedPassword = password.trim();
     const trimmedBirthDate = birthDate.trim();
     const nextErrors: FormErrors = {
-      fullName: trimmedName ? undefined : 'Unesite ime i prezime.',
+      fullName: trimmedName ? undefined : t.regNameError,
       email: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)
-        ? undefined : 'Unesite valjanu email adresu.',
+        ? undefined : t.regEmailError,
       password: trimmedPassword.length >= 8
-        ? undefined : 'Lozinka mora imati najmanje 8 znakova.',
+        ? undefined : localize('Parola trebuie să aibă cel puțin 8 caractere.', 'Password must contain at least 8 characters.'),
       birthDate: getBirthDateError(trimmedBirthDate, today),
     };
     setErrors(nextErrors);
@@ -79,9 +83,9 @@ export default function RegisterScreen() {
       router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
-        setErrors({ server: err.message || 'Registracija nije uspjela.' });
+        setErrors({ server: err.message || localize('Înregistrarea a eșuat.', 'Registration failed.') });
       } else {
-        setErrors({ server: 'Nije moguće povezati se sa serverom ili potvrditi registraciju. Provjerite vezu i pokušajte ponovno.' });
+        setErrors({ server: localize('Nu am putut contacta serverul sau confirma înregistrarea. Verifică conexiunea și încearcă din nou.', 'Could not connect to the server or confirm registration. Check your connection and try again.') });
       }
     } finally {
       setLoading(false);
@@ -95,9 +99,9 @@ export default function RegisterScreen() {
       automaticallyAdjustKeyboardInsets
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Registracija korisnika</Text>
+        <Text style={styles.title}>{localize('Creează un cont', 'Create an account')}</Text>
         <Text style={styles.subtitle}>
-          Izradite BeGreen račun na backendu za praćenje vožnji, CO₂ uštede i eko-bodova (+50 bodova dobrodošlice).
+          {localize('Creează un cont BeGreen pentru călătorii, economii de CO₂ și eco-puncte. Înregistrarea este confirmată de server.', 'Create a BeGreen account for trips, CO₂ savings and eco-points. Registration is confirmed by the server.')}
         </Text>
       </View>
 
@@ -108,8 +112,8 @@ export default function RegisterScreen() {
           </Text>
         )}
         <AppInput
-          label="Ime i prezime"
-          accessibilityLabel="Ime i prezime"
+          label={t.regFullNameLabel}
+          accessibilityLabel={t.regFullNameLabel}
           accessibilityHint={errors.fullName}
           error={errors.fullName}
           value={fullName}
@@ -117,14 +121,14 @@ export default function RegisterScreen() {
             setFullName(value);
             setErrors((previous) => ({ ...previous, fullName: undefined, server: undefined }));
           }}
-          placeholder="npr. Ana Horvat"
+          placeholder={t.regFullNamePlaceholder}
           autoCapitalize="words"
           autoComplete="name"
           returnKeyType="next"
         />
         <AppInput
-          label="Email"
-          accessibilityLabel="Email"
+          label={t.regEmailLabel}
+          accessibilityLabel={t.regEmailLabel}
           accessibilityHint={errors.email}
           error={errors.email}
           value={email}
@@ -132,7 +136,7 @@ export default function RegisterScreen() {
             setEmail(value);
             setErrors((previous) => ({ ...previous, email: undefined, server: undefined }));
           }}
-          placeholder="korisnik@upt.ro"
+          placeholder={t.emailPlaceholder}
           keyboardType="email-address"
           autoCapitalize="none"
           autoCorrect={false}
@@ -140,8 +144,8 @@ export default function RegisterScreen() {
           returnKeyType="next"
         />
         <AppInput
-          label="Lozinka (min. 8 znakova)"
-          accessibilityLabel="Lozinka"
+          label={localize('Parolă (minim 8 caractere)', 'Password (at least 8 characters)')}
+          accessibilityLabel={t.passwordLabel}
           accessibilityHint={errors.password}
           error={errors.password}
           value={password}
@@ -149,15 +153,15 @@ export default function RegisterScreen() {
             setPassword(value);
             setErrors((previous) => ({ ...previous, password: undefined, server: undefined }));
           }}
-          placeholder="Minimalno 8 znakova"
+          placeholder={localize('Cel puțin 8 caractere', 'At least 8 characters')}
           secureTextEntry
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="next"
         />
         <AppInput
-          label="Datum rođenja (YYYY-MM-DD)"
-          accessibilityLabel="Datum rođenja, u obliku godina-mjesec-dan"
+          label={t.regBirthDateLabel}
+          accessibilityLabel={t.regBirthDateLabel}
           accessibilityHint={errors.birthDate}
           error={errors.birthDate}
           value={birthDate}
@@ -172,12 +176,12 @@ export default function RegisterScreen() {
           onSubmitEditing={handleRegister}
         />
 
-        <Text style={styles.sectionHeader}>Pristupačnost i Vlastita Vozila</Text>
+        <Text style={styles.sectionHeader}>{t.regSectionAccessibility}</Text>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Osoba s invaliditetom (kolica)</Text>
+          <Text style={styles.toggleText}>{t.disabilityLabel}</Text>
           <Switch
-            accessibilityLabel="Osoba s invaliditetom, kolica"
+            accessibilityLabel={t.disabilityLabel}
             value={hasDisability}
             onValueChange={setHasDisability}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -185,9 +189,9 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Posjedujem vlastiti bicikl</Text>
+          <Text style={styles.toggleText}>{t.ownBikeLabel}</Text>
           <Switch
-            accessibilityLabel="Posjedujem vlastiti bicikl"
+            accessibilityLabel={t.ownBikeLabel}
             value={hasOwnBicycle}
             onValueChange={setHasOwnBicycle}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -195,9 +199,9 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.toggleRow}>
-          <Text style={styles.toggleText}>Posjedujem automobil</Text>
+          <Text style={styles.toggleText}>{t.ownCarLabel}</Text>
           <Switch
-            accessibilityLabel="Posjedujem automobil"
+            accessibilityLabel={t.ownCarLabel}
             value={hasOwnCar}
             onValueChange={setHasOwnCar}
             trackColor={{ false: colors.border, true: colors.primary }}
@@ -205,7 +209,7 @@ export default function RegisterScreen() {
         </View>
 
         <AppButton
-          title="Registriraj se (+50 eko-bodova)"
+          title={localize('Creează cont', 'Create account')}
           loading={loading}
           onPress={handleRegister}
           style={styles.submitBtn}
@@ -216,7 +220,7 @@ export default function RegisterScreen() {
           style={styles.switchAuth}
         >
           <Text style={styles.switchAuthText}>
-            <Text style={styles.linkText}>Natrag na prijavu</Text>
+            <Text style={styles.linkText}>{localize('Înapoi la autentificare', 'Back to sign in')}</Text>
           </Text>
         </TouchableOpacity>
       </AppCard>

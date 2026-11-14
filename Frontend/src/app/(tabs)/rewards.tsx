@@ -14,22 +14,27 @@ import { fe2ErrorMessage } from '../../services/fe2Session';
 import { RewardCoupon, RewardRedemption } from '../../types/rewards';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
+import { getAppLanguage, getTranslations, useTranslation } from '../../hooks/useTranslation';
+
+// Phase 1–4 labels have no shared keys yet; keep their copy local to this merge.
+const localize = (ro: string, en: string) => getAppLanguage() === 'en' ? en : ro;
 
 type Resource<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'success'; data: T };
 type ConfirmedRedemption = RewardRedemption & { title: string };
 
 function useFocusedData<T>(load: () => Promise<T>, version: number, userId?: string, token?: string | null) {
   const [state, setState] = useState<Resource<T>>({ status: 'loading' });
+  const { language } = useTranslation();
   useFocusEffect(useCallback(() => {
     let active = true;
     setState({ status: 'loading' });
     void load().then((data) => {
       if (active) setState({ status: 'success', data });
     }).catch((error: unknown) => {
-      if (active) setState({ status: 'error', message: fe2ErrorMessage(error, 'Nu am putut încărca datele. Verifică conexiunea și încearcă din nou.') });
+      if (active) setState({ status: 'error', message: fe2ErrorMessage(error, localize("Nu am putut încărca datele. Verifică conexiunea și încearcă din nou.", "Could not load the data. Check your connection and try again.")) });
     });
     return () => { active = false; };
-  }, [load, version, userId, token]));
+  }, [load, version, userId, token, language]));
   return [state, setState] as const;
 }
 
@@ -38,21 +43,22 @@ function expiryError(expiryDate?: string): string | null {
   if (!expiryDate) return null;
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(expiryDate);
   const expiry = new Date(dateOnly ? `${expiryDate}T00:00:00` : expiryDate);
-  if (!Number.isFinite(expiry.getTime())) return 'Valabilitatea recompensei nu poate fi verificată.';
+  if (!Number.isFinite(expiry.getTime())) return getTranslations().rewardsExpiryCheckFailed;
   if (dateOnly) {
     const [year, month, day] = expiryDate.split('-').map(Number);
     if (expiry.getFullYear() !== year || expiry.getMonth() + 1 !== month || expiry.getDate() !== day) {
-      return 'Valabilitatea recompensei nu poate fi verificată.';
+      return getTranslations().rewardsExpiryCheckFailed;
     }
     expiry.setDate(expiry.getDate() + 1);
   }
-  return Date.now() >= expiry.getTime() ? 'Această recompensă a expirat.' : null;
+  return Date.now() >= expiry.getTime() ? localize("Această recompensă a expirat.", "This reward has expired.") : null;
 }
 
 const redemptionKey = (userId: string, rewardId: string) => JSON.stringify([userId, rewardId]);
 
 export default function RewardsScreen() {
   const { user, token, isAuthenticated } = useAuth();
+  const { language, t } = useTranslation();
   const { width, fontScale } = useWindowDimensions();
   const [catalogueVersion, setCatalogueVersion] = useState(0);
   const [balanceVersion, setBalanceVersion] = useState(0);
@@ -113,21 +119,21 @@ export default function RewardsScreen() {
     setError(null);
 
     try {
-      if (!initial.isAuthenticated || !initial.user || !initial.token) throw new Error('Autentifică-te din nou pentru a activa recompense.');
-      if (!ready || balance.status !== 'success') throw new Error('Încarcă soldul și istoricul activărilor înainte de a continua.');
+      if (!initial.isAuthenticated || !initial.user || !initial.token) throw new Error(localize("Autentifică-te din nou pentru a activa recompense.", "Sign in again to redeem rewards."));
+      if (!ready || balance.status !== 'success') throw new Error(localize("Încarcă soldul și istoricul activărilor înainte de a continua.", "Load your balance and redemption history before continuing."));
       const key = redemptionKey(initial.user.id, coupon.id);
       if (completed.current.has(key) || records.some((record) => record.rewardId === coupon.id) || coupon.isRedeemed) {
-        throw new Error('Această recompensă apare deja în activările contului.');
+        throw new Error(localize("Această recompensă apare deja în activările contului.", "This reward is already recorded in your redemptions."));
       }
-      if (!Number.isSafeInteger(coupon.pointsCost) || coupon.pointsCost < 0) throw new Error('Costul recompensei nu este valid.');
+      if (!Number.isSafeInteger(coupon.pointsCost) || coupon.pointsCost < 0) throw new Error(localize("Costul recompensei nu este valid.", "The reward cost is invalid."));
       const expiry = expiryError(coupon.expiryDate);
       if (expiry) throw new Error(expiry);
-      if (balance.data < coupon.pointsCost) throw new Error('Mai ai nevoie de ' + (coupon.pointsCost - balance.data) + ' puncte.');
+      if (balance.data < coupon.pointsCost) throw new Error(t.rewardsMissingPoints(coupon.pointsCost - balance.data));
       setPendingId(coupon.id);
       const response = await rewardsService.redeemCoupon(coupon.id);
       if (!isCurrent()) return;
       if (response?.success !== true || !response.promoCode?.trim() || !Number.isSafeInteger(response.newBalance) || response.newBalance < 0) {
-        throw new Error('Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul.');
+        throw new Error(localize("Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul.", "Redemption could not be confirmed. Reload your balance and history."));
       }
       const latest = useUserStore.getState();
       if (!latest.user) return;
@@ -143,7 +149,7 @@ export default function RewardsScreen() {
       setLedgerVersion((current) => current + 1);
     } catch (failure) {
       if (isCurrent()) {
-        setError(fe2ErrorMessage(failure, 'Nu am putut confirma activarea. Cererea poate să fi ajuns la server. Reîncarcă soldul și istoricul înainte de a reîncerca.'));
+        setError(fe2ErrorMessage(failure, localize("Nu am putut confirma activarea. Cererea poate să fi ajuns la server. Reîncarcă soldul și istoricul înainte de a reîncerca.", "Redemption could not be confirmed. The request may have reached the server. Reload your balance and history before retrying.")));
         // Reconcile server state even after an uncertain timeout; never replay a POST.
         setBalanceVersion((current) => current + 1);
         setLedgerVersion((current) => current + 1);
@@ -160,7 +166,7 @@ export default function RewardsScreen() {
     ...records.map((record) => ({
       ...record,
       title: coupons.find((coupon) => coupon.id === record.rewardId)?.title ??
-        record.description ?? ('Activare #' + record.transactionId),
+        record.description ?? (localize('Activare #', 'Redemption #') + record.transactionId),
       promoCode: receipts.get(record.transactionId)?.promoCode,
     })),
     ...confirmed.filter((receipt) => !records.some((record) => record.transactionId === receipt.transactionId)).map((receipt) => ({
@@ -174,53 +180,53 @@ export default function RewardsScreen() {
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.content}>
           <View style={styles.heading}>
-            <Text style={styles.eyebrow}>ALEGERILE VERZI CONTEAZĂ</Text>
-            <Text style={styles.title} accessibilityRole="header">Puncte și cupoane</Text>
-            <Text style={styles.description}>Soldul și activările sunt încărcate din contul tău de pe server.</Text>
-            <AppButton title="Reîncarcă datele" variant="outline" onPress={refresh} disabled={refreshing || pendingId !== null} />
+            <Text style={styles.eyebrow}>{localize('ALEGERILE VERZI CONTEAZĂ', 'GREEN CHOICES MATTER')}</Text>
+            <Text style={styles.title} accessibilityRole="header">{localize('Puncte și cupoane', 'Points & Coupons')}</Text>
+            <Text style={styles.description}>{localize('Soldul și activările sunt încărcate din contul tău de pe server.', 'Your balance and redemptions are loaded from your account on the server.')}</Text>
+            <AppButton title={localize('Reîncarcă datele', 'Reload data')} variant="outline" onPress={refresh} disabled={refreshing || pendingId !== null} />
           </View>
 
           {balance.status === 'loading' && (
-            <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel="Se încarcă soldul">
+            <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel={localize('Se încarcă soldul', 'Loading balance')}>
               <ActivityIndicator color={colors.primary} accessible={false} />
-              <Text style={styles.description}>Se încarcă soldul…</Text>
+              <Text style={styles.description}>{localize('Se încarcă soldul…', 'Loading balance…')}</Text>
             </View>
           )}
           {balance.status === 'error' && (
             <AppCard style={styles.statusCard}>
               <Text style={styles.error} accessibilityRole="alert">{balance.message}</Text>
-              <AppButton title="Reîncarcă soldul" onPress={() => setBalanceVersion((version) => version + 1)} />
+              <AppButton title={localize('Reîncarcă soldul', 'Reload balance')} onPress={() => setBalanceVersion((version) => version + 1)} />
             </AppCard>
           )}
           {balance.status === 'success' && <PointsSummaryCard balance={balance.data} />}
 
           <AppCard style={styles.noticeCard}>
             <Text style={styles.description}>
-              Serverul poate funcționa temporar în memorie. Un răspuns confirmat nu garantează păstrarea datelor după repornirea serverului.
+              {localize('Serverul poate funcționa temporar în memorie. Un răspuns confirmat nu garantează păstrarea datelor după repornirea serverului.', 'The server may temporarily use memory storage. A confirmed response does not guarantee data retention after a server restart.')}
             </Text>
           </AppCard>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">Recompense disponibile</Text>
-            <Text style={styles.description}>Activarea folosește punctele contului. Soldul și istoricul trebuie încărcate înainte de activare.</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">{localize('Recompense disponibile', 'Available rewards')}</Text>
+            <Text style={styles.description}>{localize('Activarea folosește punctele contului. Soldul și istoricul trebuie încărcate înainte de activare.', 'Redemption spends account points. Load your balance and history before redeeming.')}</Text>
             {catalogue.status === 'loading' && (
-              <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityLabel="Se încarcă recompensele" accessibilityState={{ busy: true }}>
+              <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityLabel={localize('Se încarcă recompensele', 'Loading rewards')} accessibilityState={{ busy: true }}>
                 <ActivityIndicator size="large" color={colors.primary} accessible={false} />
-                <Text style={styles.description}>Se încarcă recompensele…</Text>
+                <Text style={styles.description}>{localize('Se încarcă recompensele…', 'Loading rewards…')}</Text>
               </View>
             )}
             {catalogue.status === 'error' && (
               <AppCard style={styles.statusCard}>
-                <Text style={styles.sectionTitle}>Catalog indisponibil</Text>
+                <Text style={styles.sectionTitle}>{localize('Catalog indisponibil', 'Catalog unavailable')}</Text>
                 <Text style={styles.error} accessibilityRole="alert">{catalogue.message}</Text>
-                <AppButton title="Reîncarcă recompensele" onPress={() => setCatalogueVersion((version) => version + 1)} />
+                <AppButton title={localize('Reîncarcă recompensele', 'Reload rewards')} onPress={() => setCatalogueVersion((version) => version + 1)} />
               </AppCard>
             )}
             {error && <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{error}</Text>}
             {catalogue.status === 'success' && coupons.length === 0 && (
               <AppCard style={styles.statusCard}>
-                <Text style={styles.sectionTitle}>Nicio recompensă disponibilă acum</Text>
-                <Text style={styles.description}>Serverul a returnat un catalog fără recompense active.</Text>
+                <Text style={styles.sectionTitle}>{localize('Nicio recompensă disponibilă acum', 'No rewards available right now')}</Text>
+                <Text style={styles.description}>{localize('Serverul a returnat un catalog fără recompense active.', 'The server returned a catalog with no active rewards.')}</Text>
               </AppCard>
             )}
             <View style={styles.grid}>
@@ -233,26 +239,26 @@ export default function RewardsScreen() {
                   <View key={coupon.id} style={[styles.rewardColumn, width >= 900 && fontScale <= 1.3 && styles.desktopColumn]}>
                     <AppCard style={styles.couponCard}>
                       <View style={styles.couponHeader}>
-                        <Text style={styles.couponLabel}>RECOMPENSĂ</Text>
-                        <Badge label={coupon.pointsCost + ' puncte'} variant="reward" style={styles.badge} />
+                        <Text style={styles.couponLabel}>{localize('RECOMPENSĂ', 'REWARD')}</Text>
+                        <Badge label={coupon.pointsCost + ' ' + t.points} variant="reward" style={styles.badge} />
                       </View>
                       <Text style={styles.couponTitle}>{coupon.title}</Text>
                       {!!coupon.description && <Text style={styles.description}>{coupon.description}</Text>}
                       <View style={styles.activation}>
-                        <AppButton title={redeemed ? 'Activată' : 'Activează recompensa'}
+                        <AppButton title={redeemed ? localize('Activată', 'Redeemed') : localize('Activează recompensa', 'Redeem reward')}
                           loading={pendingId === coupon.id}
                           disabled={!isAuthenticated || !user || !ready || pendingId !== null || redeemed || !!expiry || (missing !== undefined && missing > 0)}
                           onPress={() => handleRedeem(coupon)} style={styles.redeemButton} textStyle={styles.buttonText} />
                       </View>
-                      {pendingId === coupon.id && <Text style={styles.feedback} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>Se activează recompensa…</Text>}
+                      {pendingId === coupon.id && <Text style={styles.feedback} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>{localize('Se activează recompensa…', 'Redeeming reward…')}</Text>}
                       {redeemed && (
                         <View style={styles.redemptionFeedback} accessibilityLiveRegion="polite">
-                          <Badge label="Activare înregistrată" variant="success" style={styles.badge} />
-                          {receipt && <Text selectable style={styles.promoCode}>Cod: {receipt.promoCode}</Text>}
+                          <Badge label={localize('Activare înregistrată', 'Redemption recorded')} variant="success" style={styles.badge} />
+                          {receipt && <Text selectable style={styles.promoCode}>{localize('Cod:', 'Code:')} {receipt.promoCode}</Text>}
                         </View>
                       )}
                       {!redeemed && expiry && <Text style={styles.error}>{expiry}</Text>}
-                      {!redeemed && missing !== undefined && missing > 0 && <Text style={styles.feedback}>Mai ai nevoie de {missing} puncte.</Text>}
+                      {!redeemed && missing !== undefined && missing > 0 && <Text style={styles.feedback}>{t.rewardsMissingPoints(missing)}</Text>}
                     </AppCard>
                   </View>
                 );
@@ -261,35 +267,35 @@ export default function RewardsScreen() {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle} accessibilityRole="header">Activări și cupoane</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">{localize('Activări și cupoane', 'Redemptions & Coupons')}</Text>
             <Text style={styles.description}>
-              Activările sunt reîncărcate din tranzacțiile contului. API-ul nu oferă recuperarea codurilor anterioare. Codurile primite aici rămân temporar în acest ecran; copiază-le înainte de a-l închide.
+              {localize('Activările sunt reîncărcate din tranzacțiile contului. API-ul nu oferă recuperarea codurilor anterioare. Codurile primite aici rămân temporar în acest ecran; copiază-le înainte de a-l închide.', 'Redemptions are reloaded from account transactions. The API cannot retrieve previous codes. Codes received here remain temporarily in this screen; copy them before closing it.')}
             </Text>
             {ledger.status === 'loading' && (
-              <View accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel="Se încarcă activările" style={styles.statusCard}>
+              <View accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel={localize('Se încarcă activările', 'Loading redemptions')} style={styles.statusCard}>
                 <ActivityIndicator color={colors.primary} accessible={false} />
-                <Text style={styles.description}>Se încarcă activările…</Text>
+                <Text style={styles.description}>{localize('Se încarcă activările…', 'Loading redemptions…')}</Text>
               </View>
             )}
             {ledger.status === 'error' && (
               <AppCard style={styles.statusCard}>
                 <Text style={styles.error} accessibilityRole="alert">{ledger.message}</Text>
-                <AppButton title="Reîncarcă activările" onPress={() => setLedgerVersion((version) => version + 1)} />
+                <AppButton title={localize('Reîncarcă activările', 'Reload redemptions')} onPress={() => setLedgerVersion((version) => version + 1)} />
               </AppCard>
             )}
             {ledger.status === 'success' && rows.length === 0 && (
               <AppCard style={styles.statusCard}>
-                <Text style={styles.couponTitle}>Nicio activare înregistrată</Text>
-                <Text style={styles.description}>Serverul nu a returnat tranzacții de activare pentru contul tău.</Text>
+                <Text style={styles.couponTitle}>{localize('Nicio activare înregistrată', 'No recorded redemptions')}</Text>
+                <Text style={styles.description}>{localize('Serverul nu a returnat tranzacții de activare pentru contul tău.', 'The server returned no redemption transactions for your account.')}</Text>
               </AppCard>
             )}
             {rows.map((row) => (
               <AppCard key={row.transactionId} style={styles.statusCard}>
-                <Badge label={row.pointsSpent + ' puncte utilizate'} variant="reward" style={styles.badge} />
+                <Badge label={row.pointsSpent + ' ' + t.points + localize(' utilizate', ' spent')} variant="reward" style={styles.badge} />
                 <Text style={styles.couponTitle}>{row.title}</Text>
-                {row.createdAt && <Text style={styles.feedback}>{new Date(row.createdAt).toLocaleString('ro-RO')}</Text>}
+                {row.createdAt && <Text style={styles.feedback}>{new Date(row.createdAt).toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO')}</Text>}
                 {row.promoCode ? <Text selectable style={styles.promoCode}>{row.promoCode}</Text> :
-                  <Text style={styles.description}>Codul acestei activări nu este disponibil prin API.</Text>}
+                  <Text style={styles.description}>{localize('Codul acestei activări nu este disponibil prin API.', 'The code for this redemption is not available through the API.')}</Text>}
               </AppCard>
             ))}
           </View>
