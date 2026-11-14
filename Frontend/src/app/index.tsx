@@ -5,9 +5,9 @@ import { useAuth } from '../hooks/useAuth';
 export default function Index() {
   const { isAuthenticated } = useAuth();
 
-  // If already authenticated, redirect straight to the Map tabs
+  // Authenticated startup opens Home; the Map keeps its existing route.
   if (isAuthenticated) {
-    return <Redirect href="/(tabs)" />;
+    return <Redirect href="/(tabs)/home" />;
   }
 
   // Otherwise direct to login screen

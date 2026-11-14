@@ -20,6 +20,8 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Protected guard={isAuthenticated && !!user && !!token}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="challenges" options={{ headerShown: true, title: 'Provocări', headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
+          <Stack.Screen name="report-issue" options={{ headerShown: true, title: 'Raportează o problemă', headerTintColor: colors.primaryDark, headerStyle: { backgroundColor: colors.surface } }} />
           <Stack.Screen
             name="dashboard"
             options={{

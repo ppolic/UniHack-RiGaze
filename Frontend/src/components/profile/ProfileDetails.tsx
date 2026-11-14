@@ -14,7 +14,7 @@ import { AppCard } from '../common/AppCard';
 import { Badge } from '../common/Badge';
 import { AccessibilityComplianceModal } from '../common/AccessibilityComplianceModal';
 
-export const ProfileDetails: React.FC = () => {
+export const ProfileDetails: React.FC<{ children?: React.ReactNode; verifiedAge?: number | null }> = ({ children, verifiedAge }) => {
   const {
     user,
     updatePreferences,
@@ -28,37 +28,37 @@ export const ProfileDetails: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* User Header */}
       <AppCard style={styles.headerCard}>
-        <View style={styles.avatarCircle}>
-          <Text style={styles.avatarText}>
-            {user.fullName.slice(0, 2).toUpperCase()}
-          </Text>
+        <View style={styles.identityRow}>
+          <View style={styles.avatarCircle} accessible={false}>
+            <Text style={styles.avatarText}>
+              {user.fullName.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.identity}>
+            <Text style={styles.userName}>{user.fullName}</Text>
+            <Text selectable style={styles.userEmail}>{user.email}</Text>
+          </View>
         </View>
-        <Text style={styles.userName}>{user.fullName}</Text>
-        <Text style={styles.userEmail}>{user.email}</Text>
         <View style={styles.badgesRow}>
-          <Badge label={`Dob: ${user.age} god.`} variant="neutral" />
-          {hasDisability && (
-            <Badge label="Pristupačnost aktivna" variant="info" />
-          )}
-          {(wcagLargeText || wcagTextRouteMode) && (
-            <Badge label="WCAG 2.1 AA" variant="success" />
-          )}
+          <Badge label={verifiedAge === undefined || verifiedAge === null ? 'Vârstă neconfirmată' : verifiedAge + ' ani'} variant="neutral" />
+          {hasDisability && <Badge label="Rute accesibile" variant="info" />}
+          {(wcagLargeText || wcagTextRouteMode) && <Badge label="Opțiuni vizuale active" variant="success" />}
         </View>
+        {children && <View style={styles.editor}>{children}</View>}
       </AppCard>
 
       {/* Mobility Preferences & Accessibility Settings */}
       <Text style={styles.sectionTitle} accessibilityRole="header">
-        Pristupačnost i Vlastita Vozila
+        Preferințe de mobilitate
       </Text>
       <AppCard style={styles.settingsCard}>
         {/* Disability Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Osoba s invaliditetom / Kolica</Text>
+            <Text style={styles.toggleLabel}>Am nevoie de rute accesibile</Text>
             <Text style={styles.toggleDesc}>
-              Automatski filtrira pristupačan javni prijevoz i rezervirani parking.
+              Ține cont de accesibilitate când sunt propuse opțiunile de transport.
             </Text>
           </View>
           <Switch
@@ -67,7 +67,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Osoba s invaliditetom ili invalidska kolica"
+            accessibilityLabel="Am nevoie de rute accesibile"
             accessibilityState={{ checked: user.preferences.hasDisability }}
           />
         </View>
@@ -77,9 +77,9 @@ export const ProfileDetails: React.FC = () => {
         {/* Own Bicycle Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Posjedujem vlastiti bicikl</Text>
+            <Text style={styles.toggleLabel}>Am bicicletă proprie</Text>
             <Text style={styles.toggleDesc}>
-              Ne predlaže najam, već direktne biciklističke rute.
+              Folosește bicicleta proprie la planificarea călătoriilor.
             </Text>
           </View>
           <Switch
@@ -88,7 +88,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Posjedujem vlastiti bicikl"
+            accessibilityLabel="Am bicicletă proprie"
             accessibilityState={{ checked: user.preferences.hasOwnBicycle }}
           />
         </View>
@@ -98,9 +98,9 @@ export const ProfileDetails: React.FC = () => {
         {/* Own Car Toggle */}
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>Posjedujem automobil</Text>
+            <Text style={styles.toggleLabel}>Am mașină proprie</Text>
             <Text style={styles.toggleDesc}>
-              Omogućuje opciju vožnje s preporučenim parkingom.
+              Include opțiunile de călătorie cu mașina proprie.
             </Text>
           </View>
           <Switch
@@ -109,7 +109,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Posjedujem vlastiti automobil"
+            accessibilityLabel="Am mașină proprie"
             accessibilityState={{ checked: user.preferences.hasOwnCar }}
           />
         </View>
@@ -117,14 +117,14 @@ export const ProfileDetails: React.FC = () => {
 
       {/* WCAG 2.1 Level AA / Romanian Law 232/2022 / EN 301 549 Section */}
       <Text style={styles.wcagSectionTitle} accessibilityRole="header">
-        Pristupačnost (Zakon 232/2022 • WCAG 2.1 AA)
+        Accesibilitate vizuală
       </Text>
       <AppCard style={styles.settingsCard}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>🔤 Povećani tekst (WCAG 1.4.4)</Text>
+            <Text style={styles.toggleLabel}>Text mărit</Text>
             <Text style={styles.toggleDesc}>
-              Povećava ključne nazive ruta, mjerenja i upute za slabovidne osobe.
+              Mărește textele importante din opțiunile și instrucțiunile de traseu.
             </Text>
           </View>
           <Switch
@@ -133,7 +133,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Uključi povećani tekst prema WCAG 1.4.4"
+            accessibilityLabel="Activează textul mărit pentru trasee"
             accessibilityState={{ checked: wcagLargeText }}
           />
         </View>
@@ -142,9 +142,9 @@ export const ProfileDetails: React.FC = () => {
 
         <View style={styles.toggleRow}>
           <View style={styles.toggleInfo}>
-            <Text style={styles.toggleLabel}>📋 Tekstualni prikaz karte (EN 301 549)</Text>
+            <Text style={styles.toggleLabel}>Alternativă textuală pentru hartă</Text>
             <Text style={styles.toggleDesc}>
-              Zamjenjuje vizualnu kartu dostupnim tekstualnim popisom stanica i koraka rute.
+              Afișează stațiile și pașii călătoriei într-un format textual.
             </Text>
           </View>
           <Switch
@@ -153,7 +153,7 @@ export const ProfileDetails: React.FC = () => {
             trackColor={{ false: colors.controlBorder, true: colors.primary }}
             thumbColor={colors.surface}
             accessibilityRole="switch"
-            accessibilityLabel="Uključi tekstualnu alternativu karte prema normi EN 301 549"
+            accessibilityLabel="Activează alternativa textuală pentru hartă"
             accessibilityState={{ checked: wcagTextRouteMode }}
           />
         </View>
@@ -166,14 +166,14 @@ export const ProfileDetails: React.FC = () => {
           activeOpacity={0.85}
           hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
           accessibilityRole="button"
-          accessibilityLabel="Open Romanian Law 232/2022 and WCAG 2.1 AA Accessibility Statement in Romanian and English"
+          accessibilityLabel="Deschide declarația de accesibilitate în română și engleză"
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.statementBtnTitle}>
-              📜 Law 232/2022 & WCAG 2.1 AA Statement (RO / EN)
+              Declarație de accesibilitate
             </Text>
             <Text style={styles.statementBtnSub}>
-              Declarație privind accesibilitatea • EN 301 549 • ADR Feedback
+              Informații despre accesibilitate și feedback
             </Text>
           </View>
           <Text style={styles.statementBtnArrow}>➔</Text>
@@ -189,107 +189,26 @@ export const ProfileDetails: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    padding: spacing.md,
-  },
-  headerCard: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  avatarCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  avatarText: {
-    ...typography.h2,
-    color: colors.primaryDark,
-  },
-  userName: {
-    ...typography.h2,
-    color: colors.textPrimary,
-  },
-  userEmail: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginBottom: spacing.xs,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    gap: spacing.xs,
-    marginTop: spacing.xs,
-  },
-  sectionTitle: {
-    ...typography.bodyMedium,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginBottom: spacing.sm,
-  },
-  settingsCard: {
-    paddingVertical: spacing.sm,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.sm,
-  },
-  toggleInfo: {
-    flex: 1,
-    paddingRight: spacing.md,
-  },
-  toggleLabel: {
-    ...typography.bodyMedium,
-    color: colors.textPrimary,
-  },
-  toggleDesc: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginVertical: spacing.xs,
-  },
-  wcagSectionTitle: {
-    ...typography.bodyMedium,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: spacing.lg,
-    marginBottom: spacing.sm,
-  },
-  statementOpenBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 48,
-    backgroundColor: colors.primaryDark,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginTop: spacing.xs,
-    gap: spacing.sm,
-  },
-  statementBtnTitle: {
-    ...typography.captionMedium,
-    fontSize: 13,
-    fontWeight: '800',
-    color: colors.textInverse,
-  },
-  statementBtnSub: {
-    ...typography.caption,
-    fontSize: 11,
-    color: colors.textOnDark,
-    marginTop: 2,
-  },
-  statementBtnArrow: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textInverse,
-  },
+  container: { gap: spacing.lg },
+  headerCard: { gap: spacing.lg, padding: spacing.xl },
+  identityRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: spacing.lg },
+  identity: { flexGrow: 1, flexBasis: 180, minWidth: 0, gap: spacing.xs },
+  avatarCircle: { width: 64, height: 64, borderRadius: borderRadius.full, backgroundColor: colors.primaryLight, justifyContent: 'center', alignItems: 'center' },
+  avatarText: { ...typography.h2, color: colors.primaryDark },
+  userName: { ...typography.h2, color: colors.textPrimary },
+  userEmail: { ...typography.body, color: colors.textSecondary, flexShrink: 1 },
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  editor: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.lg },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary, marginTop: spacing.sm },
+  settingsCard: { paddingVertical: spacing.sm },
+  toggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 64, paddingVertical: spacing.md },
+  toggleInfo: { flex: 1, minWidth: 0, paddingRight: spacing.md },
+  toggleLabel: { ...typography.bodyMedium, color: colors.textPrimary },
+  toggleDesc: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.xs },
+  wcagSectionTitle: { ...typography.h3, color: colors.textPrimary, marginTop: spacing.sm },
+  statementOpenBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 48, backgroundColor: colors.primaryDark, borderRadius: borderRadius.md, padding: spacing.md, marginVertical: spacing.sm, gap: spacing.sm },
+  statementBtnTitle: { ...typography.bodyMedium, color: colors.textInverse },
+  statementBtnSub: { ...typography.caption, color: colors.textOnDark, marginTop: spacing.xs },
+  statementBtnArrow: { ...typography.h3, color: colors.textInverse },
 });

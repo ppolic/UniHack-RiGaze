@@ -76,7 +76,7 @@ export default function RegisterScreen() {
       });
       setToken(res.token);
       setUser(res.user);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
         setErrors({ server: err.message || 'Registracija nije uspjela.' });

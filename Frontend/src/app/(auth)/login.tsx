@@ -27,7 +27,7 @@ export default function LoginScreen() {
       const res = await authService.login({ email, password });
       setToken(res.token);
       setUser(res.user);
-      router.replace('/(tabs)');
+      router.replace('/(tabs)/home');
     } catch (err: any) {
       if (err instanceof ApiHttpError) {
         setErrorMsg(err.message || 'Pogrešan email ili lozinka.');

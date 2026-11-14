@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, SafeAreaView, Keyboard } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Keyboard } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { colors } from '../../theme/colors';
 import { ProfileDetails } from '../../components/profile/ProfileDetails';
@@ -10,13 +12,30 @@ import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
 import { authService } from '../../services/authService';
 import { API_CONFIG, isRealJwtToken } from '../../services/api';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { captureSession, verifyAccount } from '../../services/fe2Session';
 
 export default function ProfileScreen() {
-  const { user, setUser, logout } = useAuth();
+  const { user, token, setUser, logout } = useAuth();
   const router = useRouter();
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
+  const [verifiedAge, setVerifiedAge] = useState<number | null>(null);
+
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setVerifiedAge(null);
+    const loadAge = async () => {
+      try {
+        const account = await verifyAccount(captureSession());
+        if (active) setVerifiedAge(account.age);
+      } catch {
+        if (active) setVerifiedAge(null);
+      }
+    };
+    void loadAge();
+    return () => { active = false; };
+  }, [user?.id, token]));
 
   const handleEdit = () => {
     if (!user) return;
@@ -40,7 +59,7 @@ export default function ProfileScreen() {
 
     const fullName = draft.name.trim();
     if (!fullName) {
-      setNameError('Unesite ime za prikaz. Ime ne može biti prazno.');
+      setNameError('Introdu un nume pentru afișare. Numele nu poate fi gol.');
       return;
     }
 
@@ -61,22 +80,26 @@ export default function ProfileScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={styles.container}
+        contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
       >
-        <ProfileDetails />
+        <View style={styles.content}>
+          <View style={styles.heading}>
+            <Text style={styles.eyebrow}>CONTUL TĂU</Text>
+            <Text style={styles.title} accessibilityRole="header">Profil</Text>
+            <Text style={styles.description}>Preferințele tale, pentru călătorii care ți se potrivesc.</Text>
+          </View>
 
-        {user && (
-          <View style={styles.editorWrapper}>
-            {draft?.userId === user.id ? (
-              <AppCard>
+          <ProfileDetails verifiedAge={verifiedAge}>
+            {user && (draft?.userId === user.id ? (
+              <View style={styles.editor}>
                 <View accessibilityLiveRegion="polite">
                   <AppInput
-                    label="Ime za prikaz"
-                    accessibilityLabel="Ime za prikaz"
+                    label="Nume afișat"
+                    accessibilityLabel="Nume afișat"
                     accessibilityHint={nameError}
                     value={draft.name}
                     onChangeText={(name) => {
@@ -95,28 +118,24 @@ export default function ProfileScreen() {
                     }}
                   />
                 </View>
+                <Text style={styles.caption}>
+                  Numele se actualizează imediat în aplicație. Dacă serverul nu este disponibil, modificarea poate să nu se păstreze la următoarea autentificare.
+                </Text>
                 <View style={styles.editActions}>
-                  <AppButton title="Spremi" onPress={handleSave} style={styles.editButton} />
-                  <AppButton
-                    title="Odustani"
-                    variant="outline"
-                    onPress={handleCancel}
-                    style={styles.editButton}
-                  />
+                  <AppButton title="Salvează" onPress={handleSave} style={styles.editButton} />
+                  <AppButton title="Renunță" variant="outline" onPress={handleCancel} style={styles.editButton} />
                 </View>
-              </AppCard>
+              </View>
             ) : (
-              <AppButton title="Uredi profil" variant="outline" onPress={handleEdit} />
-            )}
-          </View>
-        )}
+              <AppButton title="Editează numele" variant="outline" onPress={handleEdit} style={styles.actionButton} />
+            ))}
+          </ProfileDetails>
 
-        <View style={styles.logoutWrapper}>
-          <AppButton
-            title="Odjavi se"
-            variant="outline"
-            onPress={handleLogout}
-          />
+          <AppCard style={styles.sessionCard}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Sesiunea ta</Text>
+            <Text style={styles.description}>Deconectarea închide sesiunea curentă. Pentru a reveni în cont, va trebui să te autentifici din nou.</Text>
+            <AppButton title="Deconectează-te" variant="outline" onPress={handleLogout} style={styles.actionButton} />
+          </AppCard>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -124,26 +143,18 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    paddingBottom: spacing['2xl'],
-  },
-  editorWrapper: {
-    paddingHorizontal: spacing.md,
-  },
-  editActions: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    flexWrap: 'wrap',
-  },
-  editButton: {
-    flexGrow: 1,
-  },
-  logoutWrapper: {
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.md,
-  },
+  screen: { flex: 1, backgroundColor: colors.background },
+  scroll: { padding: spacing.xl, paddingBottom: spacing['3xl'], alignItems: 'center' },
+  content: { width: '100%', maxWidth: 760, gap: spacing['2xl'] },
+  heading: { gap: spacing.sm },
+  eyebrow: { ...typography.captionMedium, color: colors.primary, letterSpacing: 1 },
+  title: { ...typography.h1, color: colors.textPrimary },
+  description: { ...typography.body, color: colors.textSecondary },
+  caption: { ...typography.caption, color: colors.textSecondary },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary },
+  editor: { gap: spacing.md },
+  editActions: { flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' },
+  editButton: { flexGrow: 1, minHeight: 48 },
+  actionButton: { minHeight: 48 },
+  sessionCard: { gap: spacing.lg },
 });

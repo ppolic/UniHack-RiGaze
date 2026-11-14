@@ -1,122 +1,152 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, useWindowDimensions } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from 'expo-router';
 import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
+import { borderRadius, spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 import { PointsSummaryCard } from '../../components/rewards/PointsSummaryCard';
 import { AppCard } from '../../components/common/AppCard';
 import { AppButton } from '../../components/common/AppButton';
 import { Badge } from '../../components/common/Badge';
 import { rewardsService } from '../../services/rewardsService';
-import { RewardCoupon } from '../../types/rewards';
+import { fe2ErrorMessage } from '../../services/fe2Session';
+import { RewardCoupon, RewardRedemption } from '../../types/rewards';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
 
+type Resource<T> = { status: 'loading' } | { status: 'error'; message: string } | { status: 'success'; data: T };
+type ConfirmedRedemption = RewardRedemption & { title: string };
+
+function useFocusedData<T>(load: () => Promise<T>, version: number, userId?: string, token?: string | null) {
+  const [state, setState] = useState<Resource<T>>({ status: 'loading' });
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setState({ status: 'loading' });
+    void load().then((data) => {
+      if (active) setState({ status: 'success', data });
+    }).catch((error: unknown) => {
+      if (active) setState({ status: 'error', message: fe2ErrorMessage(error, 'Nu am putut încărca datele. Verifică conexiunea și încearcă din nou.') });
+    });
+    return () => { active = false; };
+  }, [load, version, userId, token]));
+  return [state, setState] as const;
+}
+
 // Date-only rewards remain valid through the end of the device's local day.
-function expiryError(expiryDate: string): string | null {
+function expiryError(expiryDate?: string): string | null {
   if (!expiryDate) return null;
   const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(expiryDate);
   const expiry = new Date(dateOnly ? `${expiryDate}T00:00:00` : expiryDate);
-  if (!Number.isFinite(expiry.getTime())) return 'Rok valjanosti nije moguće provjeriti.';
+  if (!Number.isFinite(expiry.getTime())) return 'Valabilitatea recompensei nu poate fi verificată.';
   if (dateOnly) {
     const [year, month, day] = expiryDate.split('-').map(Number);
     if (expiry.getFullYear() !== year || expiry.getMonth() + 1 !== month || expiry.getDate() !== day) {
-      return 'Rok valjanosti nije moguće provjeriti.';
+      return 'Valabilitatea recompensei nu poate fi verificată.';
     }
     expiry.setDate(expiry.getDate() + 1);
   }
-  return Date.now() >= expiry.getTime() ? 'Ova demo nagrada je istekla.' : null;
+  return Date.now() >= expiry.getTime() ? 'Această recompensă a expirat.' : null;
 }
 
 const redemptionKey = (userId: string, rewardId: string) => JSON.stringify([userId, rewardId]);
 
 export default function RewardsScreen() {
-  const { user, isAuthenticated } = useAuth();
-  const [coupons, setCoupons] = useState<RewardCoupon[]>([]);
-  const [catalogueError, setCatalogueError] = useState<string | null>(null);
+  const { user, token, isAuthenticated } = useAuth();
+  const { width, fontScale } = useWindowDimensions();
+  const [catalogueVersion, setCatalogueVersion] = useState(0);
+  const [balanceVersion, setBalanceVersion] = useState(0);
+  const [ledgerVersion, setLedgerVersion] = useState(0);
+  const [catalogue] = useFocusedData(rewardsService.getCoupons, catalogueVersion, user?.id, token);
+  const [balance, setBalance] = useFocusedData(rewardsService.getBalance, balanceVersion, user?.id, token);
+  const [ledger] = useFocusedData(rewardsService.getRedemptions, ledgerVersion, user?.id, token);
   const [error, setError] = useState<string | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [redemptions, setRedemptions] = useState<Map<string, string>>(new Map());
-  const completed = useRef(new Map<string, string>());
+  const [redemptions, setRedemptions] = useState<Map<string, ConfirmedRedemption>>(new Map());
+  const completed = useRef(new Map<string, ConfirmedRedemption>());
   const locked = useRef(false);
   const mounted = useRef(false);
   const sessionVersion = useRef(0);
+  const coupons = catalogue.status === 'success' ? catalogue.data : [];
+  const records = ledger.status === 'success' ? ledger.data : [];
+  const ready = balance.status === 'success' && ledger.status === 'success';
+  const refreshing = catalogue.status === 'loading' || balance.status === 'loading' || ledger.status === 'loading';
 
   useEffect(() => {
     mounted.current = true;
-    let active = true;
     const unsubscribe = useUserStore.subscribe((next, previous) => {
       if (next.user?.id !== previous.user?.id || next.token !== previous.token ||
           next.isAuthenticated !== previous.isAuthenticated) {
         sessionVersion.current += 1;
+        completed.current.clear();
+        setRedemptions(new Map());
         setError(null);
       }
     });
-    rewardsService.getCoupons().then((result) => {
-      if (active) setCoupons(result);
-    }).catch(() => {
-      if (active) setCatalogueError('Nije moguće učitati nagrade. Pokušajte ponovno kasnije.');
-    });
     return () => {
-      active = false;
       mounted.current = false;
       sessionVersion.current += 1;
       unsubscribe();
     };
   }, []);
 
+  const refresh = () => {
+    if (refreshing || locked.current) return;
+    setCatalogueVersion((version) => version + 1);
+    setBalanceVersion((version) => version + 1);
+    setLedgerVersion((version) => version + 1);
+  };
+
   const handleRedeem = async (coupon: RewardCoupon) => {
-    // State alone cannot block two taps before React renders the disabled buttons.
     if (!mounted.current || locked.current) return;
     locked.current = true;
     const version = sessionVersion.current;
     const initial = useUserStore.getState();
-    const userId = initial.user?.id;
-    const token = initial.token;
+    const initialUserId = initial.user?.id;
+    const initialToken = initial.token;
+    const initialPoints = initial.user?.totalEcoPoints;
     const isCurrent = () => {
       const latest = useUserStore.getState();
-      return mounted.current && sessionVersion.current === version &&
-        latest.isAuthenticated && latest.user?.id === userId && latest.token === token;
+      return mounted.current && sessionVersion.current === version && latest.isAuthenticated &&
+        latest.user?.id === initialUserId && latest.token === initialToken;
     };
     setError(null);
 
     try {
-      if (!initial.isAuthenticated || !initial.user || !token) {
-        throw new Error('Prijavite se za iskorištavanje nagrada.');
-      }
+      if (!initial.isAuthenticated || !initial.user || !initial.token) throw new Error('Autentifică-te din nou pentru a activa recompense.');
+      if (!ready || balance.status !== 'success') throw new Error('Încarcă soldul și istoricul activărilor înainte de a continua.');
       const key = redemptionKey(initial.user.id, coupon.id);
-      const cost = coupon.pointsCost;
-      const validate = (balance: number) => {
-        if (completed.current.has(key) || coupon.isRedeemed) {
-          throw new Error('Ova nagrada već je iskorištena.');
-        }
-        if (!Number.isSafeInteger(cost) || cost < 0 || !Number.isFinite(balance)) {
-          throw new Error('Bodove za ovu nagradu nije moguće provjeriti.');
-        }
-        const expiry = expiryError(coupon.expiryDate);
-        if (expiry) throw new Error(expiry);
-        if (balance < cost) throw new Error(`Nedostaje vam ${cost - balance} eko-bodova.`);
-      };
-      validate(initial.user.totalEcoPoints);
+      if (completed.current.has(key) || records.some((record) => record.rewardId === coupon.id) || coupon.isRedeemed) {
+        throw new Error('Această recompensă apare deja în activările contului.');
+      }
+      if (!Number.isSafeInteger(coupon.pointsCost) || coupon.pointsCost < 0) throw new Error('Costul recompensei nu este valid.');
+      const expiry = expiryError(coupon.expiryDate);
+      if (expiry) throw new Error(expiry);
+      if (balance.data < coupon.pointsCost) throw new Error('Mai ai nevoie de ' + (coupon.pointsCost - balance.data) + ' puncte.');
       setPendingId(coupon.id);
       const response = await rewardsService.redeemCoupon(coupon.id);
       if (!isCurrent()) return;
-      if (response?.success !== true || typeof response.promoCode !== 'string' || !response.promoCode.trim()) {
-        throw new Error('Nagrada nije aktivirana. Pokušajte ponovno.');
+      if (response?.success !== true || !response.promoCode?.trim() || !Number.isSafeInteger(response.newBalance) || response.newBalance < 0) {
+        throw new Error('Activarea nu a putut fi confirmată. Reîncarcă soldul și istoricul.');
       }
-      // Re-read after the await: FE1 may have awarded points or updated the user.
       const latest = useUserStore.getState();
       if (!latest.user) return;
-      const nextBalance =
-        typeof response.newBalance === 'number'
-          ? response.newBalance
-          : latest.user.totalEcoPoints - cost;
-      completed.current.set(key, response.promoCode.trim());
-      latest.setUser({ ...latest.user, totalEcoPoints: nextBalance });
+      const confirmed = { ...response, title: coupon.title };
+      completed.current.set(key, confirmed);
+      // Do not subtract locally or overwrite points earned while the POST was pending.
+      if (latest.user.totalEcoPoints === initialPoints) {
+        latest.setUser({ ...latest.user, totalEcoPoints: response.newBalance });
+      }
       setRedemptions(new Map(completed.current));
+      setBalance({ status: 'success', data: response.newBalance });
+      setBalanceVersion((current) => current + 1);
+      setLedgerVersion((current) => current + 1);
     } catch (failure) {
-      if (mounted.current && sessionVersion.current === version) {
-        setError(failure instanceof Error ? failure.message : 'Iskorištavanje nije uspjelo. Pokušajte ponovno.');
+      if (isCurrent()) {
+        setError(fe2ErrorMessage(failure, 'Nu am putut confirma activarea. Cererea poate să fi ajuns la server. Reîncarcă soldul și istoricul înainte de a reîncerca.'));
+        // Reconcile server state even after an uncertain timeout; never replay a POST.
+        setBalanceVersion((current) => current + 1);
+        setLedgerVersion((current) => current + 1);
       }
     } finally {
       locked.current = false;
@@ -124,143 +154,176 @@ export default function RewardsScreen() {
     }
   };
 
+  const confirmed = Array.from(redemptions.values());
+  const receipts = new Map(confirmed.map((receipt) => [receipt.transactionId, receipt]));
+  const rows = [
+    ...records.map((record) => ({
+      ...record,
+      title: coupons.find((coupon) => coupon.id === record.rewardId)?.title ??
+        record.description ?? ('Activare #' + record.transactionId),
+      promoCode: receipts.get(record.transactionId)?.promoCode,
+    })),
+    ...confirmed.filter((receipt) => !records.some((record) => record.transactionId === receipt.transactionId)).map((receipt) => ({
+      transactionId: receipt.transactionId, rewardId: receipt.rewardId, title: receipt.title,
+      pointsSpent: receipt.pointsSpent, createdAt: null, promoCode: receipt.promoCode,
+    })),
+  ];
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <PointsSummaryCard />
+    <SafeAreaView style={styles.screen} edges={['top', 'left', 'right']}>
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.content}>
+          <View style={styles.heading}>
+            <Text style={styles.eyebrow}>ALEGERILE VERZI CONTEAZĂ</Text>
+            <Text style={styles.title} accessibilityRole="header">Puncte și cupoane</Text>
+            <Text style={styles.description}>Soldul și activările sunt încărcate din contul tău de pe server.</Text>
+            <AppButton title="Reîncarcă datele" variant="outline" onPress={refresh} disabled={refreshing || pendingId !== null} />
+          </View>
 
-        <Text style={styles.sectionTitle}>Katalog nagrada</Text>
-        <Text style={styles.notice}>
-          Zamijenite osvojene eko-bodove za partnerske popuste i pogodnosti javnog prijevoza u Timișoari.
-        </Text>
-        {(!isAuthenticated || !user) && (
-          <Text style={styles.notice}>Prijavite se za iskorištavanje nagrada.</Text>
-        )}
-        {(catalogueError || error) && (
-          <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">
-            {catalogueError || error}
-          </Text>
-        )}
-
-        {coupons.map((coupon) => {
-          const code = user ? redemptions.get(redemptionKey(user.id, coupon.id)) : undefined;
-          const redeemed = !!code || coupon.isRedeemed === true;
-          const expiry = expiryError(coupon.expiryDate);
-          const validCost = Number.isSafeInteger(coupon.pointsCost) && coupon.pointsCost >= 0;
-          const missing = Math.max(0, coupon.pointsCost - (user?.totalEcoPoints ?? 0));
-          return (
-            <AppCard key={coupon.id} style={styles.couponCard}>
-              <View style={styles.couponHeader}>
-                <View style={{ flex: 1, paddingRight: spacing.sm }}>
-                  <Text style={styles.partnerName}>{coupon.partnerName}</Text>
-                  <Text style={styles.couponTitle}>{coupon.title}</Text>
-                </View>
-                <Badge
-                  label={`${coupon.pointsCost} bodova`}
-                  variant="reward"
-                />
-              </View>
-
-              <Text style={styles.couponDesc}>{coupon.description}</Text>
-
-              <View style={styles.couponFooter}>
-                <Badge label={coupon.discountValue} variant="success" />
-                <AppButton
-                  title={redeemed ? 'Iskorišteno' : 'Iskoristi'}
-                  loading={pendingId === coupon.id}
-                  disabled={!isAuthenticated || !user || pendingId !== null || redeemed || !!expiry || !validCost || missing > 0}
-                  size="sm"
-                  onPress={() => handleRedeem(coupon)}
-                />
-              </View>
-              {pendingId === coupon.id && (
-                <Text style={styles.feedback} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>
-                  Aktiviranje nagrade…
-                </Text>
-              )}
-              {redeemed ? (
-                <View style={styles.redemptionFeedback} accessibilityLiveRegion="polite">
-                  <Badge label="Iskorišteno" variant="success" />
-                  {code && <Text selectable style={styles.promoCode}>Promo kod: {code}</Text>}
-                </View>
-              ) : expiry || !validCost ? (
-                <Text style={styles.error}>{expiry || 'Neispravan trošak nagrade.'}</Text>
-              ) : missing > 0 && (
-                <Text style={styles.feedback}>Nedostaje vam {missing} eko-bodova.</Text>
-              )}
+          {balance.status === 'loading' && (
+            <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel="Se încarcă soldul">
+              <ActivityIndicator color={colors.primary} accessible={false} />
+              <Text style={styles.description}>Se încarcă soldul…</Text>
+            </View>
+          )}
+          {balance.status === 'error' && (
+            <AppCard style={styles.statusCard}>
+              <Text style={styles.error} accessibilityRole="alert">{balance.message}</Text>
+              <AppButton title="Reîncarcă soldul" onPress={() => setBalanceVersion((version) => version + 1)} />
             </AppCard>
-          );
-        })}
+          )}
+          {balance.status === 'success' && <PointsSummaryCard balance={balance.data} />}
+
+          <AppCard style={styles.noticeCard}>
+            <Text style={styles.description}>
+              Serverul poate funcționa temporar în memorie. Un răspuns confirmat nu garantează păstrarea datelor după repornirea serverului.
+            </Text>
+          </AppCard>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Recompense disponibile</Text>
+            <Text style={styles.description}>Activarea folosește punctele contului. Soldul și istoricul trebuie încărcate înainte de activare.</Text>
+            {catalogue.status === 'loading' && (
+              <View style={styles.statusCard} accessible accessibilityRole="progressbar" accessibilityLabel="Se încarcă recompensele" accessibilityState={{ busy: true }}>
+                <ActivityIndicator size="large" color={colors.primary} accessible={false} />
+                <Text style={styles.description}>Se încarcă recompensele…</Text>
+              </View>
+            )}
+            {catalogue.status === 'error' && (
+              <AppCard style={styles.statusCard}>
+                <Text style={styles.sectionTitle}>Catalog indisponibil</Text>
+                <Text style={styles.error} accessibilityRole="alert">{catalogue.message}</Text>
+                <AppButton title="Reîncarcă recompensele" onPress={() => setCatalogueVersion((version) => version + 1)} />
+              </AppCard>
+            )}
+            {error && <Text style={styles.error} accessibilityRole="alert" accessibilityLiveRegion="assertive">{error}</Text>}
+            {catalogue.status === 'success' && coupons.length === 0 && (
+              <AppCard style={styles.statusCard}>
+                <Text style={styles.sectionTitle}>Nicio recompensă disponibilă acum</Text>
+                <Text style={styles.description}>Serverul a returnat un catalog fără recompense active.</Text>
+              </AppCard>
+            )}
+            <View style={styles.grid}>
+              {coupons.map((coupon) => {
+                const receipt = user ? redemptions.get(redemptionKey(user.id, coupon.id)) : undefined;
+                const redeemed = !!receipt || records.some((record) => record.rewardId === coupon.id) || coupon.isRedeemed === true;
+                const expiry = expiryError(coupon.expiryDate);
+                const missing = balance.status === 'success' ? Math.max(0, coupon.pointsCost - balance.data) : undefined;
+                return (
+                  <View key={coupon.id} style={[styles.rewardColumn, width >= 900 && fontScale <= 1.3 && styles.desktopColumn]}>
+                    <AppCard style={styles.couponCard}>
+                      <View style={styles.couponHeader}>
+                        <Text style={styles.couponLabel}>RECOMPENSĂ</Text>
+                        <Badge label={coupon.pointsCost + ' puncte'} variant="reward" style={styles.badge} />
+                      </View>
+                      <Text style={styles.couponTitle}>{coupon.title}</Text>
+                      {!!coupon.description && <Text style={styles.description}>{coupon.description}</Text>}
+                      <View style={styles.activation}>
+                        <AppButton title={redeemed ? 'Activată' : 'Activează recompensa'}
+                          loading={pendingId === coupon.id}
+                          disabled={!isAuthenticated || !user || !ready || pendingId !== null || redeemed || !!expiry || (missing !== undefined && missing > 0)}
+                          onPress={() => handleRedeem(coupon)} style={styles.redeemButton} textStyle={styles.buttonText} />
+                      </View>
+                      {pendingId === coupon.id && <Text style={styles.feedback} accessibilityLiveRegion="polite" accessibilityState={{ busy: true }}>Se activează recompensa…</Text>}
+                      {redeemed && (
+                        <View style={styles.redemptionFeedback} accessibilityLiveRegion="polite">
+                          <Badge label="Activare înregistrată" variant="success" style={styles.badge} />
+                          {receipt && <Text selectable style={styles.promoCode}>Cod: {receipt.promoCode}</Text>}
+                        </View>
+                      )}
+                      {!redeemed && expiry && <Text style={styles.error}>{expiry}</Text>}
+                      {!redeemed && missing !== undefined && missing > 0 && <Text style={styles.feedback}>Mai ai nevoie de {missing} puncte.</Text>}
+                    </AppCard>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">Activări și cupoane</Text>
+            <Text style={styles.description}>
+              Activările sunt reîncărcate din tranzacțiile contului. API-ul nu oferă recuperarea codurilor anterioare. Codurile primite aici rămân temporar în acest ecran; copiază-le înainte de a-l închide.
+            </Text>
+            {ledger.status === 'loading' && (
+              <View accessible accessibilityRole="progressbar" accessibilityState={{ busy: true }} accessibilityLabel="Se încarcă activările" style={styles.statusCard}>
+                <ActivityIndicator color={colors.primary} accessible={false} />
+                <Text style={styles.description}>Se încarcă activările…</Text>
+              </View>
+            )}
+            {ledger.status === 'error' && (
+              <AppCard style={styles.statusCard}>
+                <Text style={styles.error} accessibilityRole="alert">{ledger.message}</Text>
+                <AppButton title="Reîncarcă activările" onPress={() => setLedgerVersion((version) => version + 1)} />
+              </AppCard>
+            )}
+            {ledger.status === 'success' && rows.length === 0 && (
+              <AppCard style={styles.statusCard}>
+                <Text style={styles.couponTitle}>Nicio activare înregistrată</Text>
+                <Text style={styles.description}>Serverul nu a returnat tranzacții de activare pentru contul tău.</Text>
+              </AppCard>
+            )}
+            {rows.map((row) => (
+              <AppCard key={row.transactionId} style={styles.statusCard}>
+                <Badge label={row.pointsSpent + ' puncte utilizate'} variant="reward" style={styles.badge} />
+                <Text style={styles.couponTitle}>{row.title}</Text>
+                {row.createdAt && <Text style={styles.feedback}>{new Date(row.createdAt).toLocaleString('ro-RO')}</Text>}
+                {row.promoCode ? <Text selectable style={styles.promoCode}>{row.promoCode}</Text> :
+                  <Text style={styles.description}>Codul acestei activări nu este disponibil prin API.</Text>}
+              </AppCard>
+            ))}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  container: {
-    padding: spacing.md,
-  },
-  sectionTitle: {
-    ...typography.h3,
-    color: colors.textPrimary,
-    marginBottom: spacing.md,
-  },
-  notice: {
-    ...typography.body,
-    color: colors.textSecondary,
-    marginBottom: spacing.md,
-  },
-  error: {
-    ...typography.body,
-    color: colors.danger,
-    marginVertical: spacing.sm,
-  },
-  feedback: {
-    ...typography.caption,
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
-  },
-  redemptionFeedback: {
-    marginTop: spacing.sm,
-  },
-  promoCode: {
-    ...typography.bodyMedium,
-    color: colors.textPrimary,
-    marginTop: spacing.sm,
-  },
-  couponCard: {
-    marginBottom: spacing.md,
-  },
-  couponHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: spacing.xs,
-  },
-  partnerName: {
-    ...typography.captionMedium,
-    color: colors.textSecondary,
-    textTransform: 'uppercase',
-  },
-  couponTitle: {
-    ...typography.bodyMedium,
-    fontWeight: '700',
-    color: colors.textPrimary,
-    marginTop: 2,
-  },
-  couponDesc: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginVertical: spacing.sm,
-  },
-  couponFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: spacing.xs,
-  },
+  screen: { flex: 1, backgroundColor: colors.background },
+  scroll: { padding: spacing.xl, paddingBottom: spacing['3xl'], alignItems: 'center' },
+  content: { width: '100%', maxWidth: 960, gap: spacing['2xl'] },
+  heading: { gap: spacing.sm },
+  eyebrow: { ...typography.captionMedium, color: colors.primary, letterSpacing: 1 },
+  title: { ...typography.h1, color: colors.textPrimary },
+  description: { ...typography.body, color: colors.textSecondary },
+  section: { gap: spacing.lg },
+  sectionTitle: { ...typography.h3, color: colors.textPrimary },
+  noticeCard: { backgroundColor: colors.warningLight, gap: spacing.sm },
+  statusCard: { padding: spacing.xl, gap: spacing.lg },
+  error: { ...typography.body, color: colors.danger },
+  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.lg },
+  rewardColumn: { flexBasis: '100%', flexGrow: 1, minWidth: 0 },
+  desktopColumn: { flexBasis: '45%' },
+  couponCard: { flex: 1, gap: spacing.md },
+  couponHeader: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  couponLabel: { ...typography.captionMedium, color: colors.textSecondary },
+  badge: { maxWidth: '100%', flexShrink: 1 },
+  couponTitle: { ...typography.h3, color: colors.textPrimary },
+  activation: { marginTop: 'auto', paddingTop: spacing.sm },
+  redeemButton: { minHeight: 48 },
+  buttonText: { flexShrink: 1, textAlign: 'center' },
+  feedback: { ...typography.caption, color: colors.textPrimary },
+  redemptionFeedback: { gap: spacing.sm },
+  promoCode: { ...typography.bodyMedium, color: colors.textPrimary, padding: spacing.md, borderRadius: borderRadius.md, backgroundColor: colors.surfaceMuted },
 });

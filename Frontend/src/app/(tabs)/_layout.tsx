@@ -1,8 +1,11 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Text, View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { borderRadius } from '../../theme/spacing';
+
+export const unstable_settings = { initialRouteName: 'home' };
 
 function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
   return (
@@ -13,12 +16,17 @@ function TabIcon({ emoji, focused }: { emoji: string; focused: boolean }) {
 }
 
 export default function TabsLayout() {
+  const insets = useSafeAreaInsets();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.primaryDark,
         tabBarInactiveTintColor: colors.textSecondary,
+        tabBarLabelPosition: 'below-icon',
+        tabBarLabel: ({ color, children }) => (
+          <Text style={[styles.label, { color }]} numberOfLines={2}>{children}</Text>
+        ),
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
@@ -28,8 +36,8 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          minHeight: 62,
-          paddingBottom: 8,
+          height: 76 + insets.bottom,
+          paddingBottom: Math.max(8, insets.bottom),
           paddingTop: 6,
         },
       }}
@@ -37,22 +45,29 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Karta i Rute',
+          title: 'Hartă',
           tabBarIcon: ({ focused }) => <TabIcon emoji="🗺️" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="history"
         options={{
-          title: 'Povijest',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="📊" focused={focused} />,
+          title: 'Favorite și istoric',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="♡" focused={focused} />,
+        }}
+      />
+      <Tabs.Screen
+        name="home"
+        options={{
+          title: 'Acasă',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="⌂" focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="rewards"
         options={{
-          title: 'Nagrade',
-          tabBarIcon: ({ focused }) => <TabIcon emoji="🎁" focused={focused} />,
+          title: 'Puncte',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="✧" focused={focused} />,
         }}
       />
       <Tabs.Screen
@@ -67,6 +82,7 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  label: { fontSize: 11, lineHeight: 14, fontWeight: '600', textAlign: 'center', paddingHorizontal: 2 },
   iconWrap: {
     paddingHorizontal: 10,
     paddingVertical: 2,
