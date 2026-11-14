@@ -31,6 +31,7 @@ public class CommunityReportDto
 
 /// <summary>
 /// Zahtjev za kreiranje nove Waze-style prijave u Timișoari.
+/// Title, Description i StreetOrZone su opcionalni (za brzi Waze 1-tap pin putem GPS-a).
 /// </summary>
 public class CreateCommunityReportRequestDto
 {
@@ -38,13 +39,13 @@ public class CreateCommunityReportRequestDto
     public CommunityReportCategory Category { get; set; } = CommunityReportCategory.RoadBlockade;
 
     [DefaultValue("Radovi i zatvoren prolaz na Bulevardul Vasile Pârvan")]
-    public string Title { get; set; } = string.Empty;
+    public string? Title { get; set; }
 
     [DefaultValue("Desna traka i biciklistički prijelaz kod podvožnjaka Michelangelo su ograđeni zbog radova.")]
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; }
 
     [DefaultValue("Bulevardul Vasile Pârvan / Pasajul Michelangelo")]
-    public string StreetOrZone { get; set; } = string.Empty;
+    public string? StreetOrZone { get; set; }
 
     [DefaultValue(45.7495)]
     public double Latitude { get; set; } = 45.7495;
@@ -58,6 +59,48 @@ public class CreateCommunityReportRequestDto
     public bool AffectsWheelchair { get; set; } = false;
 
     public int? UserId { get; set; }
+}
+
+/// <summary>
+/// 1-Tap Waze brzi pin u aplikaciji: korisnik samo dodirne ikonu kategorije na mapi (npr. Blokada ceste / Fali rampa / Fali biciklistička staza),
+/// bez obveznog tipkanja naslova ili ulice (ulica se automatski prepoznaje iz GPS koordinata Timișoare).
+/// </summary>
+public class QuickWazePinRequestDto
+{
+    [DefaultValue(CommunityReportCategory.RoadBlockade)]
+    public CommunityReportCategory Category { get; set; } = CommunityReportCategory.RoadBlockade;
+
+    [DefaultValue(45.7495)]
+    public double Latitude { get; set; } = 45.7495;
+
+    [DefaultValue(21.2312)]
+    public double Longitude { get; set; } = 21.2312;
+
+    /// <summary>Opcionalni brzi podtip s Waze gumba (npr. "Radovi na cesti", "Parkiran auto na stazi", "Visoki rubnjak / bez rampe").</summary>
+    [DefaultValue("Radovi na cesti")]
+    public string? Subtype { get; set; }
+
+    [DefaultValue(false)]
+    public bool AffectsWheelchair { get; set; } = false;
+
+    public string? PhotoOrNote { get; set; }
+
+    public int? UserId { get; set; }
+}
+
+/// <summary>
+/// Izbornik za Waze 1-Tap gumb ("+") u aplikaciji s ikonama, bojama, bodovima i brzim podtipovima.
+/// </summary>
+public class WazeCategoryMenuDto
+{
+    public CommunityReportCategory Category { get; set; }
+    public string Label { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public string Icon { get; set; } = string.Empty;
+    public string ColorHex { get; set; } = string.Empty;
+    public int RewardEcoPoints { get; set; }
+    public bool DefaultAffectsWheelchair { get; set; }
+    public List<string> QuickSubtypes { get; set; } = new();
 }
 
 /// <summary>

@@ -1,10 +1,13 @@
+using System.Security.Claims;
 using System.Text;
 using EcoMutare.Data;
+using EcoMutare.Domain.Entities;
 using EcoMutare.Services.Auth;
 using EcoMutare.Services.Community;
 using EcoMutare.Services.Insights;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -69,7 +72,7 @@ builder.Services.AddSingleton<IGreenIntelligenceService, GreenIntelligenceServic
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();
 
-// JWT autentikacija (register/login u AuthController). Ako Jwt:Key nije postavljen na serveru, koristi se siguran fallback ključ.
+// JWT + Auth0 Dual autentikacija (podržava lokalni HS256 JWT za 5 demo računa i Auth0 RS256 OIDC tokene)
 const string FallbackJwtKey = "EcoMutareTimisoaraUniHack2026SuperSecretJwtKeyMin32Bytes!";
 var jwt = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 if (string.IsNullOrWhiteSpace(jwt.Key) || jwt.Key.Length < 32)
@@ -85,24 +88,116 @@ builder.Services.Configure<JwtOptions>(opts =>
         opts.Key = FallbackJwtKey;
     }
 });
+builder.Services.Configure<Auth0Options>(builder.Configuration.GetSection(Auth0Options.SectionName));
 builder.Services.AddScoped<JwtTokenService>();
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(o =>
+var auth0 = builder.Configuration.GetSection(Auth0Options.SectionName).Get<Auth0Options>() ?? new Auth0Options();
+var auth0Domain = (auth0.Domain ?? string.Empty).Replace("https://", "", StringComparison.OrdinalIgnoreCase).TrimEnd('/');
+bool hasAuth0Domain = !string.IsNullOrWhiteSpace(auth0Domain);
+
+var authBuilder = builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = hasAuth0Domain ? "DualJwt" : JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = hasAuth0Domain ? "DualJwt" : JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, o =>
+{
+    o.MapInboundClaims = false; // zadržava "sub" claim kakav jest
+    o.TokenValidationParameters = new TokenValidationParameters
     {
-        o.MapInboundClaims = false; // zadržava "sub" claim kakav jest
+        ValidateIssuer = true,
+        ValidIssuer = jwt.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwt.Audience,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(1),
+    };
+});
+
+if (hasAuth0Domain)
+{
+    authBuilder.AddJwtBearer("Auth0Jwt", o =>
+    {
+        o.Authority = $"https://{auth0Domain}/";
+        o.Audience = string.IsNullOrWhiteSpace(auth0.Audience) ? "https://api.begreen.tm.ro" : auth0.Audience;
+        o.MapInboundClaims = false;
         o.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidIssuer = jwt.Issuer,
-            ValidateAudience = true,
-            ValidAudience = jwt.Audience,
-            ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.Key)),
-            ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(1),
+            NameClaimType = "sub",
+            ClockSkew = TimeSpan.FromSeconds(30)
+        };
+        o.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = async ctx =>
+            {
+                try
+                {
+                    var principal = ctx.Principal;
+                    if (principal?.Identity is not ClaimsIdentity identity) return;
+
+                    var sub = principal.FindFirst("sub")?.Value;
+                    var email = principal.FindFirst("email")?.Value
+                                ?? principal.FindFirst("https://begreen.tm.ro/email")?.Value;
+
+                    if (string.IsNullOrWhiteSpace(email) && !string.IsNullOrWhiteSpace(sub))
+                    {
+                        var cleanSub = string.Concat(sub.Where(ch => char.IsLetterOrDigit(ch) || ch is '.' or '_' or '-'));
+                        email = $"{cleanSub}@auth0.begreen.tm.ro".ToLowerInvariant();
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(email))
+                    {
+                        var db = ctx.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+                        var normalizedEmail = email.Trim().ToLowerInvariant();
+                        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == normalizedEmail);
+                        if (user is null)
+                        {
+                            user = new User
+                            {
+                                Email = normalizedEmail,
+                                DisplayName = principal.FindFirst("name")?.Value ?? normalizedEmail.Split('@')[0],
+                                PasswordHash = PasswordHelper.Hash($"Auth0::{sub ?? Guid.NewGuid().ToString("N")}"),
+                                PointsBalance = 50
+                            };
+                            db.Users.Add(user);
+                            await db.SaveChangesAsync();
+                        }
+                        identity.AddClaim(new Claim("ecomutare_uid", user.Id.ToString()));
+                    }
+                }
+                catch
+                {
+                    // Ako MySQL trenutno nije dostupan, ne rušimo provjeru tokena
+                }
+            }
+        };
+    })
+    .AddPolicyScheme("DualJwt", "Local HS256 or Auth0 RS256 JWT", o =>
+    {
+        o.ForwardDefaultSelector = ctx =>
+        {
+            var authHeader = ctx.Request.Headers.Authorization.FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+            {
+                var token = authHeader.Substring("Bearer ".Length).Trim();
+                var handler = new JsonWebTokenHandler();
+                if (handler.CanReadToken(token))
+                {
+                    var parsed = handler.ReadJsonWebToken(token);
+                    if (parsed.Alg.Equals("RS256", StringComparison.OrdinalIgnoreCase) ||
+                        (parsed.Issuer?.Contains(auth0Domain, StringComparison.OrdinalIgnoreCase) ?? false))
+                    {
+                        return "Auth0Jwt";
+                    }
+                }
+            }
+            return JwtBearerDefaults.AuthenticationScheme;
         };
     });
+}
+
 builder.Services.AddAuthorization();
 
 // Swagger (UI + OpenAPI dokument na /swagger/v1/swagger.json + Authorize Bearer gumb)
@@ -112,7 +207,7 @@ builder.Services.AddSwaggerGen(c =>
     c.CustomSchemaIds(t => t.FullName?.Replace("+", ".") ?? t.Name);
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Description = "Unesite JWT token dobiven na POST /auth/login (npr. 'Bearer eyJhbGci...') ili samo token.",
+        Description = "Unesite JWT token dobiven na POST /auth/login ili POST /auth/auth0 (ili izravni Auth0 Access Token).",
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,

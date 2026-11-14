@@ -22,9 +22,11 @@ public interface ICommunityIntelligenceService
     IReadOnlyList<CommunityReportDto> GetCachedReportsSnapshot(bool onlyActive = true);
 
     Task<CommunityReportActionResponseDto> CreateReportAsync(CreateCommunityReportRequestDto req, CancellationToken ct = default);
+    Task<CommunityReportActionResponseDto> CreateQuickWazePinAsync(QuickWazePinRequestDto req, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto> ReportMissingBikeLaneAsync(MissingBikeLaneRequestDto req, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ConfirmReportAsync(int id, CancellationToken ct = default);
     Task<CommunityReportActionResponseDto?> ResolveReportAsync(int id, CancellationToken ct = default);
+    IReadOnlyList<WazeCategoryMenuDto> GetWazeCategoryMenu();
 
     IReadOnlyList<CommunityReportDto> GetHazardsNearGeometry(
         IReadOnlyList<GeoPoint> geometry,
@@ -99,11 +101,17 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         EnsureSyncedWithDatabase();
 
         List<CommunityReport> baseList;
+        HashSet<string> existingExtIds;
         lock (_sync)
         {
             baseList = _memoryReports
                 .Where(r => !onlyActive || r.IsActive)
                 .ToList();
+
+            existingExtIds = _memoryReports
+                .Where(r => !string.IsNullOrWhiteSpace(r.ExternalSesizariId))
+                .Select(r => r.ExternalSesizariId!)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
         var dtos = baseList.Select(r => MapReportDto(r, near)).ToList();
@@ -111,7 +119,9 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         if (includeOfficialSesizari)
         {
             var official = await FetchOfficialSesizariReportsAsync(near, ct);
-            dtos.AddRange(official);
+            dtos.AddRange(official.Where(o =>
+                string.IsNullOrWhiteSpace(o.ExternalSesizariId) ||
+                !existingExtIds.Contains(o.ExternalSesizariId)));
         }
 
         if (category.HasValue)
@@ -142,6 +152,19 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
     {
         EnsureSyncedWithDatabase();
 
+        string streetOrZone = string.IsNullOrWhiteSpace(req.StreetOrZone) ||
+                              req.StreetOrZone.Trim().Equals("Timișoara", StringComparison.OrdinalIgnoreCase)
+            ? ResolveNearestTimisoaraZoneName(req.Latitude, req.Longitude)
+            : req.StreetOrZone.Trim();
+
+        string title = string.IsNullOrWhiteSpace(req.Title)
+            ? GetDefaultTitle(req.Category, streetOrZone)
+            : req.Title.Trim();
+
+        string description = string.IsNullOrWhiteSpace(req.Description)
+            ? GetDefaultDescription(req.Category, streetOrZone)
+            : req.Description.Trim();
+
         var modes = req.AffectedModes is { Count: > 0 }
             ? req.AffectedModes
             : GetDefaultAffectedModes(req.Category, req.AffectsWheelchair);
@@ -153,9 +176,9 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         var entity = new CommunityReport
         {
             Category = req.Category,
-            Title = string.IsNullOrWhiteSpace(req.Title) ? GetDefaultTitle(req.Category, req.StreetOrZone) : req.Title.Trim(),
-            Description = req.Description.Trim(),
-            StreetOrZone = string.IsNullOrWhiteSpace(req.StreetOrZone) ? "Timișoara" : req.StreetOrZone.Trim(),
+            Title = title,
+            Description = description,
+            StreetOrZone = streetOrZone,
             Latitude = req.Latitude,
             Longitude = req.Longitude,
             AffectedModesCsv = string.Join(",", modes),
@@ -163,7 +186,7 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             ConfirmationsCount = 1,
             ResolvedVotesCount = 0,
             IsActive = true,
-            Source = "EcoMutare Waze Crowd",
+            Source = "BeGreen Waze Crowd",
             OfficialActionUrl = officialUrl,
             ReportedByUserId = req.UserId,
             CreatedAt = DateTime.UtcNow
@@ -184,6 +207,106 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             OfficialCityIntegrationNote = channelNote
         };
     }
+
+    public async Task<CommunityReportActionResponseDto> CreateQuickWazePinAsync(QuickWazePinRequestDto req, CancellationToken ct = default)
+    {
+        string zone = ResolveNearestTimisoaraZoneName(req.Latitude, req.Longitude);
+        string subtype = string.IsNullOrWhiteSpace(req.Subtype) ? string.Empty : req.Subtype.Trim();
+
+        if (req.Category == CommunityReportCategory.MissingBikeLane)
+        {
+            return await ReportMissingBikeLaneAsync(new MissingBikeLaneRequestDto
+            {
+                StreetOrCorridorName = zone,
+                Reason = string.IsNullOrWhiteSpace(req.PhotoOrNote)
+                    ? $"Brza Waze prijava s karte{(string.IsNullOrEmpty(subtype) ? "" : $" ({subtype})")}: na potezu {zone} nedostaje sigurna biciklistička staza."
+                    : req.PhotoOrNote.Trim(),
+                Latitude = req.Latitude,
+                Longitude = req.Longitude,
+                WeeklyPassesCount = 5,
+                UserId = req.UserId
+            }, ct);
+        }
+
+        string title = string.IsNullOrWhiteSpace(subtype)
+            ? GetDefaultTitle(req.Category, zone)
+            : $"{subtype} – {zone}";
+
+        string desc = !string.IsNullOrWhiteSpace(req.PhotoOrNote)
+            ? req.PhotoOrNote.Trim()
+            : GetDefaultDescription(req.Category, zone, subtype);
+
+        return await CreateReportAsync(new CreateCommunityReportRequestDto
+        {
+            Category = req.Category,
+            Title = title,
+            Description = desc,
+            StreetOrZone = zone,
+            Latitude = req.Latitude,
+            Longitude = req.Longitude,
+            AffectsWheelchair = req.AffectsWheelchair || req.Category == CommunityReportCategory.InaccessibleArea,
+            UserId = req.UserId
+        }, ct);
+    }
+
+    public IReadOnlyList<WazeCategoryMenuDto> GetWazeCategoryMenu() => new List<WazeCategoryMenuDto>
+    {
+        new()
+        {
+            Category = CommunityReportCategory.RoadBlockade,
+            Label = "Blokada ceste / Radovi",
+            Description = "Zatvorena ulica, radovi na kolniku, prometna nesreća ili poplavljeni podvožnjak.",
+            Icon = "construction",
+            ColorHex = "#E53935",
+            RewardEcoPoints = 15,
+            DefaultAffectsWheelchair = false,
+            QuickSubtypes = new() { "Radovi na cesti", "Zatvorena traka", "Zastoj / sudar", "Poplava nakon kiše" }
+        },
+        new()
+        {
+            Category = CommunityReportCategory.BlockedBikeLane,
+            Label = "Blokirana biciklistička staza",
+            Description = "Parkirani auti, dostavna vozila, kante ili ograda zauzimaju biciklističku stazu.",
+            Icon = "directions_bike",
+            ColorHex = "#FB8C00",
+            RewardEcoPoints = 15,
+            DefaultAffectsWheelchair = false,
+            QuickSubtypes = new() { "Parkiran auto na stazi", "Građevinska ograda", "Prekopana staza", "Staklo / oštećen asfalt" }
+        },
+        new()
+        {
+            Category = CommunityReportCategory.InaccessibleArea,
+            Label = "Nedostupno za invalidska kolica",
+            Description = "Visoki rubnjak bez rampe, blokiran nogostup, pokvareno dizalo ili rupa na pločniku.",
+            Icon = "accessible",
+            ColorHex = "#8E24AA",
+            RewardEcoPoints = 15,
+            DefaultAffectsWheelchair = true,
+            QuickSubtypes = new() { "Visoki rubnjak bez rampe", "Blokiran nogostup", "Stepenice bez lifta", "Raskopan pješački prijelaz" }
+        },
+        new()
+        {
+            Category = CommunityReportCategory.MissingBikeLane,
+            Label = "Ovdje fali biciklistička staza!",
+            Description = "Prijavi dionicu kojom često prolaziš, a nema sigurne biciklističke infrastrukture (ide u Decidem Timișoara).",
+            Icon = "add_road",
+            ColorHex = "#2E7D32",
+            RewardEcoPoints = 20,
+            DefaultAffectsWheelchair = false,
+            QuickSubtypes = new() { "Opasno uz gust promet", "Studentski / poslovni koridor", "Fali spoj postojećih staza" }
+        },
+        new()
+        {
+            Category = CommunityReportCategory.TransitDisruption,
+            Label = "Zastoj javnog prijevoza (STPT)",
+            Description = "Zastoj tramvaja ili trolejbusa, kvar vozila ili preskočeni polazak.",
+            Icon = "tram",
+            ColorHex = "#1E88E5",
+            RewardEcoPoints = 15,
+            DefaultAffectsWheelchair = false,
+            QuickSubtypes = new() { "Zastoj tramvaja", "Kvar kontaktne mreže", "Vozilo bez niske podnice", "Pretrpana stanica" }
+        }
+    };
 
     public async Task<CommunityReportActionResponseDto> ReportMissingBikeLaneAsync(MissingBikeLaneRequestDto req, CancellationToken ct = default)
     {
@@ -251,7 +374,16 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         lock (_sync)
         {
             target = _memoryReports.FirstOrDefault(r => r.Id == id);
+        }
+
+        if (target is null)
+        {
+            target = await TryPromoteOfficialSesizariReportAsync(id, ct);
             if (target is null) return null;
+        }
+
+        lock (_sync)
+        {
             target.ConfirmationsCount++;
         }
 
@@ -276,8 +408,16 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
         lock (_sync)
         {
             target = _memoryReports.FirstOrDefault(r => r.Id == id);
-            if (target is null) return null;
+        }
 
+        if (target is null)
+        {
+            target = await TryPromoteOfficialSesizariReportAsync(id, ct);
+            if (target is null) return null;
+        }
+
+        lock (_sync)
+        {
             target.ResolvedVotesCount++;
             // Za privremene blokade na cesti 2 glasa (ili 1 izravni resolve) gase upozorenje na ruti
             if (target.Category != CommunityReportCategory.MissingBikeLane && target.ResolvedVotesCount >= 2)
@@ -296,6 +436,51 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
                 ? $"Zabilježen glas da je prepreka uklonjena ({target.ResolvedVotesCount}/2)."
                 : $"Blokada '{target.Title}' je označena kao RIJEŠENA i uklonjena s aktivnih ruta!"
         };
+    }
+
+    private async Task<CommunityReport?> TryPromoteOfficialSesizariReportAsync(int id, CancellationToken ct)
+    {
+        if (id < 9000) return null;
+
+        if (!_cache.TryGetValue("primaria_tm_sesizari_live", out List<CommunityReportDto>? cached) || cached is null)
+        {
+            cached = (await FetchOfficialSesizariReportsAsync(null, ct)).ToList();
+        }
+
+        var extDto = cached.FirstOrDefault(c => c.Id == id);
+        if (extDto is null) return null;
+
+        lock (_sync)
+        {
+            if (!string.IsNullOrWhiteSpace(extDto.ExternalSesizariId))
+            {
+                var existing = _memoryReports.FirstOrDefault(r =>
+                    string.Equals(r.ExternalSesizariId, extDto.ExternalSesizariId, StringComparison.OrdinalIgnoreCase));
+                if (existing is not null) return existing;
+            }
+        }
+
+        var promoted = new CommunityReport
+        {
+            Category = extDto.Category,
+            Title = extDto.Title,
+            Description = extDto.Description,
+            StreetOrZone = extDto.StreetOrZone,
+            Latitude = extDto.Location.Lat,
+            Longitude = extDto.Location.Lng,
+            AffectedModesCsv = string.Join(",", extDto.AffectedModes),
+            AffectsWheelchair = extDto.AffectsWheelchair,
+            ConfirmationsCount = extDto.ConfirmationsCount,
+            ResolvedVotesCount = extDto.ResolvedVotesCount,
+            IsActive = extDto.IsActive,
+            Source = extDto.Source,
+            ExternalSesizariId = extDto.ExternalSesizariId,
+            OfficialActionUrl = extDto.OfficialActionUrl,
+            CreatedAt = extDto.CreatedAt
+        };
+
+        await SaveReportToDbAndMemoryAsync(promoted, null, 0, ct);
+        return promoted;
     }
 
     public IReadOnlyList<CommunityReportDto> GetHazardsNearGeometry(
@@ -839,6 +1024,49 @@ public class CommunityIntelligenceService : ICommunityIntelligenceService
             CommunityReportCategory.TransitDisruption => $"Zastoj javnog prijevoza ({street})",
             _ => $"Blokada na cesti ({street})"
         };
+
+    private static string GetDefaultDescription(CommunityReportCategory category, string street, string? subtype = null)
+    {
+        string prefix = string.IsNullOrWhiteSpace(subtype) ? string.Empty : $"{subtype}: ";
+        return category switch
+        {
+            CommunityReportCategory.BlockedBikeLane => $"{prefix}Građani prijavljuju blokiranu biciklističku stazu na lokaciji {street}. Preporučen oprez ili obilazak.",
+            CommunityReportCategory.InaccessibleArea => $"{prefix}Prijavljena arhitektonska barijera ili nedostupan prilaz za invalidska kolica na lokaciji {street}.",
+            CommunityReportCategory.MissingBikeLane => $"{prefix}Građani prijavljuju da na potezu {street} nedostaje biciklistička staza unatoč čestom prometu.",
+            CommunityReportCategory.TransitDisruption => $"{prefix}Prijavljen zastoj ili kašnjenje javnog prijevoza (STPT) kod lokacije {street}.",
+            _ => $"{prefix}Korisnici u aplikaciji prijavili su blokadu ili radove na cesti kod {street}."
+        };
+    }
+
+    private static string ResolveNearestTimisoaraZoneName(double lat, double lng)
+    {
+        var landmarks = new (string Name, double Lat, double Lng)[]
+        {
+            ("Piața Victoriei / Centru", 45.7537, 21.2257),
+            ("Pasajul Michelangelo / Bd. Vasile Pârvan", 45.7492, 21.2315),
+            ("Universitatea Politehnica (UPT)", 45.7474, 21.2263),
+            ("Complexul Studențesc / Strada Cluj", 45.7478, 21.2375),
+            ("Universitatea de Vest (UVT)", 45.7471, 21.2316),
+            ("Piața Unirii / Cetate", 45.7580, 21.2290),
+            ("Iulius Town / Calea Aradului", 45.7660, 21.2288),
+            ("Gara Timișoara Nord / Bd. Republicii", 45.7508, 21.2076),
+            ("Calea Șagului / Dâmbovița", 45.7315, 21.2125),
+            ("Piața Sfânta Maria / Bd. 16 Decembrie 1989", 45.7481, 21.2194),
+            ("Calea Buziașului / Zona Industrială SE", 45.7365, 21.2625),
+            ("Spitalul Județean / Bd. Liviu Rebreanu", 45.7370, 21.2412),
+            ("Malul Begăi / Parcul Rozelor", 45.7505, 21.2305),
+            ("Calea Torontalului", 45.7715, 21.2135),
+            ("Piața Traian / Fabric", 45.7574, 21.2505)
+        };
+
+        var pt = new GeoPoint { Lat = lat, Lng = lng };
+        var best = landmarks
+            .Select(l => (l.Name, DistM: TimisoaraPublicData.HaversineMeters(pt, new GeoPoint { Lat = l.Lat, Lng = l.Lng })))
+            .OrderBy(x => x.DistM)
+            .First();
+
+        return best.DistM <= 2500.0 ? best.Name : $"Timișoara ({lat:F4}, {lng:F4})";
+    }
 
     private static double GetMinDistanceToPolylineMeters(GeoPoint point, IReadOnlyList<GeoPoint> polyline)
     {

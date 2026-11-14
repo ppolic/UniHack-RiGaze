@@ -47,6 +47,8 @@ public class CarpoolController : ControllerBase
         [FromQuery] DateTime? toTime = null,
         [FromQuery] int minSeats = 1,
         [FromQuery] bool? wheelchairFriendly = null,
+        [FromQuery] string? organization = null,
+        [FromQuery] bool sameOrganizationOnly = false,
         CancellationToken ct = default)
     {
         var q = _db.CarpoolRides.AsNoTracking()
@@ -76,6 +78,19 @@ public class CarpoolController : ControllerBase
         var rides = await q.OrderBy(r => r.DepartureTime).ToListAsync(ct);
 
         var dtos = rides.Select(r => ToDto(r, originLat, originLng)).ToList();
+
+        // 1. Auth0 Organizations filter: prikaži samo vožnje kolega s istog sveučilišta (UPT/UVT) ili iz iste tvrtke (Continental/Nokia)
+        var targetOrg = !string.IsNullOrWhiteSpace(organization)
+            ? organization.Trim()
+            : (sameOrganizationOnly ? User.GetVerifiedOrganization() : null);
+
+        if (!string.IsNullOrWhiteSpace(targetOrg))
+        {
+            dtos = dtos
+                .Where(d => d.DriverOrganization != null &&
+                            d.DriverOrganization.Contains(targetOrg, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
 
         if (originLat.HasValue && originLng.HasValue)
         {
@@ -376,12 +391,15 @@ public class CarpoolController : ControllerBase
     {
         double co2 = CarbonCalculator.SavedGrams(TransportMode.Carpool, r.DistanceKm);
         int pts = CarbonCalculator.Points(co2) + 10;
+        var (orgName, orgBadge) = Auth0IntelligenceHelper.ResolveOrganization(null, r.DriverName);
 
         return new CarpoolRideDto
         {
             Id = r.Id,
             DriverId = r.DriverId,
             DriverName = r.DriverName,
+            DriverOrganization = orgName,
+            DriverTrustBadge = orgBadge,
             OriginName = r.OriginName,
             OriginLatitude = r.OriginLatitude,
             OriginLongitude = r.OriginLongitude,

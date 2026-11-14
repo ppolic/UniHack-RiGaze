@@ -45,6 +45,63 @@ public class AuthLoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class Auth0LoginRequest
+{
+    /// <summary>Opcionalni Auth0 Access Token ili ID Token (JWT) dobiven nakon prijave putem Auth0 Universal Logina.</summary>
+    public string? AccessToken { get; set; }
+    public string? IdToken { get; set; }
+
+    /// <summary>Email korisnika iz Auth0 profila (npr. useAuth0().user.email).</summary>
+    [DefaultValue("ana.auth0@upt.ro")]
+    public string? Email { get; set; }
+
+    /// <summary>Ime i prezime iz Auth0 profila (npr. useAuth0().user.name).</summary>
+    [DefaultValue("Ana Popescu (Auth0)")]
+    public string? DisplayName { get; set; }
+
+    /// <summary>Auth0 identifikator korisnika (npr. "google-oauth2|10928374" ili "auth0|65f...").</summary>
+    [DefaultValue("google-oauth2|1092837465")]
+    public string? Auth0Sub { get; set; }
+
+    /// <summary>1. Auth0 Organizations: Opcionalni naziv organizacije iz Auth0 tokena (npr. "Universitatea Politehnica Timișoara (UPT)").</summary>
+    public string? OrganizationName { get; set; }
+
+    /// <summary>2. Auth0 Passkeys (WebAuthn): True ako se korisnik prijavio biometrijom bez lozinke (FaceID / otisak prsta).</summary>
+    [DefaultValue(true)]
+    public bool? UsedPasskey { get; set; }
+
+    /// <summary>3. Auth0 Zero-Knowledge Age Action: Anonimizirana dobna kategorija iz Auth0 Actiona bez slanja datuma rođenja (GDPR).</summary>
+    public EcoMutare.Domain.AgeCategory? ZeroKnowledgeAgeCategory { get; set; }
+
+    public DateTime? BirthDate { get; set; }
+    public bool? HasDisability { get; set; }
+    public bool? OwnsBike { get; set; }
+    public bool? OwnsScooter { get; set; }
+    public bool? OwnsCar { get; set; }
+}
+
+public class Auth0ConfigResponse
+{
+    public bool IsConfigured { get; set; }
+    public string Domain { get; set; } = string.Empty;
+    public string Audience { get; set; } = string.Empty;
+    public string ClientId { get; set; } = string.Empty;
+    public string ExchangeEndpoint { get; set; } = "/auth/auth0";
+    public bool SupportsDirectAuth0BearerToken { get; set; } = true;
+    public bool SupportsDemoAccountsLogin { get; set; } = true;
+    public bool PasskeysWebAuthnEnabled { get; set; } = true;
+    public bool OrganizationsHomeRealmDiscoveryEnabled { get; set; } = true;
+    public bool ZeroKnowledgeAgeActionEnabled { get; set; } = true;
+    public bool BotDetectionWazeTrustShieldEnabled { get; set; } = true;
+    public List<string> SupportedOrganizations { get; set; } = new()
+    {
+        "Universitatea Politehnica Timișoara (UPT) (@upt.ro / @student.upt.ro)",
+        "Universitatea de Vest din Timișoara (UVT) (@uvt.ro / @e-uvt.ro)",
+        "Continental Automotive Timișoara (@continental.ro / @continental.com)",
+        "Nokia Campus Timișoara (@nokia.com)"
+    };
+}
+
 public class AuthResponse
 {
     public string Token { get; set; } = string.Empty;
@@ -59,6 +116,18 @@ public class AuthResponse
     public bool OwnsBike { get; set; }
     public bool OwnsScooter { get; set; }
     public bool OwnsCar { get; set; }
+
+    // === Inovativne Auth0 značajke (1: Organizations, 2: Passkeys, 3: Zero-Knowledge Age, 5: Waze Trust Score) ===
+    public string? VerifiedOrganization { get; set; }
+    public string OrganizationBadge { get; set; } = string.Empty;
+    public bool PasskeyEnabled { get; set; }
+    public string AuthenticationMethod { get; set; } = string.Empty;
+    public bool ZeroKnowledgeAgeVerified { get; set; }
+    public string GdprPrivacyStatus { get; set; } = string.Empty;
+    public bool EmailVerified { get; set; } = true;
+    public int TrustScore { get; set; }
+    public string TrustBadge { get; set; } = string.Empty;
+    public int WazeVoteWeight { get; set; } = 1;
 }
 
 public class UpdateUserProfileRequest
@@ -181,6 +250,8 @@ public class CarpoolRideDto
     public int Id { get; set; }
     public int? DriverId { get; set; }
     public string DriverName { get; set; } = string.Empty;
+    public string? DriverOrganization { get; set; }
+    public string DriverTrustBadge { get; set; } = string.Empty;
     public string OriginName { get; set; } = string.Empty;
     public double OriginLatitude { get; set; }
     public double OriginLongitude { get; set; }
