@@ -52,10 +52,12 @@ builder.Services.AddHttpClient<EcoMutare.Services.Routing.IRoutingProvider, EcoM
     client.Timeout = TimeSpan.FromSeconds(Math.Max(2, opts.TimeoutSeconds));
 }).AddStandardResilienceHandler();
 
-// Pravila i glavni multimodalni planer ruta (sat 12-24), uz MockRoutePlanner kao fallback iza Routing:UseMock
+// Pravila, Waze Community Intelligence i glavni multimodalni planer ruta (sat 12-30), uz MockRoutePlanner kao fallback iza Routing:UseMock
+builder.Services.AddHttpClient();
 builder.Services.Configure<EcoMutare.Services.Routing.RoutingOptions>(
     builder.Configuration.GetSection(EcoMutare.Services.Routing.RoutingOptions.SectionName));
 builder.Services.AddSingleton<EcoMutare.Services.Routing.IRulesEngine, EcoMutare.Services.Routing.RulesEngine>();
+builder.Services.AddSingleton<EcoMutare.Services.Community.ICommunityIntelligenceService, EcoMutare.Services.Community.CommunityIntelligenceService>();
 builder.Services.AddSingleton<EcoMutare.Services.Insights.IGreenIntelligenceService, EcoMutare.Services.Insights.GreenIntelligenceService>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.MockRoutePlanner>();
 builder.Services.AddScoped<EcoMutare.Services.Routing.IRoutePlanner, EcoMutare.Services.Routing.RoutePlanner>();

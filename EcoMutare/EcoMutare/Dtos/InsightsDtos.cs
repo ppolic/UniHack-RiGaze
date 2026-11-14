@@ -19,7 +19,7 @@ public class CityTripRecordDto
 
 /// <summary>
 /// Jedna ćelija rešetke grada (~500 m × 500 m) s izračunatom potražnjom, udjelom osobnih automobila,
-/// udaljenošću do najbliže biciklističke staze i stanice javnog prijevoza te rangom prioriteta.
+/// udaljenošću do najbliže biciklističke staze i stanice javnog prijevoza, Waze prijavama građana te rangom prioriteta.
 /// </summary>
 public class GapCellDto
 {
@@ -37,6 +37,15 @@ public class GapCellDto
     /// <summary>Udio putovanja osobnim automobilom (0..1).</summary>
     public double CarShare { get; set; }
 
+    /// <summary>Broj izravnih građanskih prijava i glasova ("Ovdje fali biciklistička staza!") u ovoj ćeliji.</summary>
+    public int CitizenBikeLaneRequestsCount { get; set; }
+
+    /// <summary>Tjedna potražnja iz spremljenih omiljenih ruta (Favorite Routes) koje sijeku ovu ćeliju.</summary>
+    public int FavoriteRoutesDemandCount { get; set; }
+
+    /// <summary>Broj aktivnih Waze blokada i prepreka pristupačnosti u ovoj ćeliji.</summary>
+    public int ActiveHazardsCount { get; set; }
+
     /// <summary>Udaljenost središta ćelije do najbližeg biciklističkog koridora (u metrima).</summary>
     public double DistanceToNearestBikeLaneMeters { get; set; }
     public string NearestBikeLaneName { get; set; } = string.Empty;
@@ -48,7 +57,10 @@ public class GapCellDto
     /// <summary>Udaljenost do najbliže niskopodne / wheelchair-accessible STPT stanice (u metrima).</summary>
     public double DistanceToAccessibleTransitStopMeters { get; set; }
 
-    /// <summary>Kompozitni indeks prioriteta ulaganja (0..100): visoka potražnja + velik auto-udio + daleko od staze/JPP-a.</summary>
+    /// <summary>
+    /// Kompozitni indeks prioriteta ulaganja (0..100):
+    /// visoka potražnja (putovanja + Favorite rute) + velik auto-udio + daleko od staze/JPP-a + Waze prijave građana.
+    /// </summary>
     public double GapScore { get; set; }
 
     /// <summary>Rang prioriteta (1 = najveći infrastrukturni deficit u gradu).</summary>
@@ -58,18 +70,24 @@ public class GapCellDto
     public bool IsInfrastructureGap { get; set; }
 
     public string RecommendedIntervention { get; set; } = string.Empty;
+
+    /// <summary>Gotov nacrt prijedloga za participativni proračun Grada Temišvara (https://decidem.primariatm.ro).</summary>
+    public string DecidemProposalDraft { get; set; } = string.Empty;
 }
 
 /// <summary>
-/// Odgovor za GET /insights/gaps (karta biciklističkih staza + označene praznine u mreži).
+/// Odgovor za GET /insights/gaps (karta biciklističkih staza + označene praznine u mreži + Waze prijave građana).
 /// </summary>
 public class InsightsGapsResponseDto
 {
     public bool IsSimulationData { get; set; } = true;
     public string SimulationDisclaimer { get; set; } =
-        "Simulacija (Green Intelligence): Agregirana anonimna putovanja su sintetička, generirana prema stvarnim zonama Timișoare i stvarnim STPT/VeloTM/OSM koridorima.";
+        "Green Intelligence kombinira stvarne Waze prijave građana, Favorite rute, službene Sesizări podatke Grada Temišvara (sesizari.primariatm.ro) i prostorni model potražnje (2026).";
     public int GridCellSizeMeters { get; set; } = 500;
+    public int TotalCitizenBikeLaneRequests { get; set; }
+    public int TotalFavoriteRoutesTracked { get; set; }
     public List<Services.BikeCorridorDto> BikeCorridors { get; set; } = new();
+    public List<CommunityReportDto> MissingBikeLaneHotspots { get; set; } = new();
     public List<GapCellDto> Cells { get; set; } = new();
 }
 
@@ -84,26 +102,33 @@ public class PriorityZoneDto
     public GeoPoint Center { get; set; } = new();
     public double GapScore { get; set; }
     public int TotalTrips { get; set; }
+    public int CitizenBikeLaneRequestsCount { get; set; }
+    public int FavoriteRoutesDemandCount { get; set; }
     public double CarSharePercent { get; set; }
     public double DistanceToBikeLaneMeters { get; set; }
     public double DistanceToTransitStopMeters { get; set; }
     public string Reason { get; set; } = string.Empty;
     public string ProposedAction { get; set; } = string.Empty;
+    public string DecidemProposalDraft { get; set; } = string.Empty;
+    public string DecidemSubmissionUrl { get; set; } = "https://decidem.primariatm.ro";
 }
 
 /// <summary>
-/// Odgovor za GET /insights/summary (tri ključna broja za gradski dashboard: ušteđeni CO₂, broj putovanja, top 3 zone).
+/// Odgovor za GET /insights/summary (ključni brojevi za gradski dashboard: ušteđeni CO₂, broj putovanja, Waze prijave i top 3 zone za Decidem).
 /// </summary>
 public class InsightsSummaryResponseDto
 {
     public bool IsSimulationData { get; set; } = true;
     public string SimulationDisclaimer { get; set; } =
-        "Simulacija (Green Intelligence): Podaci o putovanjima su sintetički ali realistični za potrebe prikaza gradskog dashboarda.";
+        "Green Intelligence kombinira stvarne Waze prijave građana, Favorite rute, službene Sesizări podatke Grada Temišvara i prostorni model potražnje.";
     public double TotalSavedCo2Kg { get; set; }
     public int TotalTripsCount { get; set; }
     public int GreenTripsCount { get; set; }
     public double GreenModalSplitPercent { get; set; }
     public int IdentifiedGapCellsCount { get; set; }
+    public int ActiveRoadBlockadesAndHazardsCount { get; set; }
+    public int CitizenMissingBikeLaneVotesCount { get; set; }
+    public int TrackedFavoriteRoutesCount { get; set; }
     public List<PriorityZoneDto> TopInvestmentZones { get; set; } = new();
 }
 
