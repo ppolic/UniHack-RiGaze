@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, Pressable, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  useWindowDimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
@@ -8,38 +15,58 @@ import { typography } from '../../theme/typography';
 interface TravelOptionsPanelProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
+  summaryText?: string;
+  autoOpenKey?: string | number;
+  isOpen?: boolean;
+  onToggleOpen?: (open: boolean) => void;
 }
 
-/** Render directly inside the screen's bounded View; owns no route or trip state. */
-export function TravelOptionsPanel({ children, footer }: TravelOptionsPanelProps) {
+/**
+ * Collapsible bottom sheet for route options:
+ * - Minimized (default while exploring map): compact 78px bar at the very bottom so the map is full-screen.
+ * - Open: expands to show multimodal route cards and the "Odaberi i završi" action button.
+ */
+export function TravelOptionsPanel({
+  children,
+  footer,
+  summaryText,
+  autoOpenKey,
+  isOpen,
+  onToggleOpen,
+}: TravelOptionsPanelProps) {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const [expanded, setExpanded] = useState(false);
+  const [internalExpanded, setInternalExpanded] = useState(false);
+
+  const expanded = isOpen !== undefined ? isOpen : internalExpanded;
+  const setExpanded = (next: boolean) => {
+    if (onToggleOpen) {
+      onToggleOpen(next);
+    } else {
+      setInternalExpanded(next);
+    }
+  };
+
+  useEffect(() => {
+    if (autoOpenKey !== undefined && autoOpenKey !== '') {
+      setExpanded(true);
+    }
+  }, [autoOpenKey]);
+
   const [bounds, setBounds] = useState({ width: 0, height: 0 });
-  const [slot, setSlot] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [headerHeight, setHeaderHeight] = useState(0);
-  const [footerHeight, setFooterHeight] = useState(0);
   const desktop = width >= 768;
 
-  // Absolute measurements include the parent SafeAreaView's top padding, so
-  // exclude that inset once below. The tab navigator already reserves the bottom
-  // safe area; subtracting it here again would lift the sheet above the tab bar.
-  const bottom = Math.max(insets.top, Math.min(bounds.height, height));
+  const bottom = Math.max(insets.top, Math.min(bounds.height || height, height));
   const available = Math.max(0, bottom - insets.top);
-  // On short/zoomed desktop viewports, reserve room for the fixed controls and
-  // a small, scrollable part of a route card rather than clipping the footer.
-  const desktopMinimum = headerHeight + footerHeight + spacing.md + spacing.sm + spacing['4xl'] + spacing['2xl'];
-  const compactHeight = desktop
-    ? Math.min(available * 0.83, Math.max(available * 0.33, desktopMinimum))
-    : Math.min(available * 0.7, Math.max(slot.height, 280));
-  const sheetHeight = expanded ? available * 0.83 : compactHeight;
-  const ready = bounds.height > 0 && slot.width > 0;
-  const headerContent = (
-    <>
-      <Text style={styles.title}>Opcije putovanja A ➔ B</Text>
-      <Text style={styles.subtitle}>Rangirano po ekološkoj održivosti (CO₂ & bodovi)</Text>
-    </>
-  );
+
+  // Minimized height leaves ~85% of the screen completely open for the full-screen map
+  const minimizedHeight = 76;
+  const openHeight = desktop
+    ? Math.min(available * 0.72, 520)
+    : Math.min(available * 0.62, 430);
+
+  const sheetHeight = expanded ? openHeight : minimizedHeight;
+  const ready = bounds.height > 0;
 
   return (
     <>
@@ -48,19 +75,13 @@ export function TravelOptionsPanel({ children, footer }: TravelOptionsPanelProps
         accessible={false}
         style={styles.measurement}
         onLayout={({ nativeEvent }) => {
-          const { width: measuredWidth, height: measuredHeight } = nativeEvent.layout;
+          const { width: measuredWidth, height: measuredHeight } =
+            nativeEvent.layout;
           setBounds({ width: measuredWidth, height: measuredHeight });
         }}
       />
       <View
-        pointerEvents="none"
-        accessible={false}
-        style={styles.slot}
-        onLayout={({ nativeEvent }) => setSlot(nativeEvent.layout)}
-      />
-      <View
         pointerEvents="auto"
-        // Claim otherwise-empty sheet space without intercepting child presses or scrolling.
         onStartShouldSetResponder={() => true}
         style={[
           styles.sheet,
@@ -68,38 +89,61 @@ export function TravelOptionsPanel({ children, footer }: TravelOptionsPanelProps
           ready && {
             top: bottom - sheetHeight,
             height: sheetHeight,
-            left: slot.x,
-            width: Math.min(slot.width, bounds.width, width),
+            left: 0,
+            width: Math.min(bounds.width || width, width),
           },
           !ready && styles.hidden,
         ]}
       >
-        <View
-          style={[styles.header, desktop && styles.desktopContent]}
-          onLayout={({ nativeEvent }) => setHeaderHeight(nativeEvent.layout.height)}
-        >
+        <View style={[styles.header, desktop && styles.desktopContent]}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={expanded ? 'Smanji opcije' : 'Proširi opcije'}
+            accessibilityLabel={
+              expanded ? 'Spusti opcije putovanja' : 'Podigni opcije putovanja'
+            }
             accessibilityState={{ expanded }}
-            onPress={() => setExpanded((value) => !value)}
-            style={({ pressed }) => [styles.headerControl, pressed && styles.headerPressed]}
+            onPress={() => setExpanded(!expanded)}
+            style={({ pressed }) => [
+              styles.headerControl,
+              pressed && styles.headerPressed,
+            ]}
           >
             <View style={styles.handle} accessible={false} />
-            {headerContent}
+            <View style={styles.headerRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.title} numberOfLines={1}>
+                  Opcije putovanja A ➔ B
+                </Text>
+                <Text style={styles.subtitle} numberOfLines={1}>
+                  {summaryText ||
+                    'Rangirano po ekološkoj održivosti (CO₂ & bodovi)'}
+                </Text>
+              </View>
+              <View style={styles.togglePill}>
+                <Text style={styles.togglePillText}>
+                  {expanded ? 'Spusti ⌄' : 'Prikaži ⌃'}
+                </Text>
+              </View>
+            </View>
           </Pressable>
         </View>
-        <ScrollView
-          style={styles.optionsList}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: spacing.lg }}
-        >
-          {children}
-        </ScrollView>
-        <View
-          style={[styles.footer, desktop && styles.desktopContent]}
-          onLayout={({ nativeEvent }) => setFooterHeight(nativeEvent.layout.height)}
-        >{footer}</View>
+
+        {expanded && (
+          <>
+            <ScrollView
+              style={styles.optionsList}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: spacing.md }}
+            >
+              {children}
+            </ScrollView>
+            {footer ? (
+              <View style={[styles.footer, desktop && styles.desktopContent]}>
+                {footer}
+              </View>
+            ) : null}
+          </>
+        )}
       </View>
     </>
   );
@@ -108,42 +152,68 @@ export function TravelOptionsPanel({ children, footer }: TravelOptionsPanelProps
 const styles = StyleSheet.create({
   measurement: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 },
   hidden: { display: 'none' },
-  slot: { flex: 1, marginTop: -spacing.md },
   sheet: {
-    flex: 1,
     backgroundColor: colors.surface,
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
-    marginTop: -spacing.md,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs + 2,
     paddingHorizontal: spacing.md,
+    borderTopWidth: 1,
+    borderColor: colors.border,
     ...shadows.lg,
   },
   overlaySheet: {
     position: 'absolute',
-    flex: 0,
-    marginTop: 0,
-    zIndex: 10,
-    elevation: 12,
+    zIndex: 30,
+    elevation: 16,
     overflow: 'hidden',
   },
-  header: { marginBottom: spacing.sm, flexShrink: 0 },
-  title: { ...typography.h3, color: colors.textPrimary },
-  subtitle: { ...typography.caption, color: colors.textSecondary },
+  header: { marginBottom: spacing.xs, flexShrink: 0 },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  title: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.textPrimary,
+  },
+  subtitle: {
+    ...typography.caption,
+    fontSize: 11,
+    color: colors.textSecondary,
+  },
+  togglePill: {
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 5,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  togglePillText: {
+    ...typography.captionMedium,
+    fontSize: 11,
+    fontWeight: '700',
+    color: colors.primaryDark,
+  },
   headerControl: {
-    minHeight: 44,
+    minHeight: 54,
     justifyContent: 'center',
     paddingBottom: spacing.xs,
     borderRadius: borderRadius.sm,
   },
   headerPressed: { backgroundColor: colors.surfaceMuted },
   handle: {
-    width: 44,
+    width: 42,
     height: 5,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.textMuted,
+    backgroundColor: colors.controlBorder,
     alignSelf: 'center',
-    marginBottom: spacing.sm,
+    marginBottom: 6,
   },
   optionsList: { flex: 1, minHeight: 0 },
   footer: { flexShrink: 0 },

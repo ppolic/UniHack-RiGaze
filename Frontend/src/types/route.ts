@@ -100,14 +100,19 @@ export interface RoutePlanResponse {
 export interface StationLocation {
   id: string;
   name: string;
-  type: 'tram' | 'bus' | 'bike_station';
+  type: 'tram' | 'bus' | 'trolleybus' | 'bike_station' | 'scooter_station';
   lat: number;
   lng: number;
   availableBikes?: number;
   totalDocks?: number;
   lines?: string[];
+  routeIds?: string[];
+  stopCode?: string;
   isWheelchairAccessible?: boolean;
   nextArrivalMinutes?: number;
+  nextDepartures?: string[];
+  feedVersion?: string;
+  dataSource?: string;
 }
 
 export interface ParkingDetail {
@@ -115,10 +120,36 @@ export interface ParkingDetail {
   name: string;
   lat: number;
   lng: number;
-  spotsAvailable: number;
-  totalSpots: number;
+  spotsAvailable?: number | null;
+  totalSpots?: number | null;
   hourlyRateRon: number;
+  hourlyRateEur?: number;
+  smsCode?: string;
+  smsNumber?: string;
   isAccessible: boolean;
   accessibleSpots?: number;
   zone?: string;
+  tariffColor?: 'green' | 'red' | 'yellow' | 'blue';
+  polygon?: GeoPoint[];
+  dataSource?: string;
+}
+
+export interface CityLandmarkPoi {
+  id: string;
+  name: string;
+  nameEn?: string;
+  address?: string;
+  description?: string;
+  lat: number;
+  lng: number;
+}
+
+export interface TransitNetworkPath {
+  routeId: string;
+  shortName: string;
+  longName?: string;
+  type: number; // 0 = tram, 3 = bus, 11 = trolleybus
+  directionId: number;
+  color?: string;
+  geometry: GeoPoint[];
 }
