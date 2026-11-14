@@ -196,15 +196,6 @@ export default function ProfileScreen() {
             <Text style={styles.description}>{t.profileSessionDesc}</Text>
             <AppButton title={t.logoutBtn} variant="outline" onPress={handleLogout} style={styles.actionButton} />
           </AppCard>
-
-          {isAuth0Authenticated && auth0User && (
-            <AppCard style={styles.sessionCard}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">{t.authRawProfile}</Text>
-              <Text style={{ fontFamily: 'monospace', fontSize: 12, color: colors.textSecondary }}>
-                {JSON.stringify(auth0User, null, 2)}
-              </Text>
-            </AppCard>
-          )}
         </View>
       </ScrollView>
     </SafeAreaView>

@@ -179,8 +179,6 @@ export default function RewardsScreen() {
           <View style={styles.heading}>
             <Text style={styles.eyebrow}>{t.rewardsEyebrow}</Text>
             <Text style={styles.title} accessibilityRole="header">{t.rewardsTitle}</Text>
-            <Text style={styles.description}>{t.rewardsSubtitle}</Text>
-            <AppButton title={t.rewardsReloadDataBtn} variant="outline" onPress={refresh} disabled={refreshing || pendingId !== null} />
           </View>
 
           {balance.status === 'loading' && (
@@ -196,12 +194,6 @@ export default function RewardsScreen() {
             </AppCard>
           )}
           {balance.status === 'success' && <PointsSummaryCard balance={balance.data} />}
-
-          <AppCard style={styles.noticeCard}>
-            <Text style={styles.description}>
-              {t.rewardsMemoryWarning}
-            </Text>
-          </AppCard>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle} accessibilityRole="header">{t.rewardsAvailableTitle}</Text>
