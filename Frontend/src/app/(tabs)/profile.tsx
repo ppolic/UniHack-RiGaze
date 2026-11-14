@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Keyboard, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
@@ -10,6 +10,7 @@ import { AppInput } from '../../components/common/AppInput';
 import { AppCard } from '../../components/common/AppCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useUserStore } from '../../store/userStore';
+import { useThemeMode } from '../../hooks/useThemeMode';
 import { authService } from '../../services/authService';
 import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ import { useTranslation } from '../../hooks/useTranslation';
 export default function ProfileScreen() {
   const { user, token, setUser, logout } = useAuth();
   const { user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
+  const { isDarkMode, toggleDarkMode } = useThemeMode();
   const router = useRouter();
   const { language, t, translateMessage } = useTranslation();
   const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
@@ -192,6 +194,32 @@ export default function ProfileScreen() {
           </AppCard>
 
           <AppCard style={styles.sessionCard}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              {language === 'en' ? '🌓 Display & Accessibility Theme' : '🌓 Tema afișajului și accesibilitate'}
+            </Text>
+            <View style={styles.themeToggleRow}>
+              <View style={{ flex: 1, paddingRight: spacing.md }}>
+                <Text style={{ ...typography.bodyMedium, color: colors.textPrimary, fontWeight: '700' }}>
+                  {language === 'en' ? 'High Contrast Dark Mode (WCAG AAA)' : 'Mod întunecat cu contrast ridicat (WCAG AAA)'}
+                </Text>
+                <Text style={{ ...typography.caption, color: colors.textSecondary, marginTop: 4, lineHeight: 18 }}>
+                  {language === 'en'
+                    ? 'Deep obsidian background with pure white typography (>7:1 ratio) for visual clarity and night readability.'
+                    : 'Fundal obsidian profund cu tipografie alb pur (raport >7:1) pentru claritate vizuală și confort nocturn.'}
+                </Text>
+              </View>
+              <Switch
+                value={isDarkMode}
+                onValueChange={toggleDarkMode}
+                trackColor={{ false: colors.controlBorder, true: colors.primary }}
+                thumbColor={colors.surface}
+                accessibilityRole="switch"
+                accessibilityLabel="High Contrast Dark Mode toggle"
+              />
+            </View>
+          </AppCard>
+
+          <AppCard style={styles.sessionCard}>
             <Text style={styles.sectionTitle} accessibilityRole="header">{t.profileSessionTitle}</Text>
             <Text style={styles.description}>{t.profileSessionDesc}</Text>
             <AppButton title={t.logoutBtn} variant="outline" onPress={handleLogout} style={styles.actionButton} />
@@ -217,4 +245,5 @@ const styles = StyleSheet.create({
   editButton: { flexGrow: 1, minHeight: 48 },
   actionButton: { minHeight: 48 },
   sessionCard: { gap: spacing.lg },
+  themeToggleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.md },
 });

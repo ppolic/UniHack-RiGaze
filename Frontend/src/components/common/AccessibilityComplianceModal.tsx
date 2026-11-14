@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from '../../hooks/useTranslation';
+import { useThemeMode } from '../../hooks/useThemeMode';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius, shadows } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -23,13 +24,15 @@ interface AccessibilityComplianceModalProps {
 
 type StatementLanguage = 'ro' | 'en';
 
+type ControlKey = 'hasDisability' | 'wcagLargeText' | 'wcagTextRouteMode' | 'wcagHighContrastDark';
+
 const STATEMENT_COPY: Record<
   StatementLanguage,
   {
     headerSubtitle: string;
     controlsSectionTitle: string;
     controlsItems: {
-      key: 'hasDisability' | 'wcagLargeText' | 'wcagTextRouteMode';
+      key: ControlKey;
       label: string;
       desc: string;
       accessibilityLabel: string;
@@ -72,6 +75,12 @@ const STATEMENT_COPY: Record<
         label: '📋 Alternativă textuală pentru hartă (EN 301 549)',
         desc: 'Afișează instrucțiunile pas cu pas și stațiile accesibile în format optimizat pentru cititoare de ecran.',
         accessibilityLabel: 'Activează alternativa textuală pentru hartă',
+      },
+      {
+        key: 'wcagHighContrastDark',
+        label: '🌓 Mod întunecat cu contrast ridicat (WCAG AAA)',
+        desc: 'Activează tema obsidian cu text alb pur și contrast de peste 7:1 pentru lizibilitate maximă.',
+        accessibilityLabel: 'Activează modul întunecat cu contrast ridicat WCAG AAA',
       },
     ],
     statementTitle:
@@ -123,6 +132,12 @@ const STATEMENT_COPY: Record<
         desc: 'Replaces visual map pin hunting with a structured, screen-reader-ready stop and route directory.',
         accessibilityLabel: 'Toggle textual map alternative mode',
       },
+      {
+        key: 'wcagHighContrastDark',
+        label: '🌓 High Contrast Dark Mode (WCAG AAA)',
+        desc: 'Activates deep obsidian theme with pure white text and over 7:1 contrast ratio for low-vision readability.',
+        accessibilityLabel: 'Toggle WCAG AAA high contrast dark mode',
+      },
     ],
     statementTitle:
       'Official Accessibility Statement (Law no. 232/2022 & EN 301 549)',
@@ -168,20 +183,27 @@ export const AccessibilityComplianceModal: React.FC<
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
+  const { isDarkMode, setDarkMode } = useThemeMode();
+
   const copy = STATEMENT_COPY[lang];
 
   const getSwitchValue = (
-    key: 'hasDisability' | 'wcagLargeText' | 'wcagTextRouteMode'
+    key: ControlKey
   ): boolean => {
+    if (key === 'wcagHighContrastDark') return isDarkMode;
     if (key === 'hasDisability') return hasDisability;
     if (key === 'wcagLargeText') return wcagLargeText;
     return wcagTextRouteMode;
   };
 
   const handleTogglePreference = (
-    key: 'hasDisability' | 'wcagLargeText' | 'wcagTextRouteMode',
+    key: ControlKey,
     val: boolean
   ) => {
+    if (key === 'wcagHighContrastDark') {
+      setDarkMode(val);
+      return;
+    }
     updatePreferences({ [key]: val });
   };
 

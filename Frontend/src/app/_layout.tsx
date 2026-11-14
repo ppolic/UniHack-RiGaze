@@ -8,15 +8,17 @@ import { Auth0Provider } from '@auth0/auth0-react';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
+import { useThemeMode } from '../hooks/useThemeMode';
 import { AuthenticatedHeader } from '../components/common/AuthenticatedHeader';
 
 function AppNavigation() {
   const { isAuthenticated, user } = useAuth();
   const { t } = useTranslation();
+  const { isDarkMode } = useThemeMode();
 
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
+      <StatusBar style={isDarkMode ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
           headerShown: false,

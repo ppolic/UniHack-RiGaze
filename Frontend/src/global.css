@@ -7,3 +7,129 @@
   --font-rounded: 'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif;
   --font-serif: Georgia, 'Times New Roman', serif;
 }
+
+/* Smooth theme transitions */
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
+}
+
+/* ==========================================================================
+   HIGH CONTRAST DARK MODE (WCAG AAA Compliance: >7:1 Contrast Ratio)
+   ========================================================================== */
+
+html.high-contrast-dark,
+html.high-contrast-dark body,
+html.high-contrast-dark #root {
+  background-color: #0A0F0D !important;
+  color: #FFFFFF !important;
+}
+
+/* Backgrounds (Replaces Natural brand #F7F9F3) */
+html.high-contrast-dark div[style*="background-color: rgb(247, 249, 243)"],
+html.high-contrast-dark [style*="background-color:#F7F9F3"],
+html.high-contrast-dark [style*="background-color: #F7F9F3"],
+html.high-contrast-dark [style*="background-color: rgb(247, 249, 243)"],
+html.high-contrast-dark [style*="background-color:rgb(247,249,243)"] {
+  background-color: #0A0F0D !important;
+}
+
+/* Surface / Cards (Replaces Pure White #FFFFFF) with crisp high-contrast border */
+html.high-contrast-dark div[style*="background-color: rgb(255, 255, 255)"],
+html.high-contrast-dark [style*="background-color:#FFFFFF"],
+html.high-contrast-dark [style*="background-color: #ffffff"],
+html.high-contrast-dark [style*="background-color: #FFFFFF"],
+html.high-contrast-dark [style*="background-color: rgb(255, 255, 255)"],
+html.high-contrast-dark [style*="background-color:rgb(255,255,255)"] {
+  background-color: #121A15 !important;
+  border-color: #2D4236 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45) !important;
+}
+
+/* Muted / Accent Surfaces (Mint #E8F3EB) */
+html.high-contrast-dark div[style*="background-color: rgb(232, 243, 235)"],
+html.high-contrast-dark [style*="background-color:#E8F3EB"],
+html.high-contrast-dark [style*="background-color: #E8F3EB"],
+html.high-contrast-dark [style*="background-color:rgb(232,243,235)"] {
+  background-color: #1B2921 !important;
+  border-color: #385544 !important;
+}
+
+/* Primary Forest Text (#164D3B) -> Crisp Pure White */
+html.high-contrast-dark [style*="color: rgb(22, 77, 59)"],
+html.high-contrast-dark [style*="color:#164D3B"],
+html.high-contrast-dark [style*="color: #164D3B"],
+html.high-contrast-dark [style*="color:rgb(22,77,59)"] {
+  color: #FFFFFF !important;
+}
+
+/* Secondary Muted Text (#52665B) -> High-Contrast Light Sage */
+html.high-contrast-dark [style*="color: rgb(82, 102, 91)"],
+html.high-contrast-dark [style*="color:#52665B"],
+html.high-contrast-dark [style*="color: #52665B"],
+html.high-contrast-dark [style*="color:rgb(82,102,91)"] {
+  color: #CFE3D7 !important;
+}
+
+/* Brand Green (#237A50) -> High-Contrast Vibrant Emerald Green */
+html.high-contrast-dark [style*="color: rgb(35, 122, 80)"],
+html.high-contrast-dark [style*="color:#237A50"],
+html.high-contrast-dark [style*="color: #237A50"],
+html.high-contrast-dark [style*="color:rgb(35,122,80)"] {
+  color: #4ADE80 !important;
+}
+
+/* Hero container in Dark Mode */
+html.high-contrast-dark [style*="background-color: rgb(35, 122, 80)"],
+html.high-contrast-dark [style*="background-color:#237A50"] {
+  background-color: #143323 !important;
+  border: 1px solid #2E6B47 !important;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* High Contrast Accent (Buttons / Hero badges) */
+html.high-contrast-dark [style*="background-color: rgb(211, 239, 106)"],
+html.high-contrast-dark [style*="background-color:#D3EF6A"],
+html.high-contrast-dark [style*="background-color: #D3EF6A"] {
+  background-color: #4ADE80 !important;
+  color: #062816 !important;
+  font-weight: 800 !important;
+}
+
+/* Borders */
+html.high-contrast-dark [style*="border-color: rgb(181, 200, 187)"],
+html.high-contrast-dark [style*="border-color: rgb(107, 129, 116)"],
+html.high-contrast-dark [style*="border-color:#B5C8BB"],
+html.high-contrast-dark [style*="border-color:#6B8174"] {
+  border-color: #2D4236 !important;
+}
+
+/* Inputs and Forms */
+html.high-contrast-dark input,
+html.high-contrast-dark textarea {
+  background-color: #0E1612 !important;
+  color: #FFFFFF !important;
+  border: 1.5px solid #385544 !important;
+}
+
+html.high-contrast-dark input:focus,
+html.high-contrast-dark textarea:focus {
+  border-color: #4ADE80 !important;
+  outline: 2px solid #4ADE80 !important;
+  box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.35) !important;
+}
+
+/* High contrast custom scrollbars */
+html.high-contrast-dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+html.high-contrast-dark ::-webkit-scrollbar-track {
+  background: #0A0F0D;
+}
+html.high-contrast-dark ::-webkit-scrollbar-thumb {
+  background: #2D4236;
+  border-radius: 4px;
+}
+html.high-contrast-dark ::-webkit-scrollbar-thumb:hover {
+  background: #4ADE80;
+}
