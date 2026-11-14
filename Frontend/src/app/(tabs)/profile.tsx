@@ -1,5 +1,12 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Keyboard } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Keyboard,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { typography } from '../../theme/typography';
 import { spacing, borderRadius } from '../../theme/spacing';
@@ -18,7 +25,7 @@ export default function ProfileScreen() {
   const { user, token, saveProfileChanges, logout } = useAuth();
   const { logout: auth0Logout, user: auth0User, isAuthenticated: isAuth0Authenticated } = useAuth0();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { language, setLanguage, t } = useTranslation();
   const [draft, setDraft] = useState<{ userId: string; name: string } | null>(null);
   const [nameError, setNameError] = useState<string>();
   const [verifiedAge, setVerifiedAge] = useState<number | null>(null);
@@ -124,6 +131,45 @@ export default function ProfileScreen() {
             <Text style={styles.title} accessibilityRole="header">{t.tabProfile}</Text>
             <Text style={styles.description}>{t.profileSubtitle}</Text>
           </View>
+
+          <AppCard style={styles.languageCard}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              {t.languageSection}
+            </Text>
+            <View style={styles.languageChipsRow}>
+              {(
+                [
+                  { code: 'ro', label: '🇷🇴 Română', a11y: t.switchToRoA11y },
+                  { code: 'en', label: '🇬🇧 English', a11y: t.switchToEnA11y },
+                ] as const
+              ).map((option) => {
+                const active = language === option.code;
+                return (
+                  <TouchableOpacity
+                    key={option.code}
+                    onPress={() => setLanguage(option.code)}
+                    style={[
+                      styles.languageChip,
+                      active && styles.languageChipActive,
+                    ]}
+                    activeOpacity={0.8}
+                    accessibilityRole="button"
+                    accessibilityLabel={option.a11y}
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text
+                      style={[
+                        styles.languageChipText,
+                        active && styles.languageChipTextActive,
+                      ]}
+                    >
+                      {active ? '✓ ' : ''}{option.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </AppCard>
 
           <ProfileDetails
             verifiedAge={verifiedAge}
@@ -301,6 +347,38 @@ const styles = StyleSheet.create({
   },
   confirmationText: {
     ...typography.captionMedium,
+    color: colors.primaryDark,
+    fontWeight: '700',
+  },
+  languageCard: { gap: spacing.md },
+  languageChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+  },
+  languageChip: {
+    flex: 1,
+    minWidth: 140,
+    minHeight: 48,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.controlBorder,
+    backgroundColor: colors.surfaceMuted,
+  },
+  languageChipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primaryLight,
+  },
+  languageChipText: {
+    ...typography.bodyMedium,
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  languageChipTextActive: {
     color: colors.primaryDark,
     fontWeight: '700',
   },

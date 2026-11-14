@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth0 } from '@auth0/auth0-react';
-import { useAuth } from '../../hooks/useAuth';
-import { authService } from '../../services/authService';
-import { ApiHttpError } from '../../services/api';
 import { colors } from '../../theme/colors';
 import { spacing, borderRadius } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
-import { AppInput } from '../../components/common/AppInput';
 import { AppButton } from '../../components/common/AppButton';
 import { AppCard } from '../../components/common/AppCard';
 import { useTranslation } from '../../hooks/useTranslation';
@@ -17,7 +13,6 @@ export default function LoginScreen() {
   const router = useRouter();
   const { language, toggleLanguage, t } = useTranslation();
   const localize = (ro: string, en: string) => (language === 'en' ? en : ro);
-  const { setUser, setToken } = useAuth();
 
   const {
     isLoading,
@@ -37,38 +32,6 @@ export default function LoginScreen() {
         returnTo: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5279',
       },
     });
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    if (loading) return;
-    setErrorMsg(null);
-    setLoading(true);
-    try {
-      const res = await authService.login({ email, password });
-      setToken(res.token);
-      setUser(res.user);
-      router.replace('/(tabs)/home');
-    } catch (err: any) {
-      if (err instanceof ApiHttpError) {
-        setErrorMsg(
-          err.message || localize('Email sau parolă incorectă.', 'Incorrect email or password.')
-        );
-      } else {
-        setErrorMsg(
-          localize(
-            'Nu am putut contacta serverul sau confirma autentificarea. Verifică conexiunea și încearcă din nou.',
-            'Could not connect to the server or confirm sign-in. Check your connection and try again.'
-          )
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -148,24 +111,14 @@ export default function LoginScreen() {
         </Text>
         <Text style={styles.demoNotice}>
           {localize(
-            'Autentifică-te direct cu Auth0 sau introdu emailul și parola.',
-            'Authenticate directly with Auth0 or enter your email and password.'
+            'Autentifică-te sau creează un cont folosind Auth0.',
+            'Sign in or create an account with Auth0.'
           )}
         </Text>
 
         {error && (
           <Text style={styles.errorText} accessibilityRole="alert">
             Error: {error.message}
-          </Text>
-        )}
-
-        {errorMsg && (
-          <Text
-            style={styles.errorText}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="assertive"
-          >
-            {errorMsg}
           </Text>
         )}
 
@@ -182,63 +135,6 @@ export default function LoginScreen() {
             style={styles.auth0Btn}
           />
         </View>
-
-        <View style={styles.dividerRow}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>
-            {localize('sau cont local', 'or local account')}
-          </Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <AppInput
-          label={t.emailAddressLabel}
-          accessibilityLabel={t.emailAddressLabel}
-          value={email}
-          onChangeText={(v) => {
-            setEmail(v);
-            setErrorMsg(null);
-          }}
-          placeholder={t.emailPlaceholder}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="email"
-          returnKeyType="next"
-        />
-        <AppInput
-          label={t.passwordLabel}
-          accessibilityLabel={t.passwordLabel}
-          value={password}
-          onChangeText={(v) => {
-            setPassword(v);
-            setErrorMsg(null);
-          }}
-          placeholder="••••••••"
-          secureTextEntry
-          autoComplete="password"
-          autoCorrect={false}
-          autoCapitalize="none"
-          returnKeyType="done"
-          onSubmitEditing={handleLogin}
-        />
-
-        <AppButton
-          title={t.loginButton}
-          loading={loading}
-          onPress={handleLogin}
-          style={styles.submitBtn}
-        />
-
-        <TouchableOpacity
-          onPress={() => router.push('/(auth)/register')}
-          style={styles.switchAuth}
-        >
-          <Text style={styles.switchAuthText}>
-            {localize('Nu ai cont? ', 'No account? ')}
-            <Text style={styles.linkText}>{localize('Creează un cont', 'Create an account')}</Text>
-          </Text>
-        </TouchableOpacity>
       </AppCard>
     </ScrollView>
   );
@@ -316,25 +212,9 @@ const styles = StyleSheet.create({
   },
   auth0Row: {
     gap: spacing.sm,
-    marginBottom: spacing.lg,
   },
   auth0Btn: {
     minHeight: 46,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.md,
-    gap: spacing.sm,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
   demoNotice: {
     ...typography.body,
@@ -359,10 +239,6 @@ const styles = StyleSheet.create({
   switchAuth: {
     marginTop: spacing.md,
     alignItems: 'center',
-  },
-  switchAuthText: {
-    ...typography.caption,
-    color: colors.textSecondary,
   },
   linkText: {
     color: colors.primary,
