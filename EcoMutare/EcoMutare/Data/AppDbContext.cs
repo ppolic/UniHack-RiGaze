@@ -25,6 +25,12 @@ public class AppDbContext : DbContext
     public DbSet<CarpoolRide> CarpoolRides => Set<CarpoolRide>();
     public DbSet<CarpoolBooking> CarpoolBookings => Set<CarpoolBooking>();
 
+    // BikeShare (zajedničke vožnje biciklom) i WalkBuddy (zajedničke šetnje)
+    public DbSet<BikeShareRide> BikeShareRides => Set<BikeShareRide>();
+    public DbSet<BikeShareParticipant> BikeShareParticipants => Set<BikeShareParticipant>();
+    public DbSet<WalkBuddyWalk> WalkBuddyWalks => Set<WalkBuddyWalk>();
+    public DbSet<WalkBuddyParticipant> WalkBuddyParticipants => Set<WalkBuddyParticipant>();
+
     // Građanske prijave u stvarnom vremenu (blokade cesta, nepristupačna područja, nedostajuće biciklističke staze)
     public DbSet<CommunityReport> CommunityReports => Set<CommunityReport>();
 
@@ -124,6 +130,46 @@ public class AppDbContext : DbContext
             e.HasOne(x => x.Passenger).WithMany()
                 .HasForeignKey(x => x.PassengerId).OnDelete(DeleteBehavior.SetNull);
             e.HasIndex(x => new { x.CarpoolRideId, x.PassengerId });
+        });
+
+        // BikeShare
+        b.Entity<BikeShareRide>(e =>
+        {
+            e.Property(x => x.Level).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(x => x.Organizer).WithMany()
+                .HasForeignKey(x => x.OrganizerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.Status, x.DepartureTime });
+            e.HasIndex(x => new { x.OriginLatitude, x.OriginLongitude });
+        });
+
+        b.Entity<BikeShareParticipant>(e =>
+        {
+            e.HasOne(x => x.BikeShareRide).WithMany(r => r.Participants)
+                .HasForeignKey(x => x.BikeShareRideId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User).WithMany()
+                .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.BikeShareRideId, x.UserId }).IsUnique();
+        });
+
+        // WalkBuddy
+        b.Entity<WalkBuddyWalk>(e =>
+        {
+            e.Property(x => x.Pace).HasConversion<string>().HasMaxLength(20);
+            e.Property(x => x.Status).HasConversion<string>().HasMaxLength(20);
+            e.HasOne(x => x.Organizer).WithMany()
+                .HasForeignKey(x => x.OrganizerId).OnDelete(DeleteBehavior.SetNull);
+            e.HasIndex(x => new { x.Status, x.DepartureTime });
+            e.HasIndex(x => new { x.OriginLatitude, x.OriginLongitude });
+        });
+
+        b.Entity<WalkBuddyParticipant>(e =>
+        {
+            e.HasOne(x => x.WalkBuddyWalk).WithMany(r => r.Participants)
+                .HasForeignKey(x => x.WalkBuddyWalkId).OnDelete(DeleteBehavior.Cascade);
+            e.HasOne(x => x.User).WithMany()
+                .HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(x => new { x.WalkBuddyWalkId, x.UserId }).IsUnique();
         });
 
         // CommunityReports (prijave građana u stvarnom vremenu)

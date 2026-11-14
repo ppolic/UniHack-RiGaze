@@ -7,7 +7,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EcoMutare.Data;
 
-/// <summary>
 /// Automatski inicijalizator i seeder MySQL baze za produkcijski server i demo (BE2 sat 38–48).
 /// Osigurava da su sve tablice i kolone prisutne u MySQL-u te puni:
 /// - 5 demo korisničkih računa (lozinka za sve: Demo123!),
@@ -15,7 +14,7 @@ namespace EcoMutare.Data;
 /// - STPT GTFS linije, stajališta, vožnje i vozne redove (StopTimes),
 /// - Carpool oglase i rezervacije,
 /// - Povijest vožnji (TripHistories), transakcije bodova (PointTransactions) i 500m GapCells.
-/// </summary>
+
 public static class DatabaseSeeder
 {
     public static async Task SeedAllAsync(
@@ -442,6 +441,101 @@ public static class DatabaseSeeder
             await db.SaveChangesAsync(ct);
         }
 
+        // 7. BikeShare i WalkBuddy: demo oglasi za zajedničke vožnje i šetnje
+        if (!await db.BikeShareRides.AnyAsync(ct))
+        {
+            var t = DateTime.UtcNow;
+            db.BikeShareRides.AddRange(
+                new BikeShareRide
+                {
+                    OrganizerId = ana?.Id,
+                    OrganizerName = ana?.DisplayName ?? "Ana Popescu",
+                    Title = "Jutarnja vožnja uz Begu",
+                    OriginName = "Piața Victoriei",
+                    OriginLatitude = 45.7537,
+                    OriginLongitude = 21.2257,
+                    DestinationName = "Parcul Rozelor",
+                    DestinationLatitude = 45.7478,
+                    DestinationLongitude = 21.2330,
+                    DepartureTime = t.AddHours(2),
+                    MaxParticipants = 5,
+                    DistanceKm = 2.6,
+                    EstimatedDurationMinutes = 11,
+                    Level = RideLevel.Beginner,
+                    UsesStationBikes = true,
+                    Notes = "Opuštena vožnja za početnike. Okupljanje kod VeloTM stanice, bicikli se mogu iznajmiti na licu mjesta.",
+                    Status = MeetupStatus.Scheduled
+                },
+                new BikeShareRide
+                {
+                    OrganizerId = ana?.Id,
+                    OrganizerName = ana?.DisplayName ?? "Ana Popescu",
+                    Title = "Poslijepodnevna tura do Iulius Towna",
+                    OriginName = "Complexul Studențesc / UVT",
+                    OriginLatitude = 45.7488,
+                    OriginLongitude = 21.2392,
+                    DestinationName = "Iulius Town",
+                    DestinationLatitude = 45.7660,
+                    DestinationLongitude = 21.2288,
+                    DepartureTime = t.AddDays(1).AddHours(3),
+                    MaxParticipants = 4,
+                    DistanceKm = 3.1,
+                    EstimatedDurationMinutes = 13,
+                    Level = RideLevel.Intermediate,
+                    UsesStationBikes = false,
+                    Notes = "Vlastiti bicikl i kaciga obavezni.",
+                    Status = MeetupStatus.Scheduled
+                });
+            await db.SaveChangesAsync(ct);
+        }
+
+        if (!await db.WalkBuddyWalks.AnyAsync(ct))
+        {
+            var t = DateTime.UtcNow;
+            db.WalkBuddyWalks.AddRange(
+                new WalkBuddyWalk
+                {
+                    OrganizerId = ana?.Id,
+                    OrganizerName = ana?.DisplayName ?? "Ana Popescu",
+                    Title = "Šetnja uz Begu, ruta bez stepenica",
+                    OriginName = "Piața Victoriei",
+                    OriginLatitude = 45.7537,
+                    OriginLongitude = 21.2257,
+                    DestinationName = "Parcul Rozelor",
+                    DestinationLatitude = 45.7478,
+                    DestinationLongitude = 21.2330,
+                    DepartureTime = t.AddHours(3),
+                    MaxParticipants = 6,
+                    DistanceKm = 2.4,
+                    EstimatedDurationMinutes = 32,
+                    Pace = WalkPace.Slow,
+                    StepFree = true,
+                    Notes = "Lagani tempo, cijela ruta bez stepenica (pogodno za kolica za bebe i starije osobe).",
+                    Status = MeetupStatus.Scheduled
+                },
+                new WalkBuddyWalk
+                {
+                    OrganizerId = vlad?.Id,
+                    OrganizerName = vlad?.DisplayName ?? "Vlad Dumitru",
+                    Title = "Šetnja u pauzi za ručak",
+                    OriginName = "Iulius Town",
+                    OriginLatitude = 45.7660,
+                    OriginLongitude = 21.2288,
+                    DestinationName = "Parcul Central",
+                    DestinationLatitude = 45.7560,
+                    DestinationLongitude = 21.2290,
+                    DepartureTime = t.AddHours(26),
+                    MaxParticipants = 3,
+                    DistanceKm = 1.6,
+                    EstimatedDurationMinutes = 21,
+                    Pace = WalkPace.Normal,
+                    StepFree = false,
+                    Notes = "Brza šetnja od 30 minuta.",
+                    Status = MeetupStatus.Scheduled
+                });
+            await db.SaveChangesAsync(ct);
+        }
+
         logger.LogInformation("DatabaseSeeder završio: korisnici, GTFS, stanice, parkinzi, Carpool, prijave građana i GapCells su spremni u MySQL bazi.");
     }
 
@@ -529,6 +623,83 @@ public static class DatabaseSeeder
                 `Notes` varchar(300) NOT NULL DEFAULT '',
                 `CreatedAt` datetime(6) NOT NULL,
                 PRIMARY KEY (`Id`)
+            ) CHARACTER SET=utf8mb4;"
+,
+            @"CREATE TABLE IF NOT EXISTS `BikeShareRides` (
+                `Id` int NOT NULL AUTO_INCREMENT,
+                `OrganizerId` int NULL,
+                `OrganizerName` varchar(100) NOT NULL DEFAULT '',
+                `Title` varchar(120) NOT NULL DEFAULT '',
+                `OriginName` varchar(150) NOT NULL DEFAULT '',
+                `OriginLatitude` double NOT NULL DEFAULT 0,
+                `OriginLongitude` double NOT NULL DEFAULT 0,
+                `DestinationName` varchar(150) NOT NULL DEFAULT '',
+                `DestinationLatitude` double NOT NULL DEFAULT 0,
+                `DestinationLongitude` double NOT NULL DEFAULT 0,
+                `DepartureTime` datetime(6) NOT NULL,
+                `MaxParticipants` int NOT NULL DEFAULT 4,
+                `ParticipantCount` int NOT NULL DEFAULT 0,
+                `DistanceKm` double NOT NULL DEFAULT 0,
+                `EstimatedDurationMinutes` int NOT NULL DEFAULT 0,
+                `Level` varchar(20) NOT NULL DEFAULT 'Beginner',
+                `UsesStationBikes` tinyint(1) NOT NULL DEFAULT 0,
+                `Notes` varchar(300) NULL,
+                `Status` varchar(20) NOT NULL DEFAULT 'Scheduled',
+                `OrganizerPointsEarned` int NOT NULL DEFAULT 0,
+                `CreatedAt` datetime(6) NOT NULL,
+                `CompletedAt` datetime(6) NULL,
+                PRIMARY KEY (`Id`),
+                KEY `IX_BikeShareRides_Status_DepartureTime` (`Status`, `DepartureTime`)
+            ) CHARACTER SET=utf8mb4;",
+            @"CREATE TABLE IF NOT EXISTS `BikeShareParticipants` (
+                `Id` int NOT NULL AUTO_INCREMENT,
+                `BikeShareRideId` int NOT NULL,
+                `UserId` int NOT NULL,
+                `DisplayName` varchar(100) NOT NULL DEFAULT '',
+                `IsActive` tinyint(1) NOT NULL DEFAULT 1,
+                `JoinedAt` datetime(6) NOT NULL,
+                `Co2SavedGrams` double NOT NULL DEFAULT 0,
+                `PointsEarned` int NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`),
+                UNIQUE KEY `IX_BikeShareParticipants_BikeShareRideId_UserId` (`BikeShareRideId`, `UserId`)
+            ) CHARACTER SET=utf8mb4;",
+            @"CREATE TABLE IF NOT EXISTS `WalkBuddyWalks` (
+                `Id` int NOT NULL AUTO_INCREMENT,
+                `OrganizerId` int NULL,
+                `OrganizerName` varchar(100) NOT NULL DEFAULT '',
+                `Title` varchar(120) NOT NULL DEFAULT '',
+                `OriginName` varchar(150) NOT NULL DEFAULT '',
+                `OriginLatitude` double NOT NULL DEFAULT 0,
+                `OriginLongitude` double NOT NULL DEFAULT 0,
+                `DestinationName` varchar(150) NOT NULL DEFAULT '',
+                `DestinationLatitude` double NOT NULL DEFAULT 0,
+                `DestinationLongitude` double NOT NULL DEFAULT 0,
+                `DepartureTime` datetime(6) NOT NULL,
+                `MaxParticipants` int NOT NULL DEFAULT 4,
+                `ParticipantCount` int NOT NULL DEFAULT 0,
+                `DistanceKm` double NOT NULL DEFAULT 0,
+                `EstimatedDurationMinutes` int NOT NULL DEFAULT 0,
+                `Pace` varchar(20) NOT NULL DEFAULT 'Normal',
+                `StepFree` tinyint(1) NOT NULL DEFAULT 0,
+                `Notes` varchar(300) NULL,
+                `Status` varchar(20) NOT NULL DEFAULT 'Scheduled',
+                `OrganizerPointsEarned` int NOT NULL DEFAULT 0,
+                `CreatedAt` datetime(6) NOT NULL,
+                `CompletedAt` datetime(6) NULL,
+                PRIMARY KEY (`Id`),
+                KEY `IX_WalkBuddyWalks_Status_DepartureTime` (`Status`, `DepartureTime`)
+            ) CHARACTER SET=utf8mb4;",
+            @"CREATE TABLE IF NOT EXISTS `WalkBuddyParticipants` (
+                `Id` int NOT NULL AUTO_INCREMENT,
+                `WalkBuddyWalkId` int NOT NULL,
+                `UserId` int NOT NULL,
+                `DisplayName` varchar(100) NOT NULL DEFAULT '',
+                `IsActive` tinyint(1) NOT NULL DEFAULT 1,
+                `JoinedAt` datetime(6) NOT NULL,
+                `Co2SavedGrams` double NOT NULL DEFAULT 0,
+                `PointsEarned` int NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`),
+                UNIQUE KEY `IX_WalkBuddyParticipants_WalkBuddyWalkId_UserId` (`WalkBuddyWalkId`, `UserId`)
             ) CHARACTER SET=utf8mb4;"
         };
 
