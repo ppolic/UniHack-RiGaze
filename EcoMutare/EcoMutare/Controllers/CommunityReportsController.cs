@@ -142,18 +142,18 @@ public class CommunityReportsController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult<CommunityReportDto>> UploadPhoto(
         int id,
-        [FromForm] IFormFile photo,
+        [FromForm] UploadReportPhotoRequest request,
         CancellationToken ct = default)
     {
         var userId = User.GetUserId();
         if (userId is null) return Unauthorized();
 
-        var (error, extension) = await _photos.ValidateAsync(photo, ct);
+        var (error, extension) = await _photos.ValidateAsync(request.Photo, ct);
         if (error is not null)
             return BadRequest(new ProblemDetails { Status = 400, Title = error });
 
         var result = await _community.SetReportPhotoAsync(
-            id, userId.Value, token => _photos.SaveAsync(photo, extension, token), ct);
+            id, userId.Value, token => _photos.SaveAsync(request.Photo!, extension, token), ct);
 
         if (result.Status == ReportPhotoStatus.NotFound)
             return NotFound(new { Message = $"Prijava #{id} nije pronađena." });

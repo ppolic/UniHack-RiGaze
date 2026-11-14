@@ -3,10 +3,9 @@ using EcoMutare.Domain;
 
 namespace EcoMutare.Dtos;
 
-/// <summary>
 /// Prikaz jedne građanske prijave u stvarnom vremenu (blokada ceste, nepristupačno područje, blokirana staza ili nedostajuća biciklistička staza)
 /// ili prijave povučene uživo sa službenog portala Grada Temišvara (sesizari.primariatm.ro).
-/// </summary>
+
 public class CommunityReportDto
 {
     public int Id { get; set; }
@@ -68,6 +67,16 @@ public class CreateCommunityReportRequestDto
 /// plus datoteka Photo (JPEG ili PNG, najviše 5 MB). UserId se uvijek uzima iz prijave (tokena), ne iz forme.
 /// </summary>
 public class CreateCommunityReportWithPhotoRequest : CreateCommunityReportRequestDto
+{
+    /// <summary>Fotografija s kamere (JPEG/PNG, najviše 5 MB).</summary>
+    public IFormFile? Photo { get; set; }
+}
+
+/// <summary>
+/// Zahtjev za dodavanje ili zamjenu fotografije na postojećoj prijavi (multipart/form-data, polje "Photo" / "photo").
+/// Datoteka je zamotana u klasu jer Swagger ne podržava samostalni [FromForm] IFormFile uz parametar rute.
+/// </summary>
+public class UploadReportPhotoRequest
 {
     /// <summary>Fotografija s kamere (JPEG/PNG, najviše 5 MB).</summary>
     public IFormFile? Photo { get; set; }

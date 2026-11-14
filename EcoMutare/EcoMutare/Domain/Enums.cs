@@ -1,4 +1,4 @@
-namespace EcoMutare.Domain;
+﻿namespace EcoMutare.Domain;
 
 public enum TransportMode
 {
@@ -43,7 +43,7 @@ public enum AgeCategory
     Adult
 }
 
-// Kategorija građanske prijave na terenu u stvarnom vremenu u Timișoari
+// Kategorija Waze-style građanske prijave na terenu u Timișoari
 public enum CommunityReportCategory
 {
     RoadBlockade,

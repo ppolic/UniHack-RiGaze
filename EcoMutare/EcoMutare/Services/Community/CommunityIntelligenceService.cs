@@ -1,4 +1,3 @@
-using System.Text.Json;
 using EcoMutare.Data;
 using EcoMutare.Domain;
 using EcoMutare.Domain.Entities;
@@ -6,6 +5,7 @@ using EcoMutare.Dtos;
 using EcoMutare.Services.Insights;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
+using System.Text.Json;
 
 namespace EcoMutare.Services.Community;
 
