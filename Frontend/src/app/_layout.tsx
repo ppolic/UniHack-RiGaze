@@ -4,7 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { BackendSessionBridge } from '../components/auth/BackendSessionBridge';
 import { ENV } from '../config/env';
-import { Auth0Provider } from '@auth0/auth0-react';
+import { Auth0Provider } from '../services/auth0Service';
 import { colors } from '../theme/colors';
 import { useAuth } from '../hooks/useAuth';
 import { useTranslation } from '../hooks/useTranslation';
@@ -85,7 +85,9 @@ export default function RootLayout() {
   const domain = ENV.AUTH0_DOMAIN;
   const clientId = ENV.AUTH0_CLIENT_ID;
   const redirectUri =
-    typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5279';
+    typeof window !== 'undefined' && window.location?.origin
+      ? window.location.origin
+      : 'http://localhost:5279';
 
   return (
     <Auth0Provider

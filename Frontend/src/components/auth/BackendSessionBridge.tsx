@@ -1,8 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import { useAuth0 } from '@auth0/auth0-react';
+import { Platform } from 'react-native';
+import { useAuth0 } from '../../services/auth0Service';
 import { useUserStore } from '../../store/userStore';
 import { authService } from '../../services/authService';
 import { resolveAuth0Intelligence } from '../../hooks/useAuth';
+import { UserProfile } from '../../types/user';
 
 /**
  * Resilient bridge between Auth0 authentication and the local backend.
@@ -45,6 +47,40 @@ export function BackendSessionBridge({ children }: { children: React.ReactNode }
       })
       .catch((err) => {
         console.warn('[BeGreen] Auth0 backend session sync fallback:', err?.message);
+        if (!active) return;
+        if (Platform.OS !== 'web' || subject === 'auth0|begreen-mobile-demo') {
+          syncedRef.current = subject;
+          const fallbackUser: UserProfile = {
+            id: '1',
+            email: email || 'andrei.popescu@student.upt.ro',
+            fullName: displayName || 'Andrei Popescu',
+            birthDate: '2003-05-14',
+            age: 23,
+            totalEcoPoints: 420,
+            totalCo2SavedKg: 14.8,
+            completedTripsCount: 4,
+            preferences: {
+              preferredModes: ['Bike', 'Walk', 'PublicTransport'],
+              hasDisability: false,
+              wcagLargeText: false,
+              wcagTextRouteMode: false,
+              hasOwnBicycle: true,
+              hasOwnScooter: false,
+              hasOwnCar: false,
+            },
+            verifiedOrganization: intel.verifiedOrg,
+            organizationBadge: intel.orgBadge,
+            passkeyEnabled: intel.usedPasskey,
+            ageCategory: intel.ageCategory,
+            zeroKnowledgeAgeVerified: intel.zeroKnowledgeAgeVerified,
+            trustScore: intel.trustScore,
+            trustBadge: intel.trustBadge,
+            wazeVoteWeight: intel.wazeVoteWeight,
+            emailVerified: intel.emailVerified,
+          };
+          useUserStore.getState().setToken('mock-mobile-demo-token');
+          useUserStore.getState().setUser(fallbackUser);
+        }
       });
 
     return () => {

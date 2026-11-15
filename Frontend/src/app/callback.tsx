@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
 import { Redirect } from 'expo-router';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from '../services/auth0Service';
 import { useAuth } from '../hooks/useAuth';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -15,7 +15,7 @@ export default function AuthCallbackScreen() {
   const authenticated = isAuthenticated;
 
   if (!loading) {
-    return <Redirect href={authenticated ? '/(tabs)' : '/(auth)/login'} />;
+    return <Redirect href={authenticated ? '/(tabs)/home' : '/(auth)/login'} />;
   }
 
   return (

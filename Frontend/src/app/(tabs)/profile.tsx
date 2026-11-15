@@ -13,7 +13,7 @@ import { useUserStore } from '../../store/userStore';
 import { authService } from '../../services/authService';
 import { API_CONFIG, isRealJwtToken } from '../../services/api';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from '../../services/auth0Service';
 import { captureSession, verifyAccount } from '../../services/fe2Session';
 import { useTranslation } from '../../hooks/useTranslation';
 

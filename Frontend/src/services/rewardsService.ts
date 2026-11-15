@@ -1,4 +1,4 @@
-import { apiFetch } from './api';
+import { apiFetch, isRealJwtToken } from './api';
 import { assertSession, captureSession, isRecord, nonnegative, nonnegativeInteger, positiveId, verifyAccount } from './fe2Session';
 import { RewardCoupon, RewardRedemption, RedemptionRecord, TripHistoryItem } from '../types/rewards';
 import { useUserStore } from '../store/userStore';
@@ -6,6 +6,96 @@ import { getAppLanguage, getTranslations } from '../hooks/useTranslation';
 
 let redeeming = false;
 let mutationVersion = 0;
+
+let demoBalance = 420;
+let demoNextTxId = 102;
+const DEMO_COUPONS: RewardCoupon[] = [
+  {
+    id: '1',
+    title: 'STPT 24h Green Pass',
+    description: 'Bilet gratuit 24h pe toate liniile STPT (tramvai, autobuz, troleibuz) în Timișoara.',
+    pointsCost: 150,
+  },
+  {
+    id: '2',
+    title: 'VeloTM 2h Bike Ride',
+    description: '2 ore gratuite de închiriere bicicletă VeloTM în orice stație din Timișoara.',
+    pointsCost: 100,
+  },
+  {
+    id: '3',
+    title: '50% Reducere Cafea Eco',
+    description: '50% reducere la cafea în cană reutilizabilă la cafenelele partenere din centru.',
+    pointsCost: 80,
+  },
+  {
+    id: '4',
+    title: '10 RON Voucher Iulius Eco',
+    description: 'Voucher de 10 RON în magazinele eco partenere din Iulius Town.',
+    pointsCost: 250,
+  },
+];
+
+const demoRedemptions: RedemptionRecord[] = [
+  {
+    transactionId: '101',
+    rewardId: '3',
+    pointsSpent: 80,
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    description: 'Activare: 50% Reducere Cafea Eco',
+  },
+];
+
+const DEMO_TRIPS: TripHistoryItem[] = [
+  {
+    id: '1',
+    date: '15.11.2026, 10:25',
+    originName: 'Campus UPT',
+    destinationName: 'Piața Victoriei',
+    mode: 'Bike',
+    distanceKm: 3.5,
+    durationMinutes: 14,
+    co2SavedGrams: 420,
+    pointsEarned: 110,
+  },
+  {
+    id: '2',
+    date: '14.11.2026, 17:40',
+    originName: 'Piața Unirii',
+    destinationName: 'Parcul Rozelor',
+    mode: 'Walk',
+    distanceKm: 1.8,
+    durationMinutes: 22,
+    co2SavedGrams: 216,
+    pointsEarned: 75,
+  },
+  {
+    id: '3',
+    date: '14.11.2026, 09:10',
+    originName: 'Gara Timișoara Nord',
+    destinationName: 'Iulius Town',
+    mode: 'PublicTransport',
+    distanceKm: 4.2,
+    durationMinutes: 18,
+    co2SavedGrams: 380,
+    pointsEarned: 65,
+  },
+  {
+    id: '4',
+    date: '13.11.2026, 14:15',
+    originName: 'Complex Studențesc',
+    destinationName: 'Malul Begăi',
+    mode: 'Scooter',
+    distanceKm: 2.6,
+    durationMinutes: 11,
+    co2SavedGrams: 290,
+    pointsEarned: 60,
+  },
+];
+
+function isDemoMode(): boolean {
+  return !isRealJwtToken(useUserStore.getState().token);
+}
 
 function validDate(value: unknown): value is string {
   if (typeof value !== 'string' || !Number.isFinite(Date.parse(value))) return false;
@@ -19,6 +109,13 @@ function validDate(value: unknown): value is string {
 
 export const rewardsService = {
   async getBalance(): Promise<number> {
+    if (isDemoMode()) {
+      const latest = useUserStore.getState();
+      if (latest.user && latest.user.totalEcoPoints !== demoBalance) {
+        latest.setUser({ ...latest.user, totalEcoPoints: demoBalance });
+      }
+      return demoBalance;
+    }
     const session = captureSession();
     const initial = useUserStore.getState().user!;
     const startedVersion = mutationVersion;
@@ -31,6 +128,9 @@ export const rewardsService = {
   },
 
   async getCoupons(): Promise<RewardCoupon[]> {
+    if (isDemoMode()) {
+      return DEMO_COUPONS;
+    }
     const t = getTranslations();
     const session = captureSession();
     const response = await apiFetch<unknown>('/rewards', {}, session.token);
@@ -52,6 +152,31 @@ export const rewardsService = {
 
   async redeemCoupon(couponId: string): Promise<RewardRedemption> {
     const t = getTranslations();
+    if (isDemoMode()) {
+      const coupon = DEMO_COUPONS.find((c) => c.id === couponId);
+      if (!coupon) throw new Error(t.rewardsInvalidId);
+      if (demoBalance < coupon.pointsCost) {
+        throw new Error(t.rewardsMissingPoints(coupon.pointsCost - demoBalance));
+      }
+      demoBalance -= coupon.pointsCost;
+      const txId = String(demoNextTxId++);
+      const promoCode = `BEGREEN-${couponId}-${Math.floor(1000 + Math.random() * 9000)}`;
+      demoRedemptions.unshift({
+        transactionId: txId,
+        rewardId: couponId,
+        pointsSpent: coupon.pointsCost,
+        createdAt: new Date().toISOString(),
+        description: `Activare: ${coupon.title}`,
+      });
+      return {
+        success: true,
+        rewardId: couponId,
+        transactionId: txId,
+        promoCode,
+        newBalance: demoBalance,
+        pointsSpent: coupon.pointsCost,
+      };
+    }
     if (!/^[1-9]\d*$/.test(couponId) || !Number.isSafeInteger(Number(couponId))) {
       throw new Error(t.rewardsInvalidId);
     }
@@ -78,6 +203,9 @@ export const rewardsService = {
   },
 
   async getRedemptions(): Promise<RedemptionRecord[]> {
+    if (isDemoMode()) {
+      return [...demoRedemptions];
+    }
     const t = getTranslations();
     const session = captureSession();
     const records: RedemptionRecord[] = [];
@@ -123,6 +251,9 @@ export const rewardsService = {
   },
 
   async getTripHistory(): Promise<TripHistoryItem[]> {
+    if (isDemoMode()) {
+      return DEMO_TRIPS;
+    }
     const t = getTranslations();
     const session = captureSession();
     const initial = useUserStore.getState().user!;

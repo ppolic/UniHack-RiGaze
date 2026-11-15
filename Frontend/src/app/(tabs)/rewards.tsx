@@ -231,8 +231,8 @@ export default function RewardsScreen() {
                         <Text style={styles.couponLabel}>{t.rewardsBadgeLabel}</Text>
                         <Badge label={coupon.pointsCost + ' ' + t.points} variant="reward" style={styles.badge} />
                       </View>
-                      <Text style={styles.couponTitle}>{coupon.title}</Text>
-                      {!!coupon.description && <Text style={styles.description}>{coupon.description}</Text>}
+                      <Text style={styles.couponTitle}>{translateMessage(coupon.title)}</Text>
+                      {!!coupon.description && <Text style={styles.description}>{translateMessage(coupon.description)}</Text>}
                       <View style={styles.activation}>
                         <AppButton title={redeemed ? t.rewardsRedeemedBtn : t.rewardsRedeemBtn}
                           loading={pendingId === coupon.id}
@@ -281,7 +281,7 @@ export default function RewardsScreen() {
             {rows.map((row) => (
               <AppCard key={row.transactionId} style={styles.statusCard}>
                 <Badge label={row.pointsSpent + ' ' + t.points + t.rewardsSpentSuffix} variant="reward" style={styles.badge} />
-                <Text style={styles.couponTitle}>{row.title}</Text>
+                <Text style={styles.couponTitle}>{translateMessage(row.title)}</Text>
                 {row.createdAt && <Text style={styles.feedback}>{new Date(row.createdAt).toLocaleString(language === 'en' ? 'en-GB' : 'ro-RO')}</Text>}
                 {row.promoCode ? <Text selectable style={styles.promoCode}>{row.promoCode}</Text> :
                   <Text style={styles.description}>{t.rewardsCodeUnavailable}</Text>}

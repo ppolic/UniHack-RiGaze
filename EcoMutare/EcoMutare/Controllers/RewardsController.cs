@@ -100,7 +100,7 @@ public class RewardsController : ControllerBase
                 Points = -cost,
                 Type = PointTransactionType.Redeemed,
                 RewardId = reward.Id,
-                Description = $"Otkup: {reward.Name}",
+                Description = $"Activare: {reward.Name}",
             };
             _db.PointTransactions.Add(txn);
             await _db.SaveChangesAsync(ct);

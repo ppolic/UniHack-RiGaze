@@ -71,17 +71,17 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       case 'Bike':
         return t.modeBikeLabel;
       case 'BikePool':
-        return 'Bike Pool 🚴‍♂️🤝🚴‍♀️';
+        return t.modeBikePoolLabel;
       case 'PublicTransport':
         return t.modeTransitLabel;
       case 'Walk':
         return t.modeWalkLabel;
       case 'WalkBuddy':
-        return 'Walk Buddy 🚶‍♂️🤝🚶‍♀️';
+        return t.modeWalkBuddyLabel;
       case 'Scooter':
         return t.modeScooterLabel;
       case 'Carpool':
-        return 'Carpool 🚗👥';
+        return t.modeCarpoolLabel;
       case 'Car':
         return t.modeCarLabel;
       default:
@@ -279,7 +279,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       {isSelected && isWalkLike && (
         <View style={styles.socialBox}>
           <Text style={styles.socialQuestionTitle}>
-            🚶‍♂️ Planiraš šetnju: Želiš li šetati sam(a) ili s Walk Buddyjem?
+            {t.walkBuddyQuestion}
           </Text>
           <View style={styles.socialChoiceRow}>
             <TouchableOpacity
@@ -287,7 +287,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, walkChoice === 'alone' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, walkChoice === 'alone' && styles.socialChoiceTextActive]}>
-                🚶 Šetam sam(a)
+                {t.walkAloneBtn}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -295,39 +295,39 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, walkChoice === 'buddy' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, walkChoice === 'buddy' && styles.socialChoiceTextActive]}>
-                🤝 Walk Buddy (+20 bodova)
+                {t.walkBuddyBtn}
               </Text>
             </TouchableOpacity>
           </View>
 
           {walkChoice === 'buddy' && (
             <View style={styles.buddySubSection}>
-              <Text style={styles.buddySubTitle}>Obližnji ponuđeni Walk Buddyji:</Text>
+              <Text style={styles.buddySubTitle}>{t.nearbyWalkBuddiesTitle}</Text>
               <View style={styles.buddyItem}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.buddyName}>🎓 Elena V. (Studentica UPT)</Text>
-                  <Text style={styles.buddyMeta}>Udaljena 150m • Ide istom rutom prema centru</Text>
+                  <Text style={styles.buddyName}>{t.walkBuddy1Name}</Text>
+                  <Text style={styles.buddyMeta}>{t.walkBuddy1Meta}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setJoinedBuddy('Elena V.')}
                   style={[styles.buddyJoinBtn, joinedBuddy === 'Elena V.' && styles.buddyJoinBtnActive]}
                 >
                   <Text style={styles.buddyJoinBtnText}>
-                    {joinedBuddy === 'Elena V.' ? '✓ Spojeni!' : 'Spoji se'}
+                    {joinedBuddy === 'Elena V.' ? t.walkBuddyJoinedBtn : t.walkBuddyJoinBtn}
                   </Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.buddyItem}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.buddyName}>🏢 Radu P. (Continental Commuter)</Text>
-                  <Text style={styles.buddyMeta}>Udaljen 280m • Kreće za 3 minute</Text>
+                  <Text style={styles.buddyName}>{t.walkBuddy2Name}</Text>
+                  <Text style={styles.buddyMeta}>{t.walkBuddy2Meta}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setJoinedBuddy('Radu P.')}
                   style={[styles.buddyJoinBtn, joinedBuddy === 'Radu P.' && styles.buddyJoinBtnActive]}
                 >
                   <Text style={styles.buddyJoinBtnText}>
-                    {joinedBuddy === 'Radu P.' ? '✓ Spojeni!' : 'Spoji se'}
+                    {joinedBuddy === 'Radu P.' ? t.walkBuddyJoinedBtn : t.walkBuddyJoinBtn}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -340,12 +340,12 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
                   {isEnrolledAsBuddy && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.enrollText}>
-                  Omogući me kao ponuđenog Walk Buddyja na ovoj ruti
+                  {t.walkBuddyEnrollLabel}
                 </Text>
               </TouchableOpacity>
               {isEnrolledAsBuddy && (
                 <Text style={styles.enrolledSuccess}>
-                  ✅ Registriran si kao ponuđeni Walk Buddy! Drugi građani te vide na ruti.
+                  {t.walkBuddyEnrolledMsg}
                 </Text>
               )}
             </View>
@@ -357,7 +357,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
       {isSelected && isBikeLike && (
         <View style={styles.socialBox}>
           <Text style={styles.socialQuestionTitle}>
-            🚴 Planiraš bicikl: Voziš li sam(a) ili želiš Bike Pool grupu?
+            {t.bikePoolQuestion}
           </Text>
           <View style={styles.socialChoiceRow}>
             <TouchableOpacity
@@ -365,7 +365,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, bikeChoice === 'alone' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, bikeChoice === 'alone' && styles.socialChoiceTextActive]}>
-                🚴 Vozim sam(a)
+                {t.bikeAloneBtn}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -373,25 +373,25 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, bikeChoice === 'pool' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, bikeChoice === 'pool' && styles.socialChoiceTextActive]}>
-                🚴‍♂️🚴‍♀️ Bike Pool (+20 bodova)
+                {t.bikePoolBtn}
               </Text>
             </TouchableOpacity>
           </View>
 
           {bikeChoice === 'pool' && (
             <View style={styles.buddySubSection}>
-              <Text style={styles.buddySubTitle}>Obližnje biciklističke grupe (Bike Pool):</Text>
+              <Text style={styles.buddySubTitle}>{t.nearbyBikePoolsTitle}</Text>
               <View style={styles.buddyItem}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.buddyName}>🚴 VeloTM Campus Convoy (UPT/UVT)</Text>
-                  <Text style={styles.buddyMeta}>3 biciklista • Polazak sa Studentskog trga</Text>
+                  <Text style={styles.buddyName}>{t.bikePool1Name}</Text>
+                  <Text style={styles.buddyMeta}>{t.bikePool1Meta}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setJoinedBikeGroup('VeloTM Convoy')}
                   style={[styles.buddyJoinBtn, joinedBikeGroup === 'VeloTM Convoy' && styles.buddyJoinBtnActive]}
                 >
                   <Text style={styles.buddyJoinBtnText}>
-                    {joinedBikeGroup === 'VeloTM Convoy' ? '✓ U grupi!' : 'Pridruži se'}
+                    {joinedBikeGroup === 'VeloTM Convoy' ? t.bikePoolJoinedBtn : t.bikePoolJoinBtn}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -404,12 +404,12 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
                   {isEnrolledInBikePool && <Text style={styles.checkmark}>✓</Text>}
                 </View>
                 <Text style={styles.enrollText}>
-                  Omogući me kao člana / organizatora Bike Poola
+                  {t.bikePoolEnrollLabel}
                 </Text>
               </TouchableOpacity>
               {isEnrolledInBikePool && (
                 <Text style={styles.enrolledSuccess}>
-                  ✅ Tvoj Bike Pool je otvoren za priključivanje biciklista na ruti!
+                  {t.bikePoolEnrolledMsg}
                 </Text>
               )}
             </View>
@@ -417,11 +417,11 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
         </View>
       )}
 
-      {/* 3. CARPOOL / DIJELJENJE VOŽNJE ZA VOZAČE */}
+      {/* 3. CARPOOL / SHARED DRIVING */}
       {isSelected && isCarLike && (
         <View style={styles.socialBox}>
           <Text style={styles.socialQuestionTitle}>
-            🚗 Planiraš vožnju autom: Voziš li sam(a) ili želiš povesti još ljudi?
+            {t.carpoolQuestion}
           </Text>
           <View style={styles.socialChoiceRow}>
             <TouchableOpacity
@@ -429,7 +429,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, carChoice === 'alone' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, carChoice === 'alone' && styles.socialChoiceTextActive]}>
-                🚗 Vozim sam(a)
+                {t.carAloneBtn}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -437,46 +437,46 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
               style={[styles.socialChoiceBtn, carChoice === 'carpool' && styles.socialChoiceBtnActive]}
             >
               <Text style={[styles.socialChoiceText, carChoice === 'carpool' && styles.socialChoiceTextActive]}>
-                👥 Ponudi Carpool (+35 bodova)
+                {t.carpoolOfferBtn}
               </Text>
             </TouchableOpacity>
           </View>
 
           {carChoice === 'carpool' && (
             <View style={styles.buddySubSection}>
-              <Text style={styles.buddySubTitle}>Putnici na tvojoj ruti koji traže prijevoz do obližnje lokacije:</Text>
+              <Text style={styles.buddySubTitle}>{t.nearbyCarpoolPassengersTitle}</Text>
               <View style={styles.buddyItem}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.buddyName}>🎓 Mihai S. (UPT Elektro)</Text>
-                  <Text style={styles.buddyMeta}>Traži prijevoz do Complex Studențesc</Text>
+                  <Text style={styles.buddyName}>{t.carpoolPassenger1Name}</Text>
+                  <Text style={styles.buddyMeta}>{t.carpoolPassenger1Meta}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setAcceptedPassenger('Mihai S.')}
                   style={[styles.buddyJoinBtn, acceptedPassenger === 'Mihai S.' && styles.buddyJoinBtnActive]}
                 >
                   <Text style={styles.buddyJoinBtnText}>
-                    {acceptedPassenger === 'Mihai S.' ? '✓ Prihvaćen!' : 'Povezi (+35 pts)'}
+                    {acceptedPassenger === 'Mihai S.' ? t.carpoolAcceptedBtn : t.carpoolPickUpBtn}
                   </Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.buddyItem}>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.buddyName}>🏢 Andreea D. (Continental)</Text>
-                  <Text style={styles.buddyMeta}>Traži prijevoz prema Calea Buziașului</Text>
+                  <Text style={styles.buddyName}>{t.carpoolPassenger2Name}</Text>
+                  <Text style={styles.buddyMeta}>{t.carpoolPassenger2Meta}</Text>
                 </View>
                 <TouchableOpacity
                   onPress={() => setAcceptedPassenger('Andreea D.')}
                   style={[styles.buddyJoinBtn, acceptedPassenger === 'Andreea D.' && styles.buddyJoinBtnActive]}
                 >
                   <Text style={styles.buddyJoinBtnText}>
-                    {acceptedPassenger === 'Andreea D.' ? '✓ Prihvaćen!' : 'Povezi (+35 pts)'}
+                    {acceptedPassenger === 'Andreea D.' ? t.carpoolAcceptedBtn : t.carpoolPickUpBtn}
                   </Text>
                 </TouchableOpacity>
               </View>
 
               <View style={{ marginTop: spacing.sm, flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
                 <Text style={{ ...typography.caption, color: colors.textSecondary, fontWeight: '700' }}>
-                  Slobodnih mjesta u autu:
+                  {t.carpoolAvailableSeatsLabel}
                 </Text>
                 <View style={{ flexDirection: 'row', gap: 6 }}>
                   {[1, 2, 3, 4].map((num) => (
@@ -502,7 +502,7 @@ export const RouteOptionCard: React.FC<RouteOptionCardProps> = ({
 
 const styles = StyleSheet.create({
   desktopCard: { width: '100%', maxWidth: 960, alignSelf: 'center', padding: spacing.lg },
-  desktopHeader: { flexWrap: 'wrap', gap: spacing.md },
+  desktopHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: spacing.md },
   desktopMode: { flexBasis: 200, flexGrow: 1, flexShrink: 1, minWidth: 0 },
   desktopBadges: { flexWrap: 'wrap', flexShrink: 1, maxWidth: '100%' },
   desktopMetrics: { flexWrap: 'wrap', gap: spacing.md },
@@ -520,16 +520,17 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: spacing.xs,
     marginBottom: spacing.sm,
   },
   modeIndicatorRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs + 2,
-    flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   modeDot: {
     width: 10,
@@ -540,9 +541,11 @@ const styles = StyleSheet.create({
     ...typography.bodyMedium,
     fontWeight: '700',
     color: colors.textPrimary,
+    flexShrink: 1,
   },
   badgesRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.xs,
   },
   metricsRow: {

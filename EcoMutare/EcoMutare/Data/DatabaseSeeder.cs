@@ -155,14 +155,30 @@ public static class DatabaseSeeder
         }
 
         // 4. Partnerske nagrade u Timișoari
+        var allDbRewards = await db.Rewards.ToListAsync(ct);
+        bool updatedExistingRewards = false;
+        foreach (var r in allDbRewards)
+        {
+            if (r.Name == "Besplatna karta za javni prijevoz") { r.Name = "Bilet gratuit pentru transportul public"; r.Description = "Bilet pentru o singură călătorie"; updatedExistingRewards = true; }
+            else if (r.Name == "Popust na kavu") { r.Name = "Reducere la cafea"; r.Description = "10% reducere la parteneri"; updatedExistingRewards = true; }
+            else if (r.Name == "Besplatna vožnja romobilom") { r.Name = "Cursă gratuită cu trotineta electrică"; r.Description = "30 de minute"; updatedExistingRewards = true; }
+            else if (r.Name == "STPT Dnevna karta (Tramvaj / Bus / Vaporetto)") { r.Name = "Abonament de o zi STPT (Tramvai / Autobuz / Vaporetto)"; r.Description = "Călătorii nelimitate timp de o zi pe toate liniile de transport public din Timișoara (cod: STPT-ECO-2026)"; updatedExistingRewards = true; }
+            else if (r.Name == "VeloTM – 3 besplatna otključavanja bicikla") { r.Name = "VeloTM – 3 deblocări gratuite de bicicletă"; r.Description = "Voucher pentru sistemul public de biciclete VeloTM (cod: VELOTM-FREE3)"; updatedExistingRewards = true; }
+            else if (r.Name == "Tucano Coffee Iulius Town – Besplatna kava") { r.Name = "Tucano Coffee Iulius Town – Cafea gratuită"; r.Description = "Cafea de specialitate gratuită pentru sosirea cu bicicleta, pe jos sau cu transportul public (cod: TUCANO-GREEN)"; updatedExistingRewards = true; }
+        }
+        if (updatedExistingRewards)
+        {
+            await db.SaveChangesAsync(ct);
+        }
+
         if (await db.Rewards.CountAsync(ct) < 5)
         {
             var existingRewards = await db.Rewards.Select(r => r.Name).ToListAsync(ct);
             var extraRewards = new[]
             {
-                new Reward { Name = "STPT Dnevna karta (Tramvaj / Bus / Vaporetto)", Description = "Cjelodnevna vožnja svim linijama javnog prijevoza u Timișoari (kod: STPT-ECO-2026)", PointsCost = 120, IsActive = true },
-                new Reward { Name = "VeloTM – 3 besplatna otključavanja bicikla", Description = "Voucher za sustav javnih bicikala VeloTM (kod: VELOTM-FREE3)", PointsCost = 60, IsActive = true },
-                new Reward { Name = "Tucano Coffee Iulius Town – Besplatna kava", Description = "Besplatna specialty kava za dolazak biciklom, pješke ili JPP-om (kod: TUCANO-GREEN)", PointsCost = 80, IsActive = true }
+                new Reward { Name = "Abonament de o zi STPT (Tramvai / Autobuz / Vaporetto)", Description = "Călătorii nelimitate timp de o zi pe toate liniile de transport public din Timișoara (cod: STPT-ECO-2026)", PointsCost = 120, IsActive = true },
+                new Reward { Name = "VeloTM – 3 deblocări gratuite de bicicletă", Description = "Voucher pentru sistemul public de biciclete VeloTM (cod: VELOTM-FREE3)", PointsCost = 60, IsActive = true },
+                new Reward { Name = "Tucano Coffee Iulius Town – Cafea gratuită", Description = "Cafea de specialitate gratuită pentru sosirea cu bicicleta, pe jos sau cu transportul public (cod: TUCANO-GREEN)", PointsCost = 80, IsActive = true }
             };
             foreach (var er in extraRewards)
             {

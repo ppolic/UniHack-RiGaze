@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from '../../services/auth0Service';
 import { useAuth } from '../../hooks/useAuth';
 import { authService } from '../../services/authService';
 import { ApiHttpError } from '../../services/api';
@@ -42,7 +42,7 @@ export default function LoginScreen() {
       setErrorMsg(null);
       await login({ authorizationParams: { screen_hint: 'signup' } });
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Neuspješna Auth0 registracija.');
+      setErrorMsg(err?.message || t.registerFailed);
     }
   };
 
@@ -51,14 +51,17 @@ export default function LoginScreen() {
       setErrorMsg(null);
       await login();
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Neuspješna Auth0 prijava.');
+      setErrorMsg(err?.message || t.loginFailed);
     }
   };
 
   const logout = () =>
     auth0Logout({
       logoutParams: {
-        returnTo: typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5279',
+        returnTo:
+          typeof window !== 'undefined' && window.location?.origin
+            ? window.location.origin
+            : 'http://localhost:5279',
       },
     });
 
@@ -94,18 +97,9 @@ export default function LoginScreen() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Loading...</Text>
-      </View>
-    );
-  }
-
   if (isAuthenticated && user) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { flex: 1 }]}>
         <View style={styles.header}>
           <View style={styles.logoBadge}>
             <Text style={styles.logoText}>🌱</Text>
@@ -197,12 +191,16 @@ export default function LoginScreen() {
           <AppButton
             title="Signup"
             onPress={signup}
+            loading={isLoading}
+            disabled={isLoading}
             style={styles.auth0Btn}
           />
           <AppButton
             title="Login"
             variant="outline"
             onPress={handleAuth0Login}
+            loading={isLoading}
+            disabled={isLoading}
             style={styles.auth0Btn}
           />
         </View>

@@ -100,12 +100,12 @@ public static class InMemoryFallbackStore
 
         Rewards = new List<Reward>
         {
-            new() { Id = 1, Name = "Besplatna karta za javni prijevoz", Description = "Jednokratna karta", PointsCost = 100, IsActive = true },
-            new() { Id = 2, Name = "Popust na kavu", Description = "10% popusta kod partnera", PointsCost = 50, IsActive = true },
-            new() { Id = 3, Name = "Besplatna vožnja romobilom", Description = "30 minuta", PointsCost = 150, IsActive = true },
-            new() { Id = 4, Name = "STPT Dnevna karta (Tramvaj / Bus / Vaporetto)", Description = "Cjelodnevna vožnja svim linijama javnog prijevoza u Timișoari (kod: STPT-ECO-2026)", PointsCost = 120, IsActive = true },
-            new() { Id = 5, Name = "VeloTM – 3 besplatna otključavanja bicikla", Description = "Voucher za sustav javnih bicikala VeloTM (kod: VELOTM-FREE3)", PointsCost = 60, IsActive = true },
-            new() { Id = 6, Name = "Tucano Coffee Iulius Town – Besplatna kava", Description = "Besplatna specialty kava za dolazak biciklom, pješke ili JPP-om (kod: TUCANO-GREEN)", PointsCost = 80, IsActive = true }
+            new() { Id = 1, Name = "Bilet gratuit pentru transportul public", Description = "Bilet pentru o singură călătorie", PointsCost = 100, IsActive = true },
+            new() { Id = 2, Name = "Reducere la cafea", Description = "10% reducere la parteneri", PointsCost = 50, IsActive = true },
+            new() { Id = 3, Name = "Cursă gratuită cu trotineta electrică", Description = "30 de minute", PointsCost = 150, IsActive = true },
+            new() { Id = 4, Name = "Abonament de o zi STPT (Tramvai / Autobuz / Vaporetto)", Description = "Călătorii nelimitate timp de o zi pe toate liniile de transport public din Timișoara (cod: STPT-ECO-2026)", PointsCost = 120, IsActive = true },
+            new() { Id = 5, Name = "VeloTM – 3 deblocări gratuite de bicicletă", Description = "Voucher pentru sistemul public de biciclete VeloTM (cod: VELOTM-FREE3)", PointsCost = 60, IsActive = true },
+            new() { Id = 6, Name = "Tucano Coffee Iulius Town – Cafea gratuită", Description = "Cafea de specialitate gratuită pentru sosirea cu bicicleta, pe jos sau cu transportul public (cod: TUCANO-GREEN)", PointsCost = 80, IsActive = true }
         };
 
         Trips = new List<TripHistory>
@@ -324,7 +324,7 @@ public static class InMemoryFallbackStore
                 Points = -reward.PointsCost,
                 Type = PointTransactionType.Redeemed,
                 RewardId = reward.Id,
-                Description = $"Otkup: {reward.Name}",
+                Description = $"Activare: {reward.Name}",
                 CreatedAt = DateTime.UtcNow
             };
             Transactions.Add(txn);

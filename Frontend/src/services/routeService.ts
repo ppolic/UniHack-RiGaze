@@ -677,7 +677,7 @@ async function buildRoadFollowingPlanResponse(
   const walkBuddyOption: RouteOptionDto = {
     id: 'walk-buddy',
     mode: 'WalkBuddy',
-    title: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    title: tr.svcWalkBuddyTitle,
     durationMinutes: walkDurationMin,
     distanceKm: walkDistKm,
     costRon: 0,
@@ -688,7 +688,7 @@ async function buildRoadFollowingPlanResponse(
     segments: [
       {
         mode: 'WalkBuddy',
-        description: 'Šetnja u društvu verificiranog Walk Buddyja',
+        description: tr.svcWalkBuddyDesc,
         durationMinutes: walkDurationMin,
         distanceKm: walkDistKm,
         geometry: walkGeometry,
@@ -701,7 +701,7 @@ async function buildRoadFollowingPlanResponse(
   const bikePoolOption: RouteOptionDto = {
     id: 'bike-pool',
     mode: 'BikePool',
-    title: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    title: tr.svcBikePoolTitle,
     durationMinutes: totalBikeDurationMin,
     distanceKm: totalBikeDistKm,
     costRon: bikeOption.costRon,
@@ -712,7 +712,7 @@ async function buildRoadFollowingPlanResponse(
     segments: [
       {
         mode: 'BikePool',
-        description: 'Zajednička biciklistička vožnja u grupi (Bike Pool)',
+        description: tr.svcBikePoolDesc,
         durationMinutes: totalBikeDurationMin,
         distanceKm: totalBikeDistKm,
         geometry: directBikeGeometry,
@@ -725,7 +725,7 @@ async function buildRoadFollowingPlanResponse(
   const carpoolOption: RouteOptionDto = {
     id: 'carpool',
     mode: 'Carpool',
-    title: 'Verified Carpool 🚗👥',
+    title: tr.svcCarpoolTitle,
     durationMinutes: carDriveMin + carWalkMin,
     distanceKm: totalCarDistKm,
     costRon: Math.max(1, Number((carOption.costRon / 3).toFixed(1))),
@@ -886,12 +886,13 @@ export const routeService = {
         const bikeOpt = enrichedOptions.find((o) => o.mode === 'Bike');
         const carOpt = enrichedOptions.find((o) => o.mode === 'Car');
 
+        const tr = getTranslations();
         const finalOptions = [...enrichedOptions];
         if (walkOpt && !finalOptions.some((o) => o.mode === 'WalkBuddy')) {
           finalOptions.push({
             id: 'walk-buddy',
             mode: 'WalkBuddy',
-            title: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+            title: tr.svcWalkBuddyTitle,
             durationMinutes: walkOpt.durationMinutes,
             distanceKm: walkOpt.distanceKm,
             costRon: 0,
@@ -902,7 +903,7 @@ export const routeService = {
             segments: walkOpt.segments?.map((s) => ({
               ...s,
               mode: 'WalkBuddy' as const,
-              description: 'Šetnja u društvu verificiranog Walk Buddyja',
+              description: tr.svcWalkBuddyDesc,
             })) || [],
             warnings: [],
           });
@@ -911,7 +912,7 @@ export const routeService = {
           finalOptions.push({
             id: 'bike-pool',
             mode: 'BikePool',
-            title: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+            title: tr.svcBikePoolTitle,
             durationMinutes: bikeOpt.durationMinutes,
             distanceKm: bikeOpt.distanceKm,
             costRon: bikeOpt.costRon,
@@ -922,7 +923,7 @@ export const routeService = {
             segments: bikeOpt.segments?.map((s) => ({
               ...s,
               mode: 'BikePool' as const,
-              description: 'Zajednička biciklistička vožnja u grupi (Bike Pool)',
+              description: tr.svcBikePoolDesc,
             })) || [],
             warnings: bikeOpt.warnings || [],
           });
@@ -931,7 +932,7 @@ export const routeService = {
           finalOptions.push({
             id: 'carpool',
             mode: 'Carpool',
-            title: 'Verified Carpool 🚗👥',
+            title: tr.svcCarpoolTitle,
             durationMinutes: carOpt.durationMinutes,
             distanceKm: carOpt.distanceKm,
             costRon: Math.max(1, Number((carOpt.costRon / 3).toFixed(1))),

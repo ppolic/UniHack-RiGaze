@@ -28,8 +28,18 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colors.primaryDark,
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarLabelPosition: 'below-icon',
+        tabBarIconStyle: {
+          width: 48,
+          height: 30,
+          marginBottom: 2,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
+        },
         tabBarLabel: ({ color, children }) => (
-          <Text style={[styles.label, { color }]} numberOfLines={2}>{children}</Text>
+          <Text style={[styles.label, { color }]} numberOfLines={2}>
+            {children}
+          </Text>
         ),
         tabBarLabelStyle: {
           fontSize: 11,
@@ -40,9 +50,9 @@ export default function TabsLayout() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 76 + insets.bottom,
-          paddingBottom: Math.max(8, insets.bottom),
-          paddingTop: 6,
+          height: 84 + insets.bottom,
+          paddingBottom: Math.max(10, insets.bottom),
+          paddingTop: 8,
         },
       }}
     >
@@ -87,10 +97,17 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 11, lineHeight: 14, fontWeight: '600', textAlign: 'center', paddingHorizontal: 2 },
+  label: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 2,
+  },
   iconWrap: {
-    paddingHorizontal: 10,
-    paddingVertical: 2,
+    minWidth: 42,
+    height: 28,
+    paddingHorizontal: 8,
     borderRadius: borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -100,5 +117,8 @@ const styles = StyleSheet.create({
   },
   iconEmoji: {
     fontSize: 18,
+    lineHeight: 22,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
 });

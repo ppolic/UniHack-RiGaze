@@ -241,12 +241,55 @@ export const translations = {
     modeWalkLabel: 'Mers pe jos',
     modeScooterLabel: 'Trotinetă',
     modeCarLabel: 'Mașină',
+    modeWalkBuddyLabel: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    modeBikePoolLabel: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    modeCarpoolLabel: 'Carpool verificat 🚗👥',
     durationShort: 'Durată',
     distanceShort: 'Distanță',
     priceShort: 'Cost',
     selectedComma: ', selectat',
     recommendedComma: ', cel mai verde',
     zeroPointsBadge: '0 puncte',
+    walkBuddyQuestion:
+      '🚶‍♂️ Planifici o plimbare: Mergi singur(ă) sau cu un Walk Buddy?',
+    walkAloneBtn: '🚶 Merg singur(ă)',
+    walkBuddyBtn: '🤝 Walk Buddy (+20 puncte)',
+    nearbyWalkBuddiesTitle: 'Walk Buddy disponibili în apropiere:',
+    walkBuddy1Name: '🎓 Elena V. (Studentă UPT)',
+    walkBuddy1Meta: 'La 150m distanță • Merge pe același traseu spre centru',
+    walkBuddy2Name: '🏢 Radu P. (Navetist Continental)',
+    walkBuddy2Meta: 'La 280m distanță • Pleacă în 3 minute',
+    walkBuddyJoinedBtn: '✓ Conectați!',
+    walkBuddyJoinBtn: 'Conectează-te',
+    walkBuddyEnrollLabel:
+      'Activează-mă ca Walk Buddy disponibil pe acest traseu',
+    walkBuddyEnrolledMsg:
+      '✅ Ești înregistrat ca Walk Buddy disponibil! Ceilalți cetățeni te pot vedea pe traseu.',
+    bikePoolQuestion:
+      '🚴 Planifici un drum cu bicicleta: Pedalezi singur(ă) sau într-un grup Bike Pool?',
+    bikeAloneBtn: '🚴 Pedalez singur(ă)',
+    bikePoolBtn: '🚴‍♂️🚴‍♀️ Bike Pool (+20 puncte)',
+    nearbyBikePoolsTitle: 'Grupuri de cicliști în apropiere (Bike Pool):',
+    bikePool1Name: '🚴 VeloTM Campus Convoy (UPT/UVT)',
+    bikePool1Meta: '3 cicliști • Plecare din Complexul Studențesc',
+    bikePoolJoinedBtn: '✓ În grup!',
+    bikePoolJoinBtn: 'Alătură-te',
+    bikePoolEnrollLabel: 'Activează-mă ca membru / organizator Bike Pool',
+    bikePoolEnrolledMsg:
+      '✅ Grupul tău Bike Pool este deschis pentru alți cicliști de pe traseu!',
+    carpoolQuestion:
+      '🚗 Planifici un drum cu mașina: Conduci singur(ă) sau iei și alți pasageri?',
+    carAloneBtn: '🚗 Conduc singur(ă)',
+    carpoolOfferBtn: '👥 Oferă Carpool (+35 puncte)',
+    nearbyCarpoolPassengersTitle:
+      'Pasageri pe traseul tău care caută transport spre o locație apropiată:',
+    carpoolPassenger1Name: '🎓 Mihai S. (UPT Electro)',
+    carpoolPassenger1Meta: 'Caută transport până în Complexul Studențesc',
+    carpoolPassenger2Name: '🏢 Andreea D. (Continental)',
+    carpoolPassenger2Meta: 'Caută transport spre Calea Buziașului',
+    carpoolAcceptedBtn: '✓ Acceptat!',
+    carpoolPickUpBtn: 'Ia în mașină (+35 pct)',
+    carpoolAvailableSeatsLabel: 'Locuri libere în mașină:',
 
     // TripCompletedModal
     tripEarlyTitle: 'Cursă oprită prematur',
@@ -477,6 +520,13 @@ export const translations = {
     svcApiUnreachable: (url: string) =>
       `Indisponibil (${url}) — Demo Offline este pregătit`,
     svcOriginFallback: 'Plecare',
+    svcWalkBuddyTitle: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    svcWalkBuddyDesc:
+      'Mers pe jos împreună cu un partener verificat Walk Buddy',
+    svcBikePoolTitle: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    svcBikePoolDesc: 'Deplasare în grup cu bicicleta (Bike Pool)',
+    svcCarpoolTitle: 'Carpool verificat 🚗👥',
+    svcCarpoolDesc: 'Călătorie partajată cu mașina cu colegi verificați',
 
     // Stack Headers & Language Toggle
     challengesHeaderTitle: 'Provocări',
@@ -1066,12 +1116,57 @@ export const translations = {
     modeWalkLabel: 'Walking',
     modeScooterLabel: 'Scooter',
     modeCarLabel: 'Car',
+    modeWalkBuddyLabel: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    modeBikePoolLabel: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    modeCarpoolLabel: 'Verified Carpool 🚗👥',
     durationShort: 'Duration',
     distanceShort: 'Distance',
     priceShort: 'Cost',
     selectedComma: ', selected',
     recommendedComma: ', greenest',
     zeroPointsBadge: '0 points',
+    walkBuddyQuestion:
+      '🚶‍♂️ Planning a walk: Walking alone or with a Walk Buddy?',
+    walkAloneBtn: '🚶 Walking alone',
+    walkBuddyBtn: '🤝 Walk Buddy (+20 points)',
+    nearbyWalkBuddiesTitle: 'Available Walk Buddies nearby:',
+    walkBuddy1Name: '🎓 Elena V. (UPT Student)',
+    walkBuddy1Meta: '150m away • Heading on the same route toward the center',
+    walkBuddy2Name: '🏢 Radu P. (Continental Commuter)',
+    walkBuddy2Meta: '280m away • Leaving in 3 minutes',
+    walkBuddyJoinedBtn: '✓ Matched!',
+    walkBuddyJoinBtn: 'Match',
+    walkBuddyEnrollLabel:
+      'Make me available as a Walk Buddy on this route',
+    walkBuddyEnrolledMsg:
+      '✅ You are registered as an available Walk Buddy! Other citizens can see you on the route.',
+    bikePoolQuestion:
+      '🚴 Planning a bike ride: Riding alone or joining a Bike Pool group?',
+    bikeAloneBtn: '🚴 Riding alone',
+    bikePoolBtn: '🚴‍♂️🚴‍♀️ Bike Pool (+20 points)',
+    nearbyBikePoolsTitle: 'Nearby cycling groups (Bike Pool):',
+    bikePool1Name: '🚴 VeloTM Campus Convoy (UPT/UVT)',
+    bikePool1Meta: '3 cyclists • Departing from Student Campus',
+    bikePoolJoinedBtn: '✓ In group!',
+    bikePoolJoinBtn: 'Join group',
+    bikePoolEnrollLabel:
+      'Make me available as a Bike Pool member / organizer',
+    bikePoolEnrolledMsg:
+      '✅ Your Bike Pool is open for other cyclists along the route!',
+    carpoolQuestion:
+      '🚗 Planning a car trip: Driving alone or offering a ride to others?',
+    carAloneBtn: '🚗 Driving alone',
+    carpoolOfferBtn: '👥 Offer Carpool (+35 points)',
+    nearbyCarpoolPassengersTitle:
+      'Passengers along your route looking for a ride nearby:',
+    carpoolPassenger1Name: '🎓 Mihai S. (UPT Electrical Eng.)',
+    carpoolPassenger1Meta:
+      'Looking for a ride to Student Campus (Complex Studențesc)',
+    carpoolPassenger2Name: '🏢 Andreea D. (Continental)',
+    carpoolPassenger2Meta: 'Looking for a ride toward Calea Buziașului',
+    carpoolAcceptedBtn: '✓ Accepted!',
+    carpoolPickUpBtn: 'Pick up (+35 pts)',
+    carpoolAvailableSeatsLabel: 'Available seats in car:',
 
     // TripCompletedModal
     tripEarlyTitle: 'Trip Stopped Early',
@@ -1295,6 +1390,13 @@ export const translations = {
     svcApiUnreachable: (url: string) =>
       `Unreachable (${url}) — Offline Demo is ready`,
     svcOriginFallback: 'Origin',
+    svcWalkBuddyTitle: 'Walk Buddy 🚶‍♂️🤝🚶‍♀️',
+    svcWalkBuddyDesc:
+      'Walking together with a verified Walk Buddy companion',
+    svcBikePoolTitle: 'Bike Pool 🚴‍♂️🤝🚴‍♀️',
+    svcBikePoolDesc: 'Group cycling ride (Bike Pool)',
+    svcCarpoolTitle: 'Verified Carpool 🚗👥',
+    svcCarpoolDesc: 'Shared car ride with verified commuters',
 
     // Stack Headers & Language Toggle
     challengesHeaderTitle: 'Challenges',

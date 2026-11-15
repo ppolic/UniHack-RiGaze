@@ -1,5 +1,5 @@
 import { cancelAuth0BackendSession } from '../services/auth0BackendSession';
-import { useAuth0 } from '@auth0/auth0-react';
+import { useAuth0 } from '../services/auth0Service';
 import { useUserStore } from '../store/userStore';
 import { UserProfile } from '../types/user';
 import { AgeCategory } from '../types/route';

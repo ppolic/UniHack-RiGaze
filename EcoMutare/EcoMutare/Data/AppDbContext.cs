@@ -145,9 +145,9 @@ public class AppDbContext : DbContext
 
         // Minimalni seed (okvirne koordinate Timișoare)
         b.Entity<Reward>().HasData(
-            new Reward { Id = 1, Name = "Besplatna karta za javni prijevoz", Description = "Jednokratna karta", PointsCost = 100, IsActive = true },
-            new Reward { Id = 2, Name = "Popust na kavu", Description = "10% popusta kod partnera", PointsCost = 50, IsActive = true },
-            new Reward { Id = 3, Name = "Besplatna vožnja romobilom", Description = "30 minuta", PointsCost = 150, IsActive = true });
+            new Reward { Id = 1, Name = "Bilet gratuit pentru transportul public", Description = "Bilet pentru o singură călătorie", PointsCost = 100, IsActive = true },
+            new Reward { Id = 2, Name = "Reducere la cafea", Description = "10% reducere la parteneri", PointsCost = 50, IsActive = true },
+            new Reward { Id = 3, Name = "Cursă gratuită cu trotineta electrică", Description = "30 de minute", PointsCost = 150, IsActive = true });
 
         b.Entity<Station>().HasData(
             new Station { Id = 1, Name = "Piața Victoriei (bike)", Type = StationType.Bike, Latitude = 45.7537, Longitude = 21.2257, Capacity = 10, AvailableUnits = 6, IsActive = true },

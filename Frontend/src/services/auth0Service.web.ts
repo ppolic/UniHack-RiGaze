@@ -1,6 +1,5 @@
 /**
- * Official Auth0 SDK Integration helpers.
- * OAuth/OIDC flows are handled exclusively by @auth0/auth0-react.
+ * Web Auth0 SDK Integration (uses @auth0/auth0-react).
  */
 export { useAuth0, Auth0Provider } from '@auth0/auth0-react';
 export type { User } from '@auth0/auth0-react';
@@ -12,7 +11,7 @@ export const AUTH0_CONFIG = {
 } as const;
 
 export function getAuth0RedirectUri(): string {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined' && window.location?.origin) {
     return window.location.origin;
   }
   return AUTH0_CONFIG.origin;

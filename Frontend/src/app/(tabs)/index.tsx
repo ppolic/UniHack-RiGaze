@@ -643,7 +643,7 @@ export default function MapScreen() {
     : isDestinationTooClose
     ? t.tooCloseWarning(directDistanceMeters, MIN_TRIP_DISTANCE_METERS)
     : selectedOption
-    ? `${selectedOption.title} (${selectedOption.durationMinutes} min • ${selectedOption.distanceKm} km • +${selectedOption.ecoPoints} ${t.ptsShort})`
+    ? `${translateMessage(selectedOption.title) || selectedOption.title} (${selectedOption.durationMinutes} min • ${selectedOption.distanceKm} km • +${selectedOption.ecoPoints} ${t.ptsShort})`
     : t.calculatingRoutes;
 
   const showAutocomplete =
@@ -764,7 +764,7 @@ export default function MapScreen() {
   const renderActiveNavigationTopBanner = () => {
     if (!isNavigating || !selectedOption) return null;
     const primaryStep =
-      selectedOption.segments?.[0]?.description ||
+      translateMessage(selectedOption.segments?.[0]?.description) ||
       t.followRouteTo(endpoints.destinationName || t.destination);
 
     return (
@@ -777,7 +777,7 @@ export default function MapScreen() {
             style={[styles.navTopModeTitle, { fontSize: fs(14) }]}
             numberOfLines={1}
           >
-            🛰️ {selectedOption.title || selectedOption.mode}
+            🛰️ {translateMessage(selectedOption.title) || selectedOption.mode}
           </Text>
           <View style={styles.navLivePill}>
             <Text style={styles.navLivePillText}>{t.gpsLive}</Text>
@@ -1062,7 +1062,7 @@ export default function MapScreen() {
                       <Text
                         style={[styles.textAltStepDesc, { fontSize: fs(12) }]}
                       >
-                        {seg.description ||
+                        {translateMessage(seg.description) ||
                           `${seg.mode} (${seg.durationMinutes} min)`}
                       </Text>
                       <Text
@@ -1796,7 +1796,8 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.border,
-    maxWidth: 120,
+    maxWidth: 165,
+    flexShrink: 1,
   },
   profileSettingsText: {
     ...typography.captionMedium,
