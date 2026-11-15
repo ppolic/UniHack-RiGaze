@@ -19,6 +19,7 @@ namespace EcoMutare.Controllers;
 /// </summary>
 [ApiController]
 [Route("auth")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
